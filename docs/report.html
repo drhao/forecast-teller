@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>解讀與評估報告 · 台灣流感 TimesFM 3.0 預測</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&family=Noto+Serif+TC:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/epi.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="assets/charts.js" defer></script></head>
+<body>
+<header class="masthead"><div class="masthead-inner"><div class="masthead-left"><div class="crest">FT</div><div class="masthead-title">台灣流感疫情預測 · TimesFM 3.0<small>FORECAST-TELLER · 解讀與評估報告</small></div></div>
+<nav class="masthead-right"><a href="index.html">每週預測</a><a href="backtest.html">回測</a><a href="report.html" class="active">報告</a></nav></div></header>
+<main class="report">
+<div class="hero-kicker">EVALUATION REPORT · 2026-09-17</div>
+<h1 class="report-title">以 TimesFM 3.0 零樣本預測台灣類流感就診：<em>回測解讀與評估</em></h1>
+<p class="lead">資料窗 2016w01–2025w53（522 週），以 2016–2017 為暖機 context，2018w01 起每週一個起點共 415 個，預測未來 1–4 週；主要決策依據為 COVID 後（2023–2025）的加權區間分數（WIS）。</p>
+
+<div class="kpi-strip">
+  <div class="kpi"><div class="label">最佳設定 WIS（COVID 後，h=1–4）</div><div class="value">6,857</div><div class="sub">四變量聯合 + 春節 + 假日（最佳）</div></div>
+  <div class="kpi"><div class="label">相對 last-value naive</div><div class="value">−26%</div><div class="sub">1–4 週分別 −32% / −29% / −23% / −22%</div></div>
+  <div class="kpi"><div class="label">80% 預測區間涵蓋率</div><div class="value">0.82</div><div class="sub">理想值 0.80；60% 區間 0.62</div></div>
+  <div class="kpi"><div class="label">方向命中率（h=1–4）</div><div class="value">0.68</div><div class="sub">1 週前 0.69，4 週前 0.65；naive 退化為 0.45</div></div>
+</div>
+
+<section><h2>1. 我們評估了什麼</h2>
+<p>目標序列是<strong>全國每週類流感門診就診人次</strong>（健保申報），另以全國類流感急診就診人次、RODS 急診類流感就診百分比、22 縣市與 18 年齡層做延伸驗證。模型是 Google TimesFM 3.0（330M 參數的時間序列基礎模型），<strong>零樣本、未經任何微調</strong>，逐層加入已知未來共變數（春節旗標、平日假日天數、季節相位）、過去共變數（實驗室型別、RODS、重症）與多變量聯合預測。基準模型為 last-value naive、MA3（前 3 週移動平均，2 週以上遞迴代入）、季節性 naive、AutoETS 與 Theta。</p>
+<p>評估指標：WIS（由 9 個分位數組成 4 個對稱區間加中位數，越低越好）、MAE、MAPE、MASE、80%/60% 區間涵蓋率、方向命中率、±10% 容忍帶命中率，以及閾值命中率與誤報率（門診人次以第 75 百分位 79,955 人次為閾值，RODS 急診類流感%以流行閾值 10% 為閾值）。結果分 COVID 前（2018–2019）、COVID 期（2020–2022）、COVID 後（2023–2025）三段報告，決策看 COVID 後。</p></section>
+
+<section><h2>2. 主要結果</h2>
+<div class="two-col">
+<div class="card"><h3>各設定 WIS 依預測週數（COVID 後）</h3><div class="chart-box"><canvas id="c-wis" role="img" aria-label="最佳設定在 1 到 4 週的 WIS 均低於各基準模型"></canvas></div><p class="source">WIS 越低越好；灰色虛線為基準模型。</p></div>
+<div class="card"><h3>最佳設定 1 週前預測 vs 實際（2023–2025）</h3><div class="chart-box"><canvas id="c-ts" role="img" aria-label="1 週前預測中位數貼近實際值，80% 區間涵蓋大多數週"></canvas></div><p class="source">虛線為預測中位數，淺綠帶為 80% 預測區間。</p></div>
+</div>
+<table class="tbl compact"><thead><tr><th>設定</th><th class="num">WIS</th><th class="num">相對 naive</th><th class="num">MAPE %</th><th class="num">MASE</th><th class="num">80% 涵蓋</th><th class="num">方向命中</th><th class="num">閾值命中</th></tr></thead><tbody>
+<tr class='best'><td>四變量聯合 + 春節 + 假日（最佳）</td><td class='num'>6,857</td><td class='num'>0.74</td><td class='num'>10.5</td><td class='num'>0.35</td><td class='num'>0.82</td><td class='num'>0.68</td><td class='num'>0.85</td></tr><tr class=''><td>TimesFM + 春節 + 假日（最佳單變量）</td><td class='num'>7,065</td><td class='num'>0.77</td><td class='num'>10.9</td><td class='num'>0.36</td><td class='num'>0.79</td><td class='num'>0.67</td><td class='num'>0.85</td></tr><tr class=''><td>TimesFM zero-shot（無共變數）</td><td class='num'>7,762</td><td class='num'>0.84</td><td class='num'>12.2</td><td class='num'>0.39</td><td class='num'>0.82</td><td class='num'>0.63</td><td class='num'>0.86</td></tr><tr class=''><td>AutoETS</td><td class='num'>8,861</td><td class='num'>0.96</td><td class='num'>13.5</td><td class='num'>0.44</td><td class='num'>0.79</td><td class='num'>0.42</td><td class='num'>0.81</td></tr><tr class=''><td>MA3（前 3 週移動平均）</td><td class='num'>9,746</td><td class='num'>1.06</td><td class='num'>14.0</td><td class='num'>0.46</td><td class='num'>0.62</td><td class='num'>0.43</td><td class='num'>0.80</td></tr><tr class=''><td>last-value naive</td><td class='num'>9,205</td><td class='num'>1.00</td><td class='num'>13.1</td><td class='num'>0.43</td><td class='num'>0.63</td><td class='num'>0.45</td><td class='num'>0.82</td></tr><tr class=''><td>季節性 naive（去年同週）</td><td class='num'>22,846</td><td class='num'>2.48</td><td class='num'>36.7</td><td class='num'>1.17</td><td class='num'>0.65</td><td class='num'>0.50</td><td class='num'>0.36</td></tr>
+</tbody></table>
+<ul class="findings">
+<li><strong>零樣本已勝過統計基準。</strong>不加任何共變數的 TimesFM，WIS 比 last-value naive 低 16%、比 MA3（前 3 週移動平均）低 20%、比 AutoETS 低 12%；季節性 naive 因季節位移與 COVID 斷層幾乎失效（MASE 1.17）。</li>
+<li><strong>假日天數是最有用的共變數。</strong>加入每週平日假日天數與春節旗標後，1 週前 WIS 再降約 20%；季節相位 sin/cos、log1p 轉換、對稱平均與滑動視窗都沒有幫助。</li>
+<li><strong>多變量聯合預測在較長 horizon 更好。</strong>門診 + 急診 + RODS + 重症四變量聯合加假日共變數是全部 horizon 的最佳設定，相對無共變數 zero-shot 在 1–4 週分別改善 21% / 14% / 9% / 8%。</li>
+<li><strong>校準良好。</strong>80% 區間涵蓋率 0.82、60% 涵蓋率 0.62，接近名目值；naive 的區間過窄（0.63）。</li>
+<li><strong>COVID 前也成立。</strong>2018–2019 最佳為 四變量聯合 + 季節 + 春節 + 假日，WIS 4,262，相對 naive −36%。</li>
+<li><strong>延伸驗證。</strong>全國類流感急診就診人次（健保）：最佳設定 四變量聯合 + 春節 + 假日（最佳），WIS 656，相對 naive −30%，MAPE 10.4%，80% 涵蓋率 0.81。RODS 急診類流感%：最佳 WIS 0.63 個百分點，相對 naive −12%，方向命中率 0.68，以流行閾值 10% 計的閾值命中率 0.92、誤報率 0.26。22 縣市聯合預測相對逐縣市 naive 為 0.86，18 年齡層為 0.83。</li>
+</ul></section>
+
+<section><h2>3. 怎麼解讀</h2>
+<ul class="findings">
+<li><strong>1–2 週最可靠。</strong>WIS 隨 horizon 大致線性上升（4,145 → 9,497），方向命中率從 0.69 降到 0.65。4 週以上的預測應只做規劃參考。</li>
+<li><strong>峰值偏保守。</strong>高流行週（實際值在第 75 百分位以上）中位數低估 2–8%（1→4 週）；零樣本模型不知道今年疫苗策略或流行株變化，遇到創新高的季節會慢半拍。</li>
+<li><strong>閾值警示可用但需搭配區間。</strong>以第 75 百分位為閾值，1–2 週前的命中率約 0.86–0.90、誤報率約 0.17；建議用「超過閾值的機率」（由 9 個分位數推得）而非中位數單點做警示。</li>
+<li><strong>COVID 期的分數不作決策依據。</strong>2020–2022 流感近乎消失，模型在該時期高估 4–12%，但區間涵蓋率仍在 0.75 以上。</li>
+</ul></section>
+
+<section><h2>4. 限制與注意事項</h2>
+<ul class="findings">
+<li>健保申報有回補，最近 1–2 週低報；管線以「低於前 8 週中位數 60%」自動排除不完整週，正式使用時應以首報/終報比值校正。</li>
+<li>假日檔只到 2025 年底，2026 年起春節週以農曆新年日期外推、平日假日天數假設 5 天；請以官方辦公日曆表延伸後重跑。</li>
+<li>TimesFM 3.0 權重授權為非商業、非生產用途；正式上線需改用 2.5（Apache-2.0）或另取授權。</li>
+<li>回測資料窗只有十年，最早的起點僅兩季暖機；閾值以整段資料的分位數決定，帶有少量事後資訊。</li>
+</ul></section>
+
+<section><h2>5. 建議</h2>
+<ul class="findings">
+<li>每週固定流程：更新資料 → 建面板 → 以四變量聯合 + 春節 + 假日設定產出 1–4 週預測與分位數 → 發布本站。</li>
+<li>發布時同時呈現中位數、80% 區間與「超過閾值的機率」，並註明資料截止週與申報回補風險。</li>
+<li>下一步：TimesFM 與 ETS 的簡單集成、健保申報回補校正、季節峰值時間/高度的專門評估，以及微調（2.5 LoRA）是否值得。</li>
+</ul></section>
+
+<section><h2>6. 最新預測摘要（起點 202606，2026-02-08 當週）</h2>
+<p>全國類流感門診就診人次未來 4 週中位數：75,373、91,723、87,262、85,524；第 1 週 80% 區間 64,274–88,798（春節週）。完整內容見<a href="index.html">每週預測</a>。</p></section>
+
+<footer class="report-footer">資料：疾病管制署資料開放平台（健保、RODS、NIDDS、合約實驗室）。模型：google/timesfm-3.0-pytorch（非商業授權）。產生時間 2026-09-17T05:42+08:00。圖表依《疫情資料視覺化指引》v1.1。</footer>
+</main>
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+  const bt = await (await fetch('data/backtest.json')).json();
+  const t = bt.targets['nhi_out_ili']; const seg = t.segments.post_covid;
+  const cfgs = [t.best, 'tfm_cov_cny_hol', 'tfm_expanding', 'ets', 'naive', 'snaive'];
+  EPI.linesChart(document.getElementById('c-wis'), EPI.byHorizonSeries(seg, cfgs, 'wis_by_h', bt.config_labels), {yLabel: 'WIS', xLabel: '預測週數（h）', fmt: v => v.toLocaleString('zh-TW', {maximumFractionDigits: 0})});
+  EPI.backtestTsChart(document.getElementById('c-ts'), t.timeseries.h1, {unit: t.unit, decimals: t.decimals});
+});
+</script>
+</body></html>

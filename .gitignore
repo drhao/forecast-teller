@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+data_processed/*.parquet
+outputs/backtest/*.parquet
+
+# 原始資料檔過大（RODS 196 MB > GitHub 100 MB 上限），預設不納入版控
+data/*.csv
+!data/tw_holiday.csv
+!data/date_week_mapping.csv

@@ -1,0 +1,49 @@
+{
+ "generated_at": "2026-09-17T05:42+08:00",
+ "coverage": {
+  "nhi": {
+   "first_complete": "200502",
+   "last_complete": "202606",
+   "first_date": "2005-01-02",
+   "last_date": "2026-02-08"
+  },
+  "nhi_er": {
+   "first_complete": "201601",
+   "last_complete": "202607",
+   "first_date": "2016-01-03",
+   "last_date": "2026-02-15"
+  },
+  "rods": {
+   "first_complete": "200901",
+   "last_complete": "202607",
+   "first_date": "2008-12-28",
+   "last_date": "2026-02-15"
+  },
+  "nidds": {
+   "first_complete": "200302",
+   "last_complete": "202603",
+   "first_date": "2003-01-05",
+   "last_date": "2026-01-18"
+  },
+  "lab": {
+   "first_complete": "201502",
+   "last_complete": "202602",
+   "first_date": "2015-01-11",
+   "last_date": "2026-01-11"
+  }
+ },
+ "backtest_window": {
+  "start": "201601",
+  "end": "202553",
+  "weeks": 522,
+  "warmup": 104,
+  "origins": 415
+ },
+ "model": {
+  "name": "TimesFM 3.0",
+  "checkpoint": "google/timesfm-3.0-pytorch",
+  "license": "timesfm-non-commercial-license-v1.0（非商業、非生產用途）"
+ },
+ "best_config": "tfm_best_mv4_cny_hol",
+ "best_label": "四變量聯合 + 春節 + 假日（最佳）"
+}

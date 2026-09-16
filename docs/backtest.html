@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>回測 · 台灣流感 TimesFM 3.0</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&family=Noto+Serif+TC:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/epi.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="assets/charts.js" defer></script>
+</head><body>
+<header class="masthead"><div class="masthead-inner">
+  <div class="masthead-left"><div class="crest">FT</div><div class="masthead-title">台灣流感疫情預測 · TimesFM 3.0<small>FORECAST-TELLER · BACKTEST</small></div></div>
+  <nav class="masthead-right"><a href="index.html">每週預測</a><a href="backtest.html" class="active">回測</a><a href="report.html">報告</a></nav>
+</div></header>
+<main>
+  <div class="hero-kicker">Rolling-origin backtest · 2016–2025</div>
+  <h1 class="page-title">回測儀表板 <em>2016w01–2025w53，415 個起點，h = 1–4</em></h1>
+  <p class="lead">每個起點只用截至該週的資料預測未來 1–4 週；起點自 2018w01 起每週一個。結果分 COVID 前（2018–2019）、COVID 期（2020–2022）、COVID 後（2023–2025）三段，決策看 COVID 後。所有分數為各起點的平均。</p>
+
+  <div class="controls">
+    <div><label for="sel-target">目標序列</label><select id="sel-target"></select></div>
+    <div><label>分段</label><span class="seg-group" id="seg-group"></span></div>
+    <div style="margin-left:auto;font-size:12px;color:var(--n-500)" id="ctl-note"></div>
+  </div>
+
+  <div class="kpi-strip" id="kpi-strip"></div>
+
+  <section>
+    <div class="section-head"><span class="section-num">01</span><h2>排行榜</h2><span class="en">Leaderboard · mean over h = 1–4 · click headers to sort</span></div>
+    <div class="tbl-wrap"><table class="tbl" id="lb"></table></div>
+    <p class="source">WIS = 加權區間分數（越低越好）；相對 naive = WIS ÷ last-value naive 的 WIS；MA3 = 前 3 週移動平均（2 週以上遞迴代入預測值）；MAPE = 平均絕對百分比誤差（%）；MASE 以季節性 naive 的 in-sample MAE 為分母；方向命中 = 預測相對起點週的漲跌方向正確的比例；閾值命中 = 實際超過閾值的週中預測也超過的比例（敏感度）。灰字為基準模型。</p>
+  </section>
+
+  <section>
+    <div class="section-head"><span class="section-num">02</span><h2>依預測週數</h2><span class="en">By horizon</span></div>
+    <div class="grid-2">
+      <div class="card"><h3>WIS 依 horizon</h3><div class="sub">最佳三個 TimesFM 設定（類別色）與基準（灰虛線）；季節性 naive 高出一個量級，僅列於排行榜</div><div class="chart-box"><canvas id="c-wis"></canvas></div></div>
+      <div class="card"><h3>方向命中率依 horizon</h3><div class="sub">灰色水平虛線 0.5 = 隨機猜測；naive 永不預測上漲，僅供對照</div><div class="chart-box"><canvas id="c-dir"></canvas></div></div>
+      <div class="card"><h3>80% 區間涵蓋率依 horizon</h3><div class="sub">理想值 0.80（灰線）；高於代表區間偏寬，低於代表過度自信</div><div class="chart-box"><canvas id="c-cov"></canvas></div></div>
+      <div class="card"><h3>閾值命中率依 horizon</h3><div class="sub" id="thr-sub"></div><div class="chart-box"><canvas id="c-thr"></canvas></div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head"><span class="section-num">03</span><h2>最佳設定：預測 vs 實際（COVID 後，1–4 週前）</h2><span class="en">Forecast vs actual, 2023–2025 · h = 1, 2, 3, 4</span></div>
+    <p class="sub" id="ts-title" style="margin:-8px 0 12px;color:var(--n-600)"></p>
+    <div class="grid-2" id="ts-grid">
+      <div class="card"><h3>1 週前預測</h3><div class="sub">虛線 = 預測中位數，淺綠帶 = 80% 預測區間，深灰實線 = 實際值</div><div class="chart-box"><canvas id="c-ts-1"></canvas></div></div>
+      <div class="card"><h3>2 週前預測</h3><div class="sub">同左</div><div class="chart-box"><canvas id="c-ts-2"></canvas></div></div>
+      <div class="card"><h3>3 週前預測</h3><div class="sub">同左</div><div class="chart-box"><canvas id="c-ts-3"></canvas></div></div>
+      <div class="card"><h3>4 週前預測</h3><div class="sub">同左；區間隨 horizon 變寬</div><div class="chart-box"><canvas id="c-ts-4"></canvas></div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head"><span class="section-num">04</span><h2>各年 WIS</h2><span class="en">By year · h = 1 and h = 4</span></div>
+    <div class="tbl-wrap"><table class="tbl compact" id="yearly"></table></div>
+  </section>
+
+  <section>
+    <div class="section-head"><span class="section-num">05</span><h2>縣市與年齡層：聯合多變量預測</h2><span class="en">County / age-group joint forecasts · relative WIS vs per-series naive</span></div>
+    <div class="grid-2">
+      <div class="card"><h3>22 縣市：聯合多變量 + 共變數 相對 naive 的 WIS（COVID 後）</h3><div class="sub">小於 1.0 表示優於逐縣市 last-value naive；灰線 = 1.0</div><div class="chart-box tall"><canvas id="c-county"></canvas></div></div>
+      <div class="card"><h3>18 年齡層：聯合多變量 + 共變數 相對 naive 的 WIS（COVID 後）</h3><div class="sub">同左；年齡層跨序列相關較強</div><div class="chart-box tall"><canvas id="c-age"></canvas></div></div>
+    </div>
+    <div class="tbl-wrap" style="margin-top:18px"><table class="tbl compact" id="group-tbl"></table></div>
+  </section>
+</main>
+<footer class="site-footer" id="footer"></footer>
+<script>
+const fmt = (v, d = 0) => (v == null) ? '—' : Number(v).toLocaleString('zh-TW', {minimumFractionDigits: d, maximumFractionDigits: d});
+const state = {target: 'nhi_out_ili', seg: 'post_covid', h: 'h1', sort: {key: 'wis', asc: true}};
+const charts = {};
+let BT, META;
+function destroy(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
+
+function renderLeaderboard() {
+  const t = BT.targets[state.target]; const seg = t.segments[state.seg]; const d = t.decimals;
+  const cols = [['label', '設定', false], ['wis', 'WIS', true], ['rel_naive', '相對 naive', true], ['mae', 'MAE', true], ['mape', 'MAPE %', true], ['mase', 'MASE', true], ['cov80', '80% 涵蓋', true], ['cov60', '60% 涵蓋', true], ['dir_hit', '方向命中', true], ['dir_hit3', '三分類命中', true], ['hit_tol10', '±10% 命中', true], ['thr_hit_rate', '閾值命中', true], ['thr_false_alarm', '誤報率', true]];
+  const rows = [...seg.leaderboard].sort((a, b) => { const k = state.sort.key; const va = a[k], vb = b[k]; if (typeof va === 'string') return state.sort.asc ? va.localeCompare(vb) : vb.localeCompare(va); return state.sort.asc ? va - vb : vb - va; });
+  const maxW = Math.max(...rows.filter(r => r.config !== 'snaive').map(r => r.wis)) * 1.05;
+  const tbl = document.getElementById('lb');
+  tbl.innerHTML = '<thead><tr>' + cols.map(([k, lab, num]) => `<th class="sortable ${num ? 'num' : ''} ${state.sort.key === k ? 'sorted' : ''}" data-key="${k}">${lab}</th>`).join('') + '</tr></thead><tbody>' +
+    rows.map(r => `<tr class="${r.kind === 'baseline' ? 'baseline' : ''} ${r.config === t.best && state.seg === 'post_covid' ? 'best' : ''}">` +
+      `<td>${r.label}</td><td class="num"><span class="bar" style="width:${Math.min(100, 100 * r.wis / maxW).toFixed(0)}px"></span>${fmt(r.wis, d)}</td><td class="num">${r.rel_naive.toFixed(2)}</td><td class="num">${fmt(r.mae, d)}</td><td class="num">${r.mape == null ? '—' : r.mape.toFixed(1)}</td><td class="num">${r.mase.toFixed(2)}</td><td class="num">${r.cov80.toFixed(2)}</td><td class="num">${r.cov60.toFixed(2)}</td><td class="num">${r.dir_hit.toFixed(2)}</td><td class="num">${r.dir_hit3.toFixed(2)}</td><td class="num">${r.hit_tol10.toFixed(2)}</td><td class="num">${r.thr_hit_rate == null ? '—' : r.thr_hit_rate.toFixed(2)}</td><td class="num">${r.thr_false_alarm == null ? '—' : r.thr_false_alarm.toFixed(2)}</td></tr>`).join('') + '</tbody>';
+  tbl.querySelectorAll('th.sortable').forEach(th => th.addEventListener('click', () => { const k = th.dataset.key; if (state.sort.key === k) state.sort.asc = !state.sort.asc; else state.sort = {key: k, asc: k !== 'cov80' && k !== 'cov60' && !k.includes('hit')}; renderLeaderboard(); }));
+}
+
+function focusConfigs(t, seg) {
+  const lb = seg.leaderboard; const models = lb.filter(r => r.kind === 'timesfm').slice(0, 3).map(r => r.config);
+  // 季節性 naive 的 WIS 高出一個量級，畫進折線圖會壓扁其他序列，只留在排行榜
+  return [...models, 'tfm_expanding', 'ets', 'ma3', 'naive'].filter((c, i, a) => a.indexOf(c) === i && seg.wis_by_h[c]);
+}
+
+function renderCharts() {
+  const t = BT.targets[state.target]; const seg = t.segments[state.seg]; const d = t.decimals; const labels = BT.config_labels;
+  const cfgs = focusConfigs(t, seg);
+  const kp = document.getElementById('kpi-strip'); const best = seg.leaderboard.find(r => r.kind === 'timesfm'); const naive = seg.leaderboard.find(r => r.config === 'naive'); const zs = seg.leaderboard.find(r => r.config === 'tfm_expanding');
+  kp.innerHTML = `<div class="kpi"><div class="label">最佳設定（${seg.label}）</div><div class="value" style="font-size:18px">${best.label}</div><div class="sub">WIS ${fmt(best.wis, d)}；MASE ${best.mase.toFixed(2)}</div></div>` +
+    `<div class="kpi"><div class="label">相對 last-value naive</div><div class="value">−${Math.round(100 * (1 - best.rel_naive))}%</div><div class="sub">1–4 週：${seg.wis_by_h[best.config].map((w, i) => '−' + Math.round(100 * (1 - w / seg.wis_by_h['naive'][i])) + '%').join(' / ')}</div></div>` +
+    `<div class="kpi"><div class="label">80% / 60% 區間涵蓋率</div><div class="value">${best.cov80.toFixed(2)}<small>/ ${best.cov60.toFixed(2)}</small></div><div class="sub">理想 0.80 / 0.60；naive ${naive.cov80.toFixed(2)}</div></div>` +
+    `<div class="kpi"><div class="label">方向命中率 · 閾值命中率</div><div class="value">${best.dir_hit.toFixed(2)}<small>/ ${best.thr_hit_rate == null ? '—' : best.thr_hit_rate.toFixed(2)}</small></div><div class="sub">無共變數 zero-shot：${zs ? zs.dir_hit.toFixed(2) + ' / ' + (zs.thr_hit_rate == null ? '—' : zs.thr_hit_rate.toFixed(2)) : '—'}</div></div>`;
+  document.getElementById('ctl-note').textContent = `${seg.label}：${seg.n_origins} 個起點 × 4 個 horizon`;
+  document.getElementById('thr-sub').textContent = `閾值 = ${fmt(t.threshold, d)} ${t.unit}（${t.thr_note}）；命中率 = 敏感度`;
+  ['c-wis', 'c-dir', 'c-cov', 'c-thr'].forEach(destroy);
+  const wisFmt = v => fmt(v, d);
+  charts['c-wis'] = EPI.linesChart(document.getElementById('c-wis'), EPI.byHorizonSeries(seg, cfgs, 'wis_by_h', labels), {yLabel: 'WIS（越低越好）', xLabel: '預測週數 h', fmt: wisFmt});
+  charts['c-dir'] = EPI.linesChart(document.getElementById('c-dir'), EPI.byHorizonSeries(seg, cfgs, 'dir_hit_by_h', labels), {yLabel: '方向命中率', xLabel: '預測週數 h', yMin: 0, yMax: 1, fmt: v => Number(v).toFixed(2), refLines: {horizontal: [{at: 0.5, label: '隨機猜測 0.5'}]}});
+  charts['c-cov'] = EPI.linesChart(document.getElementById('c-cov'), EPI.byHorizonSeries(seg, cfgs, 'cov80_by_h', labels), {yLabel: '80% 區間涵蓋率', xLabel: '預測週數 h', yMin: 0, yMax: 1, fmt: v => Number(v).toFixed(2), refLines: {horizontal: [{at: 0.8, label: '名目 0.80'}]}});
+  charts['c-thr'] = EPI.linesChart(document.getElementById('c-thr'), EPI.byHorizonSeries(seg, cfgs, 'thr_hit_by_h', labels), {yLabel: '閾值命中率（敏感度）', xLabel: '預測週數 h', yMin: 0, yMax: 1, fmt: v => Number(v).toFixed(2)});
+  renderTs(); renderYearly();
+}
+
+function renderTs() {
+  const t = BT.targets[state.target];
+  document.getElementById('ts-title').textContent = `${t.best_label} · ${t.label}（單位：${t.unit}）`;
+  [1, 2, 3, 4].forEach(h => { const id = `c-ts-${h}`; destroy(id); charts[id] = EPI.backtestTsChart(document.getElementById(id), t.timeseries[`h${h}`], {unit: t.unit, decimals: t.decimals}); });
+}
+
+function renderYearly() {
+  const t = BT.targets[state.target]; const d = t.decimals; const labels = BT.config_labels;
+  const y1 = t.yearly_wis.h1, y4 = t.yearly_wis.h4; const years = Object.keys(Object.values(y1)[0]);
+  const rows = Object.keys(y1);
+  document.getElementById('yearly').innerHTML = `<thead><tr><th>設定</th><th>h</th>${years.map(y => `<th class="num">${y}</th>`).join('')}</tr></thead><tbody>` +
+    rows.flatMap(c => [[1, y1[c]], [4, y4[c]]].map(([h, v]) => `<tr class="${['naive', 'ma3', 'snaive', 'ets', 'theta'].includes(c) ? 'baseline' : ''} ${c === t.best ? 'best' : ''}"><td>${h === 1 ? labels[c] || c : ''}</td><td>h=${h}</td>${years.map(y => `<td class="num">${fmt(v[y], d)}</td>`).join('')}</tr>`)).join('') + '</tbody>';
+}
+
+function renderGroups() {
+  const g = BT.groups;
+  ['county', 'age'].forEach(k => {
+    const rel = g[k].per_group_rel; const id = 'c-' + k; destroy(id);
+    charts[id] = EPI.hbarChart(document.getElementById(id), rel.map(r => r.name), rel.map(r => r.mv_cov), {label: '相對 naive 的 WIS', fmt: v => Number(v).toFixed(2), refAt: 1.0, refLabel: 'naive = 1.0', xMax: 1.1, xLabel: '相對 WIS（< 1 優於 naive）'});
+  });
+  const segs = ['post_covid', 'pre_covid', 'covid', 'all'];
+  document.getElementById('group-tbl').innerHTML = `<thead><tr><th>層級</th><th>設定</th>${segs.map(s => `<th class="num">${BT.seg_labels[s]}<br><span style="font-weight:400">相對 naive WIS</span></th>`).join('')}<th class="num">80% 涵蓋（COVID 後）</th><th class="num">方向命中（COVID 後）</th></tr></thead><tbody>` +
+    ['county', 'age'].flatMap(k => g[k].segments.post_covid.map(r => { const by = s => g[k].segments[s].find(x => x.config === r.config); return `<tr class="${['naive', 'ma3'].includes(r.config) ? 'baseline' : ''}"><td>${g[k].label}</td><td>${r.label}</td>${segs.map(s => `<td class="num">${by(s).rel_naive.toFixed(2)}</td>`).join('')}<td class="num">${r.cov80.toFixed(2)}</td><td class="num">${r.dir_hit.toFixed(2)}</td></tr>`; })).join('') + '</tbody>';
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  [BT, META] = await Promise.all([fetch('data/backtest.json').then(r => r.json()), fetch('data/meta.json').then(r => r.json())]);
+  const selT = document.getElementById('sel-target');
+  Object.entries(BT.targets).forEach(([k, t]) => selT.insertAdjacentHTML('beforeend', `<option value="${k}">${t.label}</option>`));
+  selT.addEventListener('change', e => { state.target = e.target.value; renderLeaderboard(); renderCharts(); });
+  const sg = document.getElementById('seg-group');
+  ['post_covid', 'pre_covid', 'covid', 'all'].forEach(s => sg.insertAdjacentHTML('beforeend', `<button class="seg-btn ${s === state.seg ? 'active' : ''}" data-seg="${s}">${BT.seg_labels[s]}</button>`));
+  sg.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { state.seg = b.dataset.seg; sg.querySelectorAll('button').forEach(x => x.classList.toggle('active', x === b)); renderLeaderboard(); renderCharts(); }));
+  renderLeaderboard(); renderCharts(); renderGroups();
+  document.getElementById('footer').textContent = `回測資料窗 ${META.backtest_window.start}–${META.backtest_window.end}（${META.backtest_window.weeks} 週），暖機 ${META.backtest_window.warmup} 週，起點 ${META.backtest_window.origins} 個。模型 ${META.model.checkpoint}（${META.model.license}）。圖表依《疫情資料視覺化指引》v1.1。產生時間 ${META.generated_at}。`;
+});
+</script>
+</body></html>

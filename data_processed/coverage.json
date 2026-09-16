@@ -1,0 +1,63 @@
+{
+  "nhi": {
+    "raw_first": "200501",
+    "raw_last": "202608",
+    "first_complete": "200502",
+    "last_complete": "202606",
+    "dropped_head": [
+      "200501"
+    ],
+    "dropped_tail": [
+      "202607",
+      "202608"
+    ]
+  },
+  "nhi_er": {
+    "raw_first": "201552",
+    "raw_last": "202608",
+    "first_complete": "201601",
+    "last_complete": "202607",
+    "dropped_head": [
+      "201552"
+    ],
+    "dropped_tail": [
+      "202608"
+    ]
+  },
+  "rods": {
+    "raw_first": "200901",
+    "raw_last": "202608",
+    "first_complete": "200901",
+    "last_complete": "202607",
+    "dropped_head": [],
+    "dropped_tail": [
+      "202608"
+    ]
+  },
+  "nidds": {
+    "raw_first": "200302",
+    "raw_last": "202607",
+    "first_complete": "200302",
+    "last_complete": "202603",
+    "dropped_head": [],
+    "dropped_tail": [
+      "202604",
+      "202605",
+      "202606",
+      "202607"
+    ]
+  },
+  "lab": {
+    "raw_first": "201453",
+    "raw_last": "202603",
+    "first_complete": "201502",
+    "last_complete": "202602",
+    "dropped_head": [
+      "201453",
+      "201501"
+    ],
+    "dropped_tail": [
+      "202603"
+    ]
+  }
+}
