@@ -1,0 +1,13 @@
+方法,偵測到的事件比例,前置時間中位數（天）,前置 ≥ 3 天的比例
+EWARN 靜態規則,1.0,0.0,0.0
+EWMA,0.12,2.0,0.04
+CUSUM,0.52,1.0,0.19
+TimesFM final p*=0.3,0.55,5.0,0.41
+TimesFM final p*=0.5,0.31,4.0,0.22
+TimesFM final p*=0.7,0.11,2.0,0.05
+TimesFM asof p*=0.3,0.25,11.5,0.19
+TimesFM asof p*=0.5,0.08,6.0,0.07
+TimesFM asof p*=0.7,0.01,7.0,0.01
+TimesFM asof_adj p*=0.3,0.5,5.0,0.35
+TimesFM asof_adj p*=0.5,0.34,4.0,0.21
+TimesFM asof_adj p*=0.7,0.18,3.0,0.11

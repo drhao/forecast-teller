@@ -10,3 +10,10 @@ data/*
 !data/tw_holiday.csv
 !data/date_week_mapping.csv
 outputs/slides/*.pdf
+
+# dengue_ewarn sub-project: raw data and large derived files stay out of git
+dengue_ewarn/data/*
+dengue_ewarn/data_processed/*.parquet
+dengue_ewarn/data_processed/*.npz
+dengue_ewarn/outputs/backtest/*.parquet
+dengue_ewarn/outputs/backtest/dengue_checkpoints/
