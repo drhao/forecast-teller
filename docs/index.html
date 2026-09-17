@@ -98,7 +98,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       <div class="chart-box"><canvas id="${id}" role="img" aria-label="${ind.label}：未來 4 週預測中位數 ${ind.forecast.map(f => fmt(f.median, ind.decimals)).join('、')}"></canvas></div>
       <p class="source">資料來源：${ind.source}。觀測段不畫區間；預測段虛線為中位數。</p></div>`);
   });
-  const drawFans = weeks => inds.forEach(ind => { const id = 'fan-' + ind.key; if (fans[id]) fans[id].destroy(); fans[id] = EPI.fanChart(document.getElementById(id), ind, {unit: ind.unit, decimals: ind.decimals, threshold: ind.threshold, thresholdLabel: ind.threshold_label}); });
+  const drawFans = weeks => inds.forEach(ind => { const id = 'fan-' + ind.key; if (fans[id]) fans[id].destroy(); fans[id] = EPI.fanChart(document.getElementById(id), ind, {unit: ind.unit, decimals: ind.decimals, historyWeeks: weeks, threshold: ind.threshold, thresholdLabel: ind.threshold_label}); });
   drawFans(40);
   const hg = document.getElementById('hist-group');
   hg.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { hg.querySelectorAll('button').forEach(x => x.classList.toggle('active', x === b)); drawFans(Number(b.dataset.weeks)); }));
