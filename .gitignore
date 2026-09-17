@@ -9,3 +9,4 @@ outputs/backtest/*.parquet
 data/*
 !data/tw_holiday.csv
 !data/date_week_mapping.csv
+outputs/slides/*.pdf

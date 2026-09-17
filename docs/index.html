@@ -110,7 +110,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   tbl.innerHTML = `<thead><tr><th>指標</th><th>起點週</th><th>目標週</th><th>週起始日</th><th class="num">h</th><th class="num">中位數</th><th class="num">q10</th><th class="num">q20</th><th class="num">q80</th><th class="num">q90</th><th class="num">實際</th></tr></thead><tbody>` +
     inds.flatMap(ind => ind.forecast.map(f => `<tr><td>${ind.short}</td><td>${ind.origin_yw}</td><td>${f.yw}${f.cny ? ' <span class="badge cny">春節</span>' : ''}</td><td>${f.date}</td><td class="num">${f.h}</td><td class="num"><b>${fmt(f.median, ind.decimals)}</b></td><td class="num">${fmt(f.q10, ind.decimals)}</td><td class="num">${fmt(f.q20, ind.decimals)}</td><td class="num">${fmt(f.q80, ind.decimals)}</td><td class="num">${fmt(f.q90, ind.decimals)}</td><td class="num">${f.observed != null ? fmt(f.observed, ind.decimals) : '—'}</td></tr>`)).join('') + '</tbody>';
   document.getElementById('method-text').textContent = `最佳回測設定：${meta.best_label}。所有指標從 2016 年起以擴張視窗餵入模型，horizon 4 週，輸出 9 個分位數。`;
-  document.getElementById('footer').textContent = `資料：疾病管制署資料開放平台（健保申報、RODS、NIDDS、合約實驗室）。模型：${meta.model.checkpoint}，授權 ${meta.model.license}。圖表依《疫情資料視覺化指引》v1.1。產生時間 ${meta.generated_at}。`;
+  document.getElementById('footer').textContent = `資料：疾病管制署資料開放平台（健保申報、RODS、NIDDS、實驗室自動通報系統（LARS））。模型：${meta.model.checkpoint}，授權 ${meta.model.license}。圖表依《疫情資料視覺化指引》v1.1。產生時間 ${meta.generated_at}。`;
 });
 </script>
 </body></html>

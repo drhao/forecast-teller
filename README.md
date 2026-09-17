@@ -35,7 +35,7 @@ python scripts/forecast_now.py --joint nhi_out_ili nhi_er_ili rods_ili --covaria
 
 | 路徑 | 內容 |
 |---|---|
-| `data/` | 原始 CSV（健保、RODS、NIDDS、合約實驗室；Big5 編碼） |
+| `data/` | 原始 CSV（健保、RODS、NIDDS、實驗室自動通報系統（LARS）；Big5 編碼） |
 | `data_processed/` | `national_weekly.*`、`county_weekly.parquet`、`age_weekly.parquet`、`coverage.json`、`qa_report.md` |
 | `src/forecast_teller/` | `io` 讀檔、`weeks` 疫情週、`panel` 面板、`covariates` 共變數、`model_timesfm3` 模型包裝、`baselines`、`metrics`（WIS）、`backtest`、`report` |
 | `scripts/` | 可執行流程 |

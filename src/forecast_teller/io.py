@@ -106,7 +106,7 @@ def read_nidds(path: str | Path) -> pd.DataFrame:
 
 
 def read_lab_types(path: str | Path) -> pd.DataFrame:
-    """合約實驗室 A/B/未分型陽性數. Columns → yw, county, town, hospital, flu_a, flu_b, flu_u"""
+    """實驗室自動通報系統（LARS） A/B/未分型陽性數 (LARS; contract-lab data to be added later). Columns → yw, county, town, hospital, flu_a, flu_b, flu_u"""
     df = pd.read_csv(path, encoding=ENC, dtype=str)
     out = pd.DataFrame(
         {

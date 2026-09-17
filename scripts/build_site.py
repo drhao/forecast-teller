@@ -25,7 +25,7 @@ IND = {
     "nhi_out_ili": {"label": "全國類流感門診就診人次", "short": "類流感門診", "unit": "人次", "decimals": 0, "source": "健保申報（疾管署資料開放平台）"},
     "rods_ili_pct": {"label": "RODS 急診類流感就診百分比", "short": "急診類流感%", "unit": "%", "decimals": 1, "source": "即時疫情監視系統 RODS"},
     "nhi_er_ili": {"label": "全國類流感急診就診人次", "short": "類流感急診", "unit": "人次", "decimals": 0, "source": "健保申報"},
-    "nidds_severe": {"label": "流感併發重症週病例數（發病週）", "short": "流感併發重症", "unit": "例", "decimals": 0, "source": "法定傳染病通報 NIDDS"},
+    "nidds_severe": {"label": "流感併發重症週病例數（發病週）", "short": "流感併發重症", "unit": "例", "decimals": 0, "source": "法定傳染病通報 NIDDS"},  # lab indicators come from LARS (實驗室自動通報系統), not contract labs
     "rods_ili": {"label": "RODS 急診類流感就診人次", "short": "RODS 急診人次", "unit": "人次", "decimals": 0, "source": "RODS"},
 }
 CONFIG_LABELS = {
@@ -239,7 +239,7 @@ def build_narrative(nat: pd.DataFrame, latest: dict) -> dict:
     if len(lab):
         l = lab.iloc[-1]; l4 = lab.iloc[-5] if len(lab) > 5 else lab.iloc[0]
         dom = "A 型" if l.lab_a_share >= 0.6 else ("B 型" if l.lab_a_share <= 0.4 else "A、B 型並存")
-        cur.append(f"合約實驗室 {lab.index[-1]} 陽性率 {l.lab_pos_rate:.1f}%（4 週前 {l4.lab_pos_rate:.1f}%），A 型 {fmt0(l.lab_flu_a)} 件、B 型 {fmt0(l.lab_flu_b)} 件，以 {dom} 為主（A 型占 {100 * l.lab_a_share:.0f}%）。")
+        cur.append(f"LARS 實驗室自動通報 {lab.index[-1]} 陽性率 {l.lab_pos_rate:.1f}%（4 週前 {l4.lab_pos_rate:.1f}%），A 型 {fmt0(l.lab_flu_a)} 件、B 型 {fmt0(l.lab_flu_b)} 件，以 {dom} 為主（A 型占 {100 * l.lab_a_share:.0f}%）。")
 
     # --- outlook: outpatient path
     fc = out["forecast"]; meds = [f["median"] for f in fc]; last = out["last_observed"]
@@ -390,7 +390,7 @@ def build_report(bt: dict, latest: dict, meta: dict) -> str:
 <section><h2>6. 最新預測摘要（起點 {f_out['origin_yw']}，{f_out['origin_date']} 當週）</h2>
 <p>全國類流感門診就診人次未來 4 週中位數：{'、'.join(fmt(x['median']) for x in f1)}；第 1 週 80% 區間 {fmt(f1[0]['q10'])}–{fmt(f1[0]['q90'])}{'（春節週）' if f1[0]['cny'] else ''}。完整內容見<a href="index.html">每週預測</a>。</p></section>
 
-<footer class="report-footer">資料：疾病管制署資料開放平台（健保、RODS、NIDDS、合約實驗室）。模型：google/timesfm-3.0-pytorch（非商業授權）。產生時間 {meta['generated_at']}。圖表依《疫情資料視覺化指引》v1.1。</footer>
+<footer class="report-footer">資料：疾病管制署資料開放平台（健保、RODS、NIDDS、實驗室自動通報系統（LARS））。模型：google/timesfm-3.0-pytorch（非商業授權）。產生時間 {meta['generated_at']}。圖表依《疫情資料視覺化指引》v1.1。</footer>
 </main>
 <script>
 document.addEventListener('DOMContentLoaded', async () => {{
