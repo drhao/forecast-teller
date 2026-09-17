@@ -14,7 +14,9 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from forecast_teller import OUTPUT_DIR, PROCESSED_DIR, ROOT  # noqa: E402
-from forecast_teller.backtest import SEGMENTS, segment_of, threshold_note  # noqa: E402
+from forecast_teller.backtest import DEFAULT_THRESHOLDS, SEGMENTS, segment_of, threshold_note  # noqa: E402
+
+RTHR = DEFAULT_THRESHOLDS["rods_ili_pct"]
 from forecast_teller.covariates import holiday_weekly  # noqa: E402
 from forecast_teller.panel import load_long, load_national  # noqa: E402
 from forecast_teller.weeks import week_start  # noqa: E402
@@ -85,8 +87,9 @@ def build_latest(nat: pd.DataFrame) -> dict:
                              "cny": int(hw.loc[w, "cny_week"]), "holiday_days": int(hw.loc[w, "holiday_days"]),
                              "observed": r(nat[key].get(w, np.nan), nd)})
         last_obs_at_origin = r(nat[key].loc[origin], nd)
+        extra = {"threshold": RTHR, "threshold_label": f"流行閾值 {RTHR:g}%"} if key == "rods_ili_pct" else {}
         out.append({"key": key, **IND[key], "config": cfg, "origin_yw": origin, "origin_date": ds(origin),
-                    "last_observed": last_obs_at_origin, "history": history, "forecast": forecast})
+                    "last_observed": last_obs_at_origin, "history": history, "forecast": forecast, **extra})
     return {"indicators": out}
 
 
@@ -222,10 +225,10 @@ def build_narrative(nat: pd.DataFrame, latest: dict) -> dict:
     txt += f"；與前三年同一週相比（平均 {fmt0(same.mean())}）為 {s_out.iloc[-1] / same.mean():.1f} 倍，在 2016 年以來所有週中位於第 {pct_rank:.0f} 百分位。" if len(same) else "。"
     cur.append(txt)
     # --- current: RODS vs threshold
-    thr = 10.0; above = consecutive(s_rods, lambda v: v >= thr); below = consecutive(s_rods, lambda v: v < thr)
+    thr = RTHR; above = consecutive(s_rods, lambda v: v >= thr); below = consecutive(s_rods, lambda v: v < thr)
     r_wow = s_rods.iloc[-1] - s_rods.iloc[-2]
     txt = f"RODS 急診類流感就診百分比 {s_rods.index[-1]} 為 {s_rods.iloc[-1]:.1f}%（較前一週 {r_wow:+.1f} 個百分點），"
-    txt += f"已連續 {above} 週高於流行閾值 10%。" if above else f"低於流行閾值 10%（已連續 {below} 週）。"
+    txt += f"已連續 {above} 週高於流行閾值 {thr:g}%。" if above else f"低於流行閾值 {thr:g}%（已連續 {below} 週）。"
     cur.append(txt)
     # --- current: ER visits
     e_wow = 100 * (s_er.iloc[-1] / s_er.iloc[-2] - 1)
@@ -270,7 +273,7 @@ def build_narrative(nat: pd.DataFrame, latest: dict) -> dict:
     rf = rods["forecast"]; probs = [prob_ge(f, thr) for f in rf]
     r_path = " → ".join(f"{f['median']:.1f}" for f in rf)
     fut.append(f"RODS 急診類流感%：中位數 {r_path}%；"
-               f"維持在流行閾值 10% 以上的機率第 1 週{pct_txt(probs[0])}、第 4 週{pct_txt(probs[3])}。")
+               f"維持在流行閾值 {thr:g}% 以上的機率第 1 週{pct_txt(probs[0])}、第 4 週{pct_txt(probs[3])}。")
     # --- outlook: ER
     ef = er["forecast"]; em = [f["median"] for f in ef]; e_imax = int(np.argmax(em))
     fut.append(f"急診人次：中位數 {' → '.join(fmt0(m) for m in em)}"
@@ -363,7 +366,7 @@ def build_report(bt: dict, latest: dict, meta: dict) -> str:
 
 <section><h2>1. 我們評估了什麼</h2>
 <p>目標序列是<strong>全國每週類流感門診就診人次</strong>（健保申報），另以全國類流感急診就診人次、RODS 急診類流感就診百分比、22 縣市與 18 年齡層做延伸驗證。模型是 Google TimesFM 3.0（330M 參數的時間序列基礎模型），<strong>零樣本、未經任何微調</strong>，逐層加入已知未來共變數（春節旗標、平日假日天數、季節相位）、過去共變數（實驗室型別、RODS、重症）與多變量聯合預測。基準模型為 last-value naive、MA3（前 3 週移動平均，2 週以上遞迴代入）、季節性 naive、AutoETS 與 Theta。</p>
-<p>評估指標：WIS（由 9 個分位數組成 4 個對稱區間加中位數，越低越好）、MAE、MAPE、MASE、80%/60% 區間涵蓋率、方向命中率、±10% 容忍帶命中率，以及閾值命中率與誤報率（門診人次以第 75 百分位 {fmt(t['threshold'])} 人次為閾值，RODS 急診類流感%以流行閾值 10% 為閾值）。結果分 COVID 前（2018–2019）、COVID 期（2020–2022）、COVID 後（2023–2025）三段報告，決策看 COVID 後。</p></section>
+<p>評估指標：WIS（由 9 個分位數組成 4 個對稱區間加中位數，越低越好）、MAE、MAPE、MASE、80%/60% 區間涵蓋率、方向命中率、±10% 容忍帶命中率，以及閾值命中率與誤報率（門診人次以第 75 百分位 {fmt(t['threshold'])} 人次為閾值，RODS 急診類流感%以流行閾值 {RTHR:g}% 為閾值）。結果分 COVID 前（2018–2019）、COVID 期（2020–2022）、COVID 後（2023–2025）三段報告，決策看 COVID 後。</p></section>
 
 <section><h2>2. 使用的資料</h2>
 <p>五個常規監測來源加上 2025 年起的社區合約實驗室檢測，全部以疾管署疫情週（週日起算）對齊成全國、縣市、年齡層三層週資料面板；回測只用 2016w01–2025w53，即時預測用到各來源最新的完整週。</p>
@@ -391,7 +394,7 @@ def build_report(bt: dict, latest: dict, meta: dict) -> str:
 <li><strong>多變量聯合預測在較長 horizon 更好。</strong>門診 + 急診 + RODS + 重症四變量聯合加假日共變數是全部 horizon 的最佳設定，相對無共變數 zero-shot 在 1–4 週分別改善 {impr_zs[0]}% / {impr_zs[1]}% / {impr_zs[2]}% / {impr_zs[3]}%。</li>
 <li><strong>校準良好。</strong>80% 區間涵蓋率 {best['cov80']:.2f}、60% 涵蓋率 {best['cov60']:.2f}，接近名目值；naive 的區間過窄（{naive['cov80']:.2f}）。</li>
 <li><strong>COVID 前也成立。</strong>2018–2019 最佳為 {pre_best['label']}，WIS {fmt(pre_best['wis'])}，相對 naive −{round(100*(1-pre_best['rel_naive']))}%。</li>
-<li><strong>延伸驗證。</strong>全國類流感急診就診人次（健保）：最佳設定 {ebest['label']}，WIS {fmt(ebest['wis'])}，相對 naive −{round(100*(1-ebest['rel_naive']))}%，MAPE {ebest['mape']:.1f}%，80% 涵蓋率 {ebest['cov80']:.2f}。RODS 急診類流感%：最佳 WIS {rbest['wis']:.2f} 個百分點，相對 naive −{round(100*(1-rbest['rel_naive']))}%，方向命中率 {rbest['dir_hit']:.2f}，以流行閾值 10% 計的閾值命中率 {rbest['thr_hit_rate']:.2f}、誤報率 {rbest['thr_false_alarm']:.2f}。22 縣市聯合預測相對逐縣市 naive 為 {cty['mv_cov']['rel_naive']:.2f}，18 年齡層為 {age['mv_cov']['rel_naive']:.2f}。</li>
+<li><strong>延伸驗證。</strong>全國類流感急診就診人次（健保）：最佳設定 {ebest['label']}，WIS {fmt(ebest['wis'])}，相對 naive −{round(100*(1-ebest['rel_naive']))}%，MAPE {ebest['mape']:.1f}%，80% 涵蓋率 {ebest['cov80']:.2f}。RODS 急診類流感%：最佳 WIS {rbest['wis']:.2f} 個百分點，相對 naive −{round(100*(1-rbest['rel_naive']))}%，方向命中率 {rbest['dir_hit']:.2f}，以流行閾值 {RTHR:g}% 計的閾值命中率 {rbest['thr_hit_rate']:.2f}、誤報率 {rbest['thr_false_alarm']:.2f}。22 縣市聯合預測相對逐縣市 naive 為 {cty['mv_cov']['rel_naive']:.2f}，18 年齡層為 {age['mv_cov']['rel_naive']:.2f}。</li>
 </ul>
 <p class="note"><strong>近兩年加入社區合約實驗室 PCR（RESP_LAB）的實驗。</strong>RESP_LAB 自 2025 年起才有資料，不在主回測窗內，因此另以 2025w09–2026w32 共 78 個起點比較「同一設定加不加 RESP 過去共變數」。結果：以流感陽性數與陽性率（延遲 1 週）為過去共變數，全國類流感門診人次的 1–4 週平均 WIS 比不加共變數的同一設定高 6.5%（7,341 對 6,895），加入所有病原體高 9.2%，3 週平滑或延遲 2 週仍高 6%，併入三變量聯合預測高 2.1%；急診人次高 1.2–2.9%。同一期間 LARS 陽性數作為共變數則大致持平（−0.2% / +1.7%）。原因是該哨點每週約 250 件檢體、流感陽性約 40 件，週間波動大，且與類流感就診的相關為同步而非領先（r ≈ 0.4–0.5）。目前 RESP_LAB 保留在資料面板並用於每週頁的病原體組成判讀，不作為 TimesFM 的共變數；累積兩個以上流感季後再重新評估，或改以其流感占比作為獨立預測目標。</p></section>
 

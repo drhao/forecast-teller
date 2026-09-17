@@ -25,7 +25,7 @@ SEGMENTS = {"pre_covid": (2018, 2019), "covid": (2020, 2022), "post_covid": (202
 
 # Epidemic thresholds used for the threshold hit rate. Targets not listed use the
 # THRESHOLD_PCT quantile of actuals within the backtest window.
-DEFAULT_THRESHOLDS = {"rods_ili_pct": 10.0}  # 急診類流感就診百分比：使用者指定 10%
+DEFAULT_THRESHOLDS = {"rods_ili_pct": 11.0}  # 急診類流感就診百分比：流行閾值 11%（使用者指定）
 THRESHOLD_PCT = 0.75
 
 
