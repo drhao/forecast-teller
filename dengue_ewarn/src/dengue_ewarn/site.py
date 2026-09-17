@@ -128,6 +128,18 @@ def build(tag: str = "dengue", n_sites: int = 20) -> dict:
                      "alerts_per_site_week": r(row.alerts / row.n_weeks, 4), "alerts_week_district": r(row.alerts / row.n_weeks * n_sites, 1),
                      "false_week_district": r(row.alerts / row.n_weeks * n_sites * (1 - (row.ppv if not np.isnan(row.ppv) else 0)), 1),
                      "detected": ls.get("detected"), "lead_median": ls.get("median")})
+    cal_metrics = pd.read_csv(BT / f"{tag}_calibration_metrics.csv").to_dict(orient="records") if (BT / f"{tag}_calibration_metrics.csv").exists() else []
+    cal_bins = pd.read_csv(BT / f"{tag}_calibration_bins.csv") if (BT / f"{tag}_calibration_bins.csv").exists() else None
+    cal_bins_json = [{"bin": r_.bin, "n": int(r_.n_raw), "pred_raw": r(r_.mean_pred_raw), "obs_raw": r(r_.observed_raw), "pred_cal": r(r_.mean_pred_cal), "obs_cal": r(r_.observed_cal)} for r_ in cal_bins.itertuples()] if cal_bins is not None else []
+    sweep_fine = pd.read_csv(BT / f"{tag}_sweep_calibrated.csv") if (BT / f"{tag}_sweep_calibrated.csv").exists() else None
+    sweep_raw_fine = sweep_fine[sweep_fine.version == "raw"].to_dict(orient="records") if sweep_fine is not None else []
+    tiers = pd.read_csv(BT / f"{tag}_two_tier.csv").to_dict(orient="records") if (BT / f"{tag}_two_tier.csv").exists() else []
+    cost_loss = pd.read_csv(BT / f"{tag}_cost_loss.csv").to_dict(orient="records") if (BT / f"{tag}_cost_loss.csv").exists() else []
+    # recommended pair: alert tier = highest sensitivity with <= 0.5 false work orders/week for n_sites; watch tier = 0.3
+    rec = None
+    if tiers:
+        ok = [t for t in tiers if t["watch_p"] == 0.3 and t[f"false_orders_week_{n_sites}"] <= 0.5]
+        rec = max(ok, key=lambda t: t["alert_sensitivity"]) if ok else min(tiers, key=lambda t: t[f"false_orders_week_{n_sites}"])
     fig_name, illus = illustration(res, tag)
     for f in list(FIGS.glob(f"{tag}_*.png")):
         shutil.copy(f, SITE_DIR / "figures" / f.name)
@@ -137,6 +149,7 @@ def build(tag: str = "dengue", n_sites: int = 20) -> dict:
             "modes": modes, "mode_label": MODE_LABEL, "hs": HS, "wis_by_h": wis_by_h, "cov_by_h": cov_by_h, "wis_h7": wis_h7, "auc": auc, "sweep": sweep_json,
             "calibration": calib, "lead_table": lead_tab, "lead_stats": lead_stats, "detectors": det.to_dict(orient="records"), "matched": matched.to_dict(orient="records"),
             "workload": work, "n_sites_example": n_sites, "illustration": {"figure": fig_name, **illus}, "cases": cases,
+            "calibration": {"metrics": cal_metrics, "bins": cal_bins_json}, "sweep_raw_fine": sweep_raw_fine, "tiers": tiers, "cost_loss": cost_loss, "recommended": rec,
             "n_events": int(leads_long[leads_long.method == "CUSUM"].shape[0])}
     (SITE_DIR / "data.json").write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
     (SITE_DIR / "index.html").write_text(render_html(data), encoding="utf-8")
@@ -159,6 +172,11 @@ def render_html(D: dict) -> str:
     work_rows = "".join(f"<tr class='{'best' if w['p'] == 0.5 else ''}'><td class='num'>{w['p']}</td><td class='num'>{fmt(w['sens'])}</td><td class='num'>{fmt(w['far'])}</td><td class='num'>{fmt(w['ppv'])}</td><td class='num'>{fmt(w['alerts_week_district'], 1)}</td><td class='num'>{fmt(w['false_week_district'], 1)}</td><td class='num'>{fmt(w['detected'])}</td><td class='num'>{fmt(w['lead_median'], 1)}</td></tr>" for w in D["workload"])
     il_rows = "".join(f"<tr><td class='num'>{x['h']}</td><td>{x['date']}</td><td class='num'>{fmt(x['median'], 0)}</td><td class='num'>{fmt(x['q10'], 0)}–{fmt(x['q90'], 0)}</td><td class='num'><b>{fmt(x['prob'])}</b></td><td class='num'>{fmt(x['truth'], 0)}</td></tr>" for x in il["rows"])
     wis_rows = "".join(f"<tr><td>{D['mode_label'][m]}</td>" + "".join(f"<td class='num'>{fmt(D['wis_by_h'][m][mdl][D['hs'].index(7)])}</td>" for mdl in ("tfm", "naive", "snaive")) + f"<td class='num'>{fmt(D['wis_h7'][m]['tfm']['epidemic'])} / {fmt(D['wis_h7'][m]['naive']['epidemic'])}</td><td class='num'>{fmt(D['cov_by_h'][m]['tfm'][D['hs'].index(7)])}</td><td class='num'>{fmt(D['auc'][m]['tfm'])} / {fmt(D['auc'][m]['naive'])}</td></tr>" for m in D["modes"])
+    cal_rows = "".join(f"<tr class='{'best' if m['version']=='raw' else ''}'><td>{ {'raw': '原始機率', 'isotonic (LOYO)': '等張回歸（留一年）', 'Platt (LOYO)': 'Platt（留一年）'}.get(m['version'], m['version']) }</td><td class='num'>{m['brier']:.4f}</td><td class='num'>{m['logloss']:.3f}</td><td class='num'>{m['ece']:.3f}</td><td class='num'>{m['auc']:.3f}</td></tr>" for m in D['calibration']['metrics'])
+    ns = D['n_sites_example']; rec = D.get('recommended')
+    tier_rows = "".join(f"<tr class='{'best' if rec and t['watch_p']==rec['watch_p'] and t['alert_p']==rec['alert_p'] else ''}'><td class='num'>{t['watch_p']}</td><td class='num'>{t['alert_p']}</td><td class='num'>{fmt(t[f'watch_flags_week_{ns}'],1)}</td><td class='num'>{fmt(t[f'alert_orders_week_{ns}'],1)}</td><td class='num'>{fmt(t[f'false_orders_week_{ns}'],1)}</td><td class='num'>{fmt(t['watch_sensitivity'])}</td><td class='num'>{fmt(t['alert_sensitivity'])}</td><td class='num'>{fmt(t['alert_ppv'])}</td><td class='num'>{fmt(t['events_detected_alert'])}</td><td class='num'>{fmt(t['lead_median_alert'],1)}</td><td class='num'>{fmt(t['watch_earlier_than_alert'])}</td><td class='num'>{fmt(t['days_watch_to_alert_median_if_earlier'],1)}</td></tr>" for t in D['tiers'])
+    rec_text = (f"<b>建議起點：注意 {rec['watch_p']} / 警示 {rec['alert_p']}。</b>{ns} 站的轄區每週約 {fmt(rec[f'watch_flags_week_{ns}'],1)} 個注意標示、{fmt(rec[f'alert_orders_week_{ns}'],1)} 張查證單（其中約 {fmt(rec[f'false_orders_week_{ns}'],1)} 張為假警報）；警示層偵測 {fmt(rec['events_detected_alert'])} 的事件、前置中位數 {fmt(rec['lead_median_alert'],0)} 天，注意層偵測 {fmt(rec['events_detected_watch'])}、前置 {fmt(rec['lead_median_watch'],0)} 天。有警示的事件中 {fmt(rec['watch_earlier_than_alert'])} 先出現注意標示，兩者相隔中位數 {fmt(rec['days_watch_to_alert_median_if_earlier'],0)} 天，注意層因此是給 focal point 預先關注的前哨。" if rec else "")
+    cl_rows = "".join(f"<tr><td class='num'>{c['C_over_L']}</td><td class='num'>{c['p_star']}</td><td class='num'>{fmt(c['sensitivity'])}</td><td class='num'>{fmt(c['false_alarm_per100'],1)}</td><td class='num'>{fmt(c['ppv'])}</td><td class='num'>{fmt(c['events_detected'])}</td><td class='num'>{fmt(c['lead_median'],1)}</td></tr>" for c in D['cost_loss'])
     cases_html = "".join(f"<div class='card'><h3>{'台南市 北區 2015：史上最大流行' if '2015' in c else '台南市 南區 2023：2015 後最大流行'}</h3><div class='sub'>上：最終資料的 7 日累計與 EWARN 閾值（虛線）；下：模型每個起點給的「14 天內突破閾值」機率；紅色虛線 = 實際突破日</div><img src='figures/{c}' alt='{c}' style='width:100%'></div>" for c in D["cases"])
     return f"""<!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -167,7 +185,8 @@ def render_html(D: dict) -> str:
 <link rel="stylesheet" href="../assets/epi.css?v=dengue1">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="../assets/charts.js?v=dengue1" defer></script>
-<style>.readme li{{margin-bottom:6px}} .callout{{background:var(--p-50);border-left:3px solid var(--p-400);padding:12px 16px;margin:14px 0;font-size:14px}} .steps{{counter-reset:s;list-style:none;padding:0}} .steps li{{position:relative;padding-left:38px;margin-bottom:10px}} .steps li::before{{counter-increment:s;content:counter(s);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:50%;background:var(--p-500);color:#fff;font-weight:700;font-size:13px;display:grid;place-items:center}} img.fig{{width:100%;border:1px solid var(--n-200);border-radius:4px;background:#fff}}</style>
+<style>.readme li{{margin-bottom:6px}} .callout{{background:var(--p-50);border-left:3px solid var(--p-400);padding:12px 16px;margin:14px 0;font-size:14px}} .steps{{counter-reset:s;list-style:none;padding:0}} .steps li{{position:relative;padding-left:38px;margin-bottom:10px}} .steps li::before{{counter-increment:s;content:counter(s);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:50%;background:var(--p-500);color:#fff;font-weight:700;font-size:13px;display:grid;place-items:center}} img.fig{{width:100%;border:1px solid var(--n-200);border-radius:4px;background:#fff}}    .grid-2 > *, .card {{ min-width: 0; }} .tbl-wrap {{ overflow-x: auto; max-width: 100%; }}
+  </style>
 </head><body>
 <header class="masthead"><div class="masthead-inner">
   <div class="masthead-left"><div class="crest">FT</div><div class="masthead-title">登革熱鄉鎮預測式預警 · TimesFM 3.0<small>DENGUE-EWARN · CHG SCENARIO 1 · VALIDATION REPORT</small></div></div>
@@ -235,7 +254,9 @@ def render_html(D: dict) -> str:
     <div class="section-head"><span class="section-num">04</span><h2>驗證結果</h2><span class="en">Results</span></div>
     <div class="grid-2">
       <div class="card"><h3>7 日累計的 WIS 依 horizon</h3><div class="sub">越低越好；asof_adj 為實務可得資料，final 為無延遲上限</div><div class="chart-box"><canvas id="c-wis"></canvas></div></div>
-      <div class="card"><h3>校準：預測機率 vs 實際發生比例（asof_adj）</h3><div class="sub">鄉鎮週層級；點落在對角線附近表示機率可直接當機率用</div><div class="chart-box"><canvas id="c-cal"></canvas></div></div>
+      <div class="card"><h3>校準：預測機率 vs 實際發生比例（asof_adj，逐起點）</h3><div class="sub">原始機率已接近對角線；留一年交叉驗證的等張回歸重校準（灰）沒有改善，反而降低跨年的鑑別力（見下表）</div><div class="chart-box"><canvas id="c-cal"></canvas></div>
+        <div class="tbl-wrap" style="margin-top:8px"><table class="tbl compact"><thead><tr><th>版本</th><th class="num">Brier</th><th class="num">Log loss</th><th class="num">ECE</th><th class="num">AUC</th></tr></thead><tbody>{cal_rows}</tbody></table></div>
+        <p class="source">結論：原始機率直接可用（ECE 0.02）；重校準的地圖無法跨流行季轉移（各年事件率 0%–19%），部署時改為監測校準是否衰退，而非重新映射。</p></div>
       <div class="card"><h3>p* 取捨：敏感度</h3><div class="sub">事件週中被警示的比例</div><div class="chart-box short"><canvas id="c-sens"></canvas></div></div>
       <div class="card"><h3>p* 取捨：每 100 鄉鎮週假警報</h3><div class="sub">灰線為 EWMA、CUSUM 在非事件期的假警報率</div><div class="chart-box short"><canvas id="c-far"></canvas></div></div>
     </div>
@@ -262,10 +283,12 @@ def render_html(D: dict) -> str:
         <li>換算「14 天內突破閾值的機率」；兩級門檻：<b>注意</b>（p* 低，只在儀表板標示）與<b>警示</b>（p* 高，產生查證工作單）。</li>
         <li>警示不自動觸發行動：工作單預填原始通報資料，推送給區級 focal point，依 EWARN 在 24 小時內查證。</li>
         <li>失效防護：若通報完整度異常（例如災後通報中斷）、機率校準偏離（第 4 節校準圖）或 context 分布位移，系統降級為 EWARN/EWMA 規則並強制人工覆核。</li></ol></div>
-      <div class="card"><h3>把 p* 換成每週工作量（asof_adj，示例：一個轄區 {D['n_sites_example']} 個站點）</h3>
-        <div class="sub">每站每週警示數 × 站數；假警報數 = 警示數 × (1 − PPV)。表中假警報率的分母為無事件的鄉鎮週。</div>
-        <div class="tbl-wrap"><table class="tbl compact"><thead><tr><th class="num">p*</th><th class="num">敏感度</th><th class="num">假警報/100 週</th><th class="num">PPV</th><th class="num">轄區每週警示</th><th class="num">其中假警報</th><th class="num">偵測事件比例</th><th class="num">前置中位數</th></tr></thead><tbody>{work_rows}</tbody></table></div>
-        <p class="source">建議起點：p* 0.4–0.5 作為「警示」（每週約 {fmt(D['workload'][sw['p'].index(0.4)]['alerts_week_district'] if 0.4 in sw['p'] else None, 1)}–{fmt(D['workload'][i5]['alerts_week_district'], 1)} 張查證單 / {D['n_sites_example']} 站），p* 0.2–0.3 作為「注意」。若防疫單位能提供一次查證成本 C 與漏報損失 L，預設 p* = C / L。</p></div>
+      <div class="card"><h3>兩級門檻的工作量表（asof_adj 原始機率；示例：一個轄區 {D['n_sites_example']} 個站點）</h3>
+        <div class="sub">注意 = 機率 ≥ 注意門檻，只在儀表板標示；警示 = 機率 ≥ 警示門檻，產生查證工作單。每週數字 = 每站每週比例 × {D['n_sites_example']} 站；「先有注意」= 有警示的事件中，注意標示比警示更早出現的比例，其後為這些事件從注意到警示的天數中位數。</div>
+        <div class="tbl-wrap"><table class="tbl compact"><thead><tr><th class="num">注意 p</th><th class="num">警示 p</th><th class="num">注意/週</th><th class="num">警示單/週</th><th class="num">其中假</th><th class="num">注意敏感度</th><th class="num">警示敏感度</th><th class="num">警示 PPV</th><th class="num">警示偵測事件</th><th class="num">警示前置</th><th class="num">先有注意</th><th class="num">注意→警示天</th></tr></thead><tbody>{tier_rows}</tbody></table></div>
+        <p class="source">{rec_text}</p>
+        <div class="tbl-wrap" style="margin-top:10px"><table class="tbl compact"><thead><tr><th class="num">C / L</th><th class="num">預設 p*</th><th class="num">敏感度</th><th class="num">假警報/100 週</th><th class="num">PPV</th><th class="num">偵測事件</th><th class="num">前置中位數</th></tr></thead><tbody>{cl_rows}</tbody></table></div>
+        <p class="source">成本損失法：p* = 一次查證成本 C ÷ 漏報損失 L。C/L = 0.1 代表「查證 10 次的成本才等於漏掉一次群聚」，門檻低、寧可多查；C/L = 0.5 則只在機率過半時才查。</p></div>
     </div>
   </section>
 
@@ -278,7 +301,7 @@ def render_html(D: dict) -> str:
         <li>機率略保守、區間略寬（80% 涵蓋率約 0.87）；可做機率校準再用。</li>
         <li>TimesFM 3.0 為非商業授權且 330M 參數，邊緣端需蒸餾或改用 2.5；本頁只驗證「基礎模型層」的價值。</li></ul></div>
       <div class="card"><h3>下一步</h3><ul class="findings readme">
-        <li>機率校準（isotonic）與兩級門檻的工作量表定案。</li>
+        <li>機率校準與兩級門檻工作量表已完成（04、06 節）：原始機率直接使用、建議注意 0.3 / 警示 0.5；下一步把工作量表拆成大流行年與平靜年兩欄。</li>
         <li>同城市鄉鎮的多變量聯合預測、鄰區病例與雨量作為共變數。</li>
         <li>Farrington flexible 基準；每日起點；另一種「群聚起始」事件定義（7 日累計 ≥ 3 且前 14 天為 0）。</li>
         <li>把同一流程套到週層級的急性腹瀉、腸病毒、類流感（RODS），完成情境一四類症候群。</li></ul></div>
@@ -295,10 +318,11 @@ document.addEventListener('DOMContentLoaded', async () => {{
     {{label: 'TimesFM（final）', data: D.wis_by_h.final.tfm, kind: 'model'}},
     {{label: 'naive（asof_adj）', data: D.wis_by_h.asof_adj.naive, kind: 'baseline'}},
     {{label: 'naive（final）', data: D.wis_by_h.final.naive, kind: 'baseline'}}], {{labels: H, xLabel: '預測天數 h', yLabel: 'WIS（越低越好）', fmt: v => Number(v).toFixed(1)}});
-  const cal = D.calibration;
+  const cb = D.calibration.bins;
   EPI.linesChart(document.getElementById('c-cal'), [
-    {{label: '實際發生比例（TimesFM asof_adj）', data: cal.map(c => c.observed), kind: 'model'}},
-    {{label: '完美校準', data: cal.map(c => c.mid), kind: 'baseline'}}], {{labels: cal.map(c => c.bin), xLabel: '預測機率區間', yLabel: '該區間內實際突破比例', yMin: 0, yMax: 1, fmt: v => Number(v).toFixed(2)}});
+    {{label: '原始機率：實際發生比例', data: cb.map(c => c.obs_raw), kind: 'model'}},
+    {{label: '等張回歸重校準：實際發生比例', data: cb.map(c => c.obs_cal), kind: 'baseline'}},
+    {{label: '完美校準（區間平均預測值）', data: cb.map(c => c.pred_raw), kind: 'baseline'}}], {{labels: cb.map(c => c.bin), xLabel: '預測機率區間', yLabel: '區間內實際突破比例', yMin: 0, yMax: 1, fmt: v => Number(v).toFixed(2)}});
   const sw = D.sweep; const P = sw.asof_adj.p.map(String);
   EPI.linesChart(document.getElementById('c-sens'), D.modes.map(m => ({{label: D.mode_label[m].split('（')[0], data: sw[m].sens, kind: m === 'asof' ? 'baseline' : 'model'}})), {{labels: P, xLabel: 'p*', yLabel: '敏感度', yMin: 0, yMax: 1, fmt: v => Number(v).toFixed(2)}});
   const det = Object.fromEntries(D.detectors.map(d => [d['方法'], d['每 100 鄉鎮週假警報']]));
