@@ -52,6 +52,7 @@ section { margin-bottom:44px; }
 .chart-box { position:relative; height:300px; }
 .chart-box.tall { height:360px; }
 .chart-box.short { height:240px; }
+.card.wide { margin-bottom:20px; }
 .source { font-size:11px; color:var(--n-500); margin-top:8px; }
 
 /* KPI */

@@ -332,6 +332,7 @@ for name, (y0, y1) in {"COVID前": (2018, 2019), "COVID期": (2020, 2022), "COVI
 | 縣市/年齡層回測 | 逐序列單變量 vs 聯合多變量（22 縣市 / 18 年齡層一次 forward） | `scripts/run_group_backtest.py` |
 | 報表 | 排行榜、WIS by horizon、各年、偏差/MAPE 診斷、高流行週、圖 | `scripts/make_report.py`、`src/forecast_teller/report.py` |
 | 即時預測 | 從各指標最新完整週往後 4 週，輸出分位數 CSV 與扇形圖 | `scripts/forecast_now.py`、`outputs/latest/` |
+| 門急診合計圖（2026-09-18） | 每週預測頁第 01 節最上方的全寬總覽圖：歷史為門診 + 急診觀測值相加，預測為兩個聯合預測相加；中位數直接相加，分位數同向相加（q10+q10 … q90+q90，等同假設兩者完全同步，區間偏保守）；分位數表同步加入 | `build_site.combine_out_er`、`docs/index.html` |
 | 每週預測頁的趨勢判讀 | 由最新資料與預測分位數以規則自動生成：一句總結、目前疫情趨勢（門診、RODS 與 10% 閾值、急診、重症、實驗室型別）、模型對未來 4 週的判讀（走勢形狀與觸頂週、續升機率、維持在閾值以上的機率、區間寬度）、假日與回測偏差提醒 | `scripts/build_site.py` 的 `build_narrative`、`docs/index.html` 頂部 |
 | 檢查 | 週/共變數/指標/基準的基本檢查 | `tests/test_basics.py` |
 

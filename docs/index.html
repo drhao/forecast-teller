@@ -27,7 +27,8 @@
   <div class="kpi-strip" id="kpi-strip"></div>
 
   <section>
-    <div class="section-head"><span class="section-num">01</span><h2>四項指標的 4 週預測</h2><span class="en">Fan charts · 60% / 80% prediction intervals</span></div>
+    <div class="section-head"><span class="section-num">01</span><h2>門急診合計與四項指標的 4 週預測</h2><span class="en">Fan charts · 60% / 80% prediction intervals</span></div>
+    <div id="fan-combined"></div>
     <div class="controls"><div><label>歷史範圍</label><span class="seg-group" id="hist-group"><button class="seg-btn active" data-weeks="40">最近 40 週</button><button class="seg-btn" data-weeks="78">最近 1.5 年</button><button class="seg-btn" data-weeks="130">最近 2.5 年</button></span></div><div style="font-size:12px;color:var(--n-500)">實線 = 觀測值；虛線 = 預測中位數；淺綠帶 = 60%（深）與 80%（淺）預測區間；灰色虛直線 = 預測起點</div></div>
     <div class="grid-2" id="fan-grid"></div>
     <p class="note" id="cny-note" hidden></p>
@@ -98,7 +99,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       <div class="chart-box"><canvas id="${id}" role="img" aria-label="${ind.label}：未來 4 週預測中位數 ${ind.forecast.map(f => fmt(f.median, ind.decimals)).join('、')}"></canvas></div>
       <p class="source">資料來源：${ind.source}。觀測段不畫區間；預測段虛線為中位數。</p></div>`);
   });
-  const drawFans = weeks => inds.forEach(ind => { const id = 'fan-' + ind.key; if (fans[id]) fans[id].destroy(); fans[id] = EPI.fanChart(document.getElementById(id), ind, {unit: ind.unit, decimals: ind.decimals, historyWeeks: weeks, threshold: ind.threshold, thresholdLabel: ind.threshold_label}); });
+  // 門急診合計（門診 + 急診兩個預測相加）：全寬總覽卡
+  const comb = latest.combined;
+  if (comb) {
+    document.getElementById('fan-combined').innerHTML = `<div class="card wide"><h3>${comb.label}</h3><div class="sub">${comb.config}　·　起點 ${comb.origin_yw}（${comb.origin_date}）</div>
+      <div class="chart-box tall"><canvas id="fan-nhi_oe_ili" role="img" aria-label="${comb.label}：未來 4 週預測中位數 ${comb.forecast.map(f => fmt(f.median, 0)).join('、')}"></canvas></div>
+      <p class="source">資料來源：${comb.source}。歷史值為門診與急診觀測值相加；預測為兩個聯合預測的中位數相加，分位數以同向相加（q10 + q10 … q90 + q90），等同假設兩者完全同步，區間偏保守。</p></div>`;
+  }
+  const drawFans = weeks => [...(comb ? [comb] : []), ...inds].forEach(ind => { const id = 'fan-' + ind.key; if (fans[id]) fans[id].destroy(); fans[id] = EPI.fanChart(document.getElementById(id), ind, {unit: ind.unit, decimals: ind.decimals, historyWeeks: weeks, threshold: ind.threshold, thresholdLabel: ind.threshold_label}); });
   drawFans(40);
   const hg = document.getElementById('hist-group');
   hg.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { hg.querySelectorAll('button').forEach(x => x.classList.toggle('active', x === b)); drawFans(Number(b.dataset.weeks)); }));
@@ -108,7 +116,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // table
   const tbl = document.getElementById('forecast-table');
   tbl.innerHTML = `<thead><tr><th>指標</th><th>起點週</th><th>目標週</th><th>週起始日</th><th class="num">h</th><th class="num">中位數</th><th class="num">q10</th><th class="num">q20</th><th class="num">q80</th><th class="num">q90</th><th class="num">實際</th></tr></thead><tbody>` +
-    inds.flatMap(ind => ind.forecast.map(f => `<tr><td>${ind.short}</td><td>${ind.origin_yw}</td><td>${f.yw}${f.cny ? ' <span class="badge cny">春節</span>' : ''}</td><td>${f.date}</td><td class="num">${f.h}</td><td class="num"><b>${fmt(f.median, ind.decimals)}</b></td><td class="num">${fmt(f.q10, ind.decimals)}</td><td class="num">${fmt(f.q20, ind.decimals)}</td><td class="num">${fmt(f.q80, ind.decimals)}</td><td class="num">${fmt(f.q90, ind.decimals)}</td><td class="num">${f.observed != null ? fmt(f.observed, ind.decimals) : '—'}</td></tr>`)).join('') + '</tbody>';
+    [...(comb ? [comb] : []), ...inds].flatMap(ind => ind.forecast.map(f => `<tr>${ind.key === 'nhi_oe_ili' ? '<td><b>' + ind.short + '</b></td>' : '<td>' + ind.short + '</td>'}<td>${ind.origin_yw}</td><td>${f.yw}${f.cny ? ' <span class="badge cny">春節</span>' : ''}</td><td>${f.date}</td><td class="num">${f.h}</td><td class="num"><b>${fmt(f.median, ind.decimals)}</b></td><td class="num">${fmt(f.q10, ind.decimals)}</td><td class="num">${fmt(f.q20, ind.decimals)}</td><td class="num">${fmt(f.q80, ind.decimals)}</td><td class="num">${fmt(f.q90, ind.decimals)}</td><td class="num">${f.observed != null ? fmt(f.observed, ind.decimals) : '—'}</td></tr>`)).join('') + '</tbody>';
   document.getElementById('method-text').textContent = `最佳回測設定：${meta.best_label}。所有指標從 2016 年起以擴張視窗餵入模型，horizon 4 週，輸出 9 個分位數。`;
   document.getElementById('footer').textContent = `資料：疾病管制署資料開放平台（健保申報、RODS、NIDDS、實驗室自動通報系統（LARS））。模型：${meta.model.checkpoint}，授權 ${meta.model.license}。圖表依《疫情資料視覺化指引》v1.1。產生時間 ${meta.generated_at}。`;
 });

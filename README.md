@@ -59,7 +59,7 @@ python scripts/forecast_now.py --joint nhi_out_ili nhi_er_ili rods_ili --covaria
 
 | 頁面 | 內容 |
 |---|---|
-| `docs/index.html` | 每週預測 dashboard：四項指標的 4 週扇形圖（60%/80% 區間）、KPI、分位數表 |
+| `docs/index.html` | 每週預測 dashboard：趨勢判讀、KPI、門急診合計總覽圖（門診 + 急診預測相加）、四項指標的 4 週扇形圖（60%/80% 區間）、分位數表 |
 | `docs/backtest.html` | 回測 dashboard：排行榜（可排序）、WIS/命中率/涵蓋率依 horizon、預測 vs 實際、各年、縣市與年齡層 |
 | `docs/report.html` | 一頁式解讀與評估報告（可列印） |
 | `docs/dengue/index.html` | 登革熱鄉鎮預測式預警的視覺化報告（子專案 `dengue_ewarn/` 產生） |

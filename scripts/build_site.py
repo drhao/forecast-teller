@@ -90,7 +90,30 @@ def build_latest(nat: pd.DataFrame) -> dict:
         extra = {"threshold": RTHR, "threshold_label": f"流行閾值 {RTHR:g}%"} if key == "rods_ili_pct" else {}
         out.append({"key": key, **IND[key], "config": cfg, "origin_yw": origin, "origin_date": ds(origin),
                     "last_observed": last_obs_at_origin, "history": history, "forecast": forecast, **extra})
-    return {"indicators": out}
+    combined = combine_out_er(out)
+    return {"indicators": out, "combined": combined}
+
+
+def combine_out_er(inds: list[dict]) -> dict | None:
+    """門急診合計：門診 + 急診兩個聯合預測相加。中位數相加；分位數同向相加（q10+q10 … q90+q90），
+    等同假設兩者完全同向變動，區間偏保守（門診與急診類流感高度同步，實際差異不大）。"""
+    o = next((i for i in inds if i["key"] == "nhi_out_ili"), None); e = next((i for i in inds if i["key"] == "nhi_er_ili"), None)
+    if not o or not e or o["origin_yw"] != e["origin_yw"]:
+        return None
+    he = {h["yw"]: h["y"] for h in e["history"]}
+    history = [{"yw": h["yw"], "date": h["date"], "y": h["y"] + he[h["yw"]]} for h in o["history"] if h["yw"] in he and h["y"] is not None and he[h["yw"]] is not None]
+    forecast = []
+    for fo, fe in zip(o["forecast"], e["forecast"]):
+        assert fo["yw"] == fe["yw"]
+        row = {"yw": fo["yw"], "date": fo["date"], "h": fo["h"], "median": fo["median"] + fe["median"],
+               **{f"q{q}": fo[f"q{q}"] + fe[f"q{q}"] for q in range(10, 100, 10)},
+               "cny": fo["cny"], "holiday_days": fo["holiday_days"],
+               "observed": (fo["observed"] + fe["observed"]) if (fo["observed"] is not None and fe["observed"] is not None) else None}
+        forecast.append(row)
+    return {"key": "nhi_oe_ili", "label": "全國門急診類流感就診人次（健保，門診 + 急診）", "short": "門急診合計", "unit": "人次", "decimals": 0,
+            "source": "健保申報（門診與急診加總）", "config": "門診與急診兩個聯合預測相加；分位數同向相加（偏保守）",
+            "origin_yw": o["origin_yw"], "origin_date": o["origin_date"], "last_observed": o["last_observed"] + e["last_observed"],
+            "history": history, "forecast": forecast}
 
 
 # ----------------------------------------------------------------------------- backtest
