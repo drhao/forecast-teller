@@ -158,6 +158,149 @@ def build_backtest() -> dict:
     return {"targets": targets, "groups": groups, "config_labels": CONFIG_LABELS, "seg_labels": SEG_LABELS}
 
 
+# ----------------------------------------------------------------------------- narrative
+def prob_ge(f: dict, thr: float) -> float:
+    """P(y >= thr) from the 9 deciles by linear interpolation of the CDF (clipped to 5–95%)."""
+    qs = [f[f"q{k}"] for k in range(10, 100, 10)]; lv = [k / 100 for k in range(10, 100, 10)]
+    if thr <= qs[0]:
+        return 0.95
+    if thr >= qs[-1]:
+        return 0.05
+    for i in range(8):
+        if qs[i] <= thr <= qs[i + 1]:
+            frac = (thr - qs[i]) / (qs[i + 1] - qs[i]) if qs[i + 1] > qs[i] else 0.0
+            return 1 - (lv[i] + frac * (lv[i + 1] - lv[i]))
+    return 0.5
+
+
+def pct_txt(p: float) -> str:
+    return f"約 {int(round(p * 20) * 5)}%"
+
+
+def trend_word(pct: float) -> str:
+    if pct >= 15: return "快速上升"
+    if pct >= 5: return "上升"
+    if pct > -5: return "大致持平"
+    if pct > -15: return "下降"
+    return "快速下降"
+
+
+def consecutive(series: pd.Series, cond) -> int:
+    n = 0
+    for v in series[::-1]:
+        if cond(v):
+            n += 1
+        else:
+            break
+    return n
+
+
+def build_narrative(nat: pd.DataFrame, latest: dict) -> dict:
+    from forecast_teller.io import read_holidays
+    li = {x["key"]: x for x in latest["indicators"]}
+    out, er, rods, sev = li["nhi_out_ili"], li["nhi_er_ili"], li["rods_ili_pct"], li["nidds_severe"]
+    origin = out["origin_yw"]; o_date = out["origin_date"]
+    s_out = nat["nhi_out_ili"].dropna().loc[:origin]; rate = nat["nhi_out_ili_rate"].dropna().loc[:origin]
+    s_er = nat["nhi_er_ili"].dropna().loc[:er["origin_yw"]]; s_rods = nat["rods_ili_pct"].dropna().loc[:rods["origin_yw"]]
+    s_sev = nat["nidds_severe"].dropna().loc[:sev["origin_yw"]]
+    lab = nat[["lab_flu_a", "lab_flu_b", "lab_pos_rate", "lab_a_share"]].dropna()
+    yr, wk = int(origin[:4]), int(origin[4:])
+    fmt0 = lambda v: f"{v:,.0f}"
+    cur, fut, cav = [], [], []
+
+    # --- current: outpatient
+    wow = 100 * (s_out.iloc[-1] / s_out.iloc[-2] - 1); w3 = 100 * (s_out.iloc[-1] / s_out.iloc[-4] - 1)
+    rising = consecutive(s_out.diff().dropna(), lambda d: d > 0); falling = consecutive(s_out.diff().dropna(), lambda d: d < 0)
+    yrs = pd.Series(nat.index.str[:4].astype(int), index=nat.index)
+    same = nat[(nat.index.str[4:] == origin[4:]) & yrs.between(yr - 3, yr - 1)]["nhi_out_ili"].dropna()
+    hist = s_out.loc["201601":]
+    pct_rank = 100 * (hist < s_out.iloc[-1]).mean()
+    txt = (f"全國類流感門診 {origin}（{o_date} 起）為 {fmt0(s_out.iloc[-1])} 人次、就診率 {rate.iloc[-1]:.2f}%，"
+           f"較前一週{trend_word(wow)}（{wow:+.1f}%），較 3 週前 {w3:+.0f}%")
+    if rising >= 2: txt += f"，已連續 {rising} 週上升"
+    elif falling >= 2: txt += f"，已連續 {falling} 週下降"
+    txt += f"；與前三年同一週相比（平均 {fmt0(same.mean())}）為 {s_out.iloc[-1] / same.mean():.1f} 倍，在 2016 年以來所有週中位於第 {pct_rank:.0f} 百分位。" if len(same) else "。"
+    cur.append(txt)
+    # --- current: RODS vs threshold
+    thr = 10.0; above = consecutive(s_rods, lambda v: v >= thr); below = consecutive(s_rods, lambda v: v < thr)
+    r_wow = s_rods.iloc[-1] - s_rods.iloc[-2]
+    txt = f"RODS 急診類流感就診百分比 {s_rods.index[-1]} 為 {s_rods.iloc[-1]:.1f}%（較前一週 {r_wow:+.1f} 個百分點），"
+    txt += f"已連續 {above} 週高於流行閾值 10%。" if above else f"低於流行閾值 10%（已連續 {below} 週）。"
+    cur.append(txt)
+    # --- current: ER visits
+    e_wow = 100 * (s_er.iloc[-1] / s_er.iloc[-2] - 1)
+    cur.append(f"全國類流感急診 {s_er.index[-1]} 為 {fmt0(s_er.iloc[-1])} 人次，較前一週{trend_word(e_wow)}（{e_wow:+.1f}%）。")
+    # --- current: severe (lagged)
+    last4, prev4 = s_sev.iloc[-4:].mean(), s_sev.iloc[-8:-4].mean()
+    sv = 100 * (last4 / prev4 - 1) if prev4 > 0 else 0.0
+    cur.append(f"流感併發重症（發病週，通報延遲約 3 週）最新完整週 {s_sev.index[-1]} 為 {fmt0(s_sev.iloc[-1])} 例，"
+               f"近 4 週平均 {last4:.0f} 例，較前 4 週{trend_word(sv)}（{sv:+.0f}%）。")
+    # --- current: lab
+    if len(lab):
+        l = lab.iloc[-1]; l4 = lab.iloc[-5] if len(lab) > 5 else lab.iloc[0]
+        dom = "A 型" if l.lab_a_share >= 0.6 else ("B 型" if l.lab_a_share <= 0.4 else "A、B 型並存")
+        cur.append(f"合約實驗室 {lab.index[-1]} 陽性率 {l.lab_pos_rate:.1f}%（4 週前 {l4.lab_pos_rate:.1f}%），A 型 {fmt0(l.lab_flu_a)} 件、B 型 {fmt0(l.lab_flu_b)} 件，以 {dom} 為主（A 型占 {100 * l.lab_a_share:.0f}%）。")
+
+    # --- outlook: outpatient path
+    fc = out["forecast"]; meds = [f["median"] for f in fc]; last = out["last_observed"]
+    ch = [100 * (m / last - 1) for m in meds]; imax = int(np.argmax(meds))
+    p_up1 = prob_ge(fc[0], last)
+    if all(np.diff(meds) > 0):
+        shape = f"未來 4 週持續上升，第 4 週中位數 {fmt0(meds[3])} 人次（較目前 {ch[3]:+.0f}%）"
+    elif all(np.diff(meds) < 0):
+        shape = f"未來 4 週持續下降，第 4 週中位數 {fmt0(meds[3])} 人次（較目前 {ch[3]:+.0f}%）"
+    elif 0 < imax < 3:
+        shape = (f"先升後緩：中位數在第 {imax + 1} 週（{fc[imax]['yw']}，{fc[imax]['date']} 起）達到高點 {fmt0(meds[imax])} 人次"
+                 f"（較目前 {ch[imax]:+.0f}%），第 4 週回到 {fmt0(meds[3])} 人次")
+    elif imax == 0 and max(abs(c) for c in ch) < 5:
+        shape = f"未來 4 週大致持平（中位數在目前水準 ±5% 內）"
+    else:
+        shape = f"第 1 週 {fmt0(meds[0])} 人次後轉為下降，第 4 週 {fmt0(meds[3])} 人次（較目前 {ch[3]:+.0f}%）"
+    fut.append(f"門診人次：{shape}。下週高於本週的機率{pct_txt(p_up1)}，第 1 週 80% 區間 {fmt0(fc[0]['q10'])}–{fmt0(fc[0]['q90'])} 人次。")
+    # --- outlook: RODS threshold probability
+    rf = rods["forecast"]; probs = [prob_ge(f, thr) for f in rf]
+    r_path = " → ".join(f"{f['median']:.1f}" for f in rf)
+    fut.append(f"RODS 急診類流感%：中位數 {r_path}%；"
+               f"維持在流行閾值 10% 以上的機率第 1 週{pct_txt(probs[0])}、第 4 週{pct_txt(probs[3])}。")
+    # --- outlook: ER
+    ef = er["forecast"]; em = [f["median"] for f in ef]; e_imax = int(np.argmax(em))
+    fut.append(f"急診人次：中位數 {' → '.join(fmt0(m) for m in em)}"
+               + (f"，高點落在第 {e_imax + 1} 週。" if 0 < e_imax < 3 else "。"))
+    # --- outlook: severe
+    sf = sev["forecast"]
+    fut.append(f"重症：起點 {sev['origin_yw']}，未來 4 週中位數 {' → '.join(fmt0(f['median']) for f in sf)} 例（第 4 週 80% 區間 {fmt0(sf[3]['q10'])}–{fmt0(sf[3]['q90'])}）；此序列落後門急診約 2–3 週。")
+    # --- outlook: uncertainty
+    w4 = (fc[3]["q90"] - fc[3]["q10"]) / meds[3] * 100
+    fut.append(f"不確定性：門診第 4 週 80% 區間寬度為中位數的 {w4:.0f}%（{fmt0(fc[3]['q10'])}–{fmt0(fc[3]['q90'])}），3–4 週的預測僅供規劃參考。")
+
+    # --- caveats: holidays in horizon + backtest bias
+    h = read_holidays(); h = h[h.isHoliday & (h.holidayCategory != "星期六、星期日")]
+    names = {}
+    for f in fc:
+        ws = pd.Timestamp(f["date"]); sel = h[(h.date >= ws) & (h.date <= ws + pd.Timedelta(days=6))]
+        if len(sel):
+            names[f["yw"]] = "、".join(dict.fromkeys((sel["name"].fillna("") + sel["holidayCategory"].fillna("")).str.replace("nan", "").tolist()))
+    if names:
+        cav.append("預測範圍內含平日假日：" + "；".join(f"{k}（{v}）" for k, v in names.items()) + "，門診量會因休診下降、急診相對上升，模型已透過假日天數共變數納入。")
+    cav.append("回測（2016–2025）顯示模型在高流行週的中位數偏低 2–8%，上升期解讀請參考區間上緣；1–2 週的預測最可靠。")
+    cav.append("健保申報有回補，最近一週的觀測值日後可能上修；本頁所有判讀由程式依規則自動產生。")
+
+    # --- headline
+    lvl = "高" if pct_rank >= 90 else ("偏高" if pct_rank >= 75 else ("中等" if pct_rank >= 40 else "低"))
+    stage = ("上升期" if rising >= 2 and wow >= 5 else ("下降期" if falling >= 2 and wow <= -5 else "高原期" if lvl in ("高", "偏高") else "低度活動"))
+    if 0 < imax < 3:
+        outlook = f"模型預期第 {imax + 1} 週（{fc[imax]['date']} 起）前後觸頂，之後緩降"
+    elif all(np.diff(meds) > 0):
+        outlook = "模型預期未來 4 週持續上升"
+    elif all(np.diff(meds) < 0):
+        outlook = "模型預期未來 4 週持續下降"
+    else:
+        outlook = "模型預期未來 4 週大致持平"
+    headline = (f"疫情處於{stage}、活動度{lvl}：門診人次較前一週 {wow:+.0f}%，RODS 急診類流感% {s_rods.iloc[-1]:.1f}%"
+                + ("（連續 %d 週高於流行閾值）" % above if above else "（低於流行閾值）") + f"；{outlook}，下週續升機率{pct_txt(p_up1)}。")
+    return {"headline": headline, "current": cur, "outlook": fut, "caveats": cav, "origin_yw": origin, "origin_date": o_date}
+
+
 # ----------------------------------------------------------------------------- report
 def pct_impr(a, b):
     return round(100 * (1 - a / b))
@@ -182,9 +325,9 @@ def build_report(bt: dict, latest: dict, meta: dict) -> str:
 <html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>解讀與評估報告 · 台灣流感 TimesFM 3.0 預測</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&family=Noto+Serif+TC:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/epi.css">
+<link rel="stylesheet" href="assets/epi.css?v=20260917b">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="assets/charts.js" defer></script></head>
+<script src="assets/charts.js?v=20260917b" defer></script></head>
 <body>
 <header class="masthead"><div class="masthead-inner"><div class="masthead-left"><div class="crest">FT</div><div class="masthead-title">台灣流感疫情預測 · TimesFM 3.0<small>FORECAST-TELLER · 解讀與評估報告</small></div></div>
 <nav class="masthead-right"><a href="index.html">每週預測</a><a href="backtest.html">回測</a><a href="report.html" class="active">報告</a></nav></div></header>
@@ -268,6 +411,7 @@ def main():
     cov = json.loads((PROCESSED_DIR / "coverage.json").read_text(encoding="utf-8"))
     now = dt.datetime.now().astimezone().isoformat(timespec="minutes")
     latest = build_latest(nat); latest["generated_at"] = now
+    latest["narrative"] = build_narrative(nat, latest)
     bt = build_backtest(); bt["generated_at"] = now
     meta = {"generated_at": now, "coverage": {k: {"first_complete": v["first_complete"], "last_complete": v["last_complete"],
                                                   "first_date": ds(v["first_complete"]), "last_date": ds(v["last_complete"])} for k, v in cov.items()},

@@ -123,3 +123,12 @@ main.report p { margin-bottom:10px; }
   .chart-box { height:230px; }
   a { color:inherit; text-decoration:none; }
 }
+
+/* 每週預測頁最上方的趨勢判讀 */
+.brief { margin: 6px 0 30px; }
+.brief-headline { font-family:var(--serif); font-size:19px; font-weight:600; line-height:1.6; color:var(--p-900); background:var(--p-50); border-left:4px solid var(--p-500); padding:14px 18px; margin-bottom:16px; }
+.brief-list { font-size:14px; line-height:1.75; }
+.brief-list li { margin-bottom:8px; }
+.brief-caveats { list-style:none; padding:10px 0 0; margin-top:10px; border-top:1px solid var(--n-200); font-size:12px; color:var(--n-600); }
+.brief-caveats li { margin-bottom:4px; padding-left:14px; text-indent:-14px; }
+.brief-caveats li::before { content:"※ "; color:var(--n-400); }

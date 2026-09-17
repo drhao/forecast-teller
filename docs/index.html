@@ -2,9 +2,9 @@
 <html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>每週預測 · 台灣流感 TimesFM 3.0</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&family=Noto+Serif+TC:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/epi.css">
+<link rel="stylesheet" href="assets/epi.css?v=20260917b">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="assets/charts.js" defer></script>
+<script src="assets/charts.js?v=20260917b" defer></script>
 </head><body>
 <header class="masthead"><div class="masthead-inner">
   <div class="masthead-left"><div class="crest">FT</div><div class="masthead-title">台灣流感疫情預測 · TimesFM 3.0<small>FORECAST-TELLER · WEEKLY FORECAST</small></div></div>
@@ -15,6 +15,14 @@
   <h1 class="page-title">未來 4 週類流感疫情預測 <em id="origin-title"></em></h1>
   <p class="lead">以 Google TimesFM 3.0 零樣本時間序列基礎模型，對疾管署監測指標做每週滾動預測。實線為觀測值，虛線為預測中位數，淺綠帶為 60% 與 80% 預測區間；預測起點為各指標最新的完整申報週。</p>
   <div class="meta-strip" id="meta-strip"></div>
+
+  <section class="brief" id="brief">
+    <div class="brief-headline" id="brief-headline"></div>
+    <div class="grid-2">
+      <div class="card"><h3>目前疫情趨勢</h3><div class="sub" id="brief-current-sub"></div><ul class="findings brief-list" id="brief-current"></ul></div>
+      <div class="card"><h3>模型對未來 4 週的判讀</h3><div class="sub">依預測中位數與 9 個分位數推得；機率為 80% 區間內插的近似值</div><ul class="findings brief-list" id="brief-outlook"></ul><ul class="brief-caveats" id="brief-caveats"></ul></div>
+    </div>
+  </section>
 
   <div class="kpi-strip" id="kpi-strip"></div>
 
@@ -60,6 +68,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('meta-strip').innerHTML =
     `<span>資料截止（完整週）：<b>健保門診 ${meta.coverage.nhi.last_complete}</b> · 健保急診 ${meta.coverage.nhi_er.last_complete} · RODS ${meta.coverage.rods.last_complete} · 重症 ${meta.coverage.nidds.last_complete}</span>` +
     `<span>模型：<b>${meta.model.name}</b>（${meta.model.checkpoint}）</span><span>產生時間：<b>${meta.generated_at.replace('T', ' ').slice(0, 16)}</b></span>`;
+
+  // narrative brief (rule-generated in scripts/build_site.py)
+  const n = latest.narrative;
+  if (n) {
+    document.getElementById('brief-headline').textContent = n.headline;
+    document.getElementById('brief-current-sub').textContent = `資料至 ${n.origin_yw}（${n.origin_date} 起的一週）`;
+    const fill = (id, items) => { const ul = document.getElementById(id); items.forEach(t => { const li = document.createElement('li'); li.textContent = t; ul.appendChild(li); }); };
+    fill('brief-current', n.current); fill('brief-outlook', n.outlook); fill('brief-caveats', n.caveats);
+  } else { document.getElementById('brief').hidden = true; }
 
   // KPI tiles
   const kpi = document.getElementById('kpi-strip');
