@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 from . import DATA_DIR
@@ -136,6 +137,36 @@ def read_lab_tests(path: str | Path) -> pd.DataFrame:
     return out
 
 
+RESP_PATHOGENS = {"Influenza": "resp_flu", "RSV": "resp_rsv", "SARS-CoV-2": "resp_covid", "hMPV": "resp_hmpv",
+                  "Parainfluenza": "resp_para", "Rhinovirus": "resp_rhino", "Adeno": "resp_adeno", "Mycoplasma": "resp_myco"}
+
+
+def read_resp_lab(path: str | Path | None = None) -> pd.DataFrame:
+    """社區合約實驗室呼吸道病原體分子生物學檢測（RESP_LAB.csv，UTF-8，2025 起，全國週資料）.
+
+    Returns one row per yw with positives per pathogen (resp_*), overall positive %, and
+    derived: resp_total_pos, resp_flu_share, resp_tests_est (= total positives / positive %),
+    resp_flu_pos_rate (%).
+    """
+    p = Path(path) if path else DATA_DIR / "RESP_LAB.csv"
+    df = pd.read_csv(p, encoding="utf-8-sig", dtype=str)
+    wk = [c for c in df.columns if c.lower().startswith("year-week")][0]
+    out = pd.DataFrame({"yw": df[wk].astype(str).str.strip()})
+    for src, dst in RESP_PATHOGENS.items():
+        out[dst] = pd.to_numeric(df[src], errors="coerce")
+    out["resp_pos_pct"] = pd.to_numeric(df["Positive (%)"], errors="coerce")
+    path_cols = list(RESP_PATHOGENS.values())
+    out = out[out[path_cols].notna().any(axis=1)]  # the file pre-fills future weeks with empty rows
+    out["resp_total_pos"] = out[path_cols].sum(axis=1)
+    out["resp_flu_share"] = out["resp_flu"] / out["resp_total_pos"].replace(0, np.nan)
+    out["resp_tests_est"] = out["resp_total_pos"] / (out["resp_pos_pct"] / 100).replace(0, np.nan)
+    out["resp_flu_pos_rate"] = 100 * out["resp_flu"] / out["resp_tests_est"]
+    # 3-week trailing means: the sentinel sample is small (~250 specimens/week), so weekly values are noisy
+    out["resp_flu_ma3"] = out["resp_flu"].rolling(3, min_periods=1).mean()
+    out["resp_flu_pos_rate_ma3"] = out["resp_flu_pos_rate"].rolling(3, min_periods=1).mean()
+    return out.set_index("yw").astype(float)
+
+
 def read_holidays(path: str | Path | None = None) -> pd.DataFrame:
     """tw_holiday.csv (UTF-8): date, name, isHoliday, holidayCategory, description."""
     p = Path(path) if path else DATA_DIR / "tw_holiday.csv"
@@ -153,6 +184,7 @@ RAW_FILES = {
     "nidds": "NIDDS_487A.csv",
     "lab_types": "INFLUENZA_TYPE_YW.csv",
     "lab_tests": "INFLUENZA_MON_TYPE_YW.csv",
+    "resp_lab": "RESP_LAB.csv",
 }
 
 
@@ -167,4 +199,5 @@ def load_all(data_dir: str | Path | None = None) -> dict[str, pd.DataFrame]:
         "nidds": read_nidds(d / RAW_FILES["nidds"]),
         "lab_types": read_lab_types(d / RAW_FILES["lab_types"]),
         "lab_tests": read_lab_tests(d / RAW_FILES["lab_tests"]),
+        "resp_lab": read_resp_lab(d / RAW_FILES["resp_lab"]) if (d / RAW_FILES["resp_lab"]).exists() else None,
     }

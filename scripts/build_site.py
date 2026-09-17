@@ -241,6 +241,15 @@ def build_narrative(nat: pd.DataFrame, latest: dict) -> dict:
         dom = "A 型" if l.lab_a_share >= 0.6 else ("B 型" if l.lab_a_share <= 0.4 else "A、B 型並存")
         cur.append(f"LARS 實驗室自動通報 {lab.index[-1]} 陽性率 {l.lab_pos_rate:.1f}%（4 週前 {l4.lab_pos_rate:.1f}%），A 型 {fmt0(l.lab_flu_a)} 件、B 型 {fmt0(l.lab_flu_b)} 件，以 {dom} 為主（A 型占 {100 * l.lab_a_share:.0f}%）。")
 
+    # --- current: community contract-lab respiratory PCR panel (RESP_LAB, from 2025; monitoring only)
+    rcols = ["resp_flu", "resp_flu_share", "resp_pos_pct", "resp_rsv", "resp_covid", "resp_total_pos"]
+    if all(c in nat.columns for c in rcols):
+        resp = nat[rcols].dropna()
+        if len(resp):
+            rr = resp.iloc[-1]
+            cur.append(f"社區合約實驗室多重 PCR（RESP_LAB）{resp.index[-1]}：{fmt0(rr.resp_total_pos)} 件陽性檢體中流感占 {100 * rr.resp_flu_share:.0f}%（{fmt0(rr.resp_flu)} 件），"
+                       f"RSV {fmt0(rr.resp_rsv)} 件、SARS-CoV-2 {fmt0(rr.resp_covid)} 件，總陽性率 {rr.resp_pos_pct:.0f}%；此資料自 2025 年起，目前作為病原體組成監測，不作為模型共變數。")
+
     # --- outlook: outpatient path
     fc = out["forecast"]; meds = [f["median"] for f in fc]; last = out["last_observed"]
     ch = [100 * (m / last - 1) for m in meds]; imax = int(np.argmax(meds))
@@ -321,6 +330,15 @@ def build_report(bt: dict, latest: dict, meta: dict) -> str:
     f_out = li["nhi_out_ili"]; f1 = f_out["forecast"]
     gen = meta["generated_at"][:10]
     fmt = lambda v, nd=0: f"{v:,.{nd}f}"
+    src_rows = [("nhi", "健保申報 門診/住院", "類流感（ICD 48X）與流感及其所致肺炎（487）就診人次、健保就診總人次", "週 × 門診/住院 × 19 年齡層 × 22 縣市"),
+                ("nhi_er", "健保申報 急診", "同上，急診", "週 × 年齡層 × 縣市"),
+                ("rods", "即時疫情監視及預警系統（RODS）", "急診類流感就診人次、急診總人次", "週 × 年齡層 × 234 家醫院"),
+                ("nidds", "法定傳染病通報（NIDDS）", "流感併發重症確定病例（發病週）", "週 × 縣市 × 鄉鎮 × 性別 × 年齡層"),
+                ("lab", "實驗室自動通報系統（LARS）", "流感 A / B / 未分型陽性數、檢驗件數（陽性率）", "週 × 縣市 × 醫院"),
+                ("resp", "社區合約實驗室 呼吸道病原體 PCR（RESP_LAB）", "流感、RSV、SARS-CoV-2、hMPV、副流感、鼻病毒、腺病毒、黴漿菌陽性數、總陽性率", "週（全國）")]
+    cov = meta["coverage"]
+    data_rows = "".join(f"<tr><td>{n}</td><td>{c}</td><td>{g}</td><td class='num'>{cov[k]['first_complete']}–{cov[k]['last_complete']}<br><span style='color:var(--n-500)'>{cov[k]['first_date']} 起至 {cov[k]['last_date']} 當週</span></td></tr>"
+                        for k, n, c, g in src_rows if k in cov)
     html = f"""<!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>解讀與評估報告 · 台灣流感 TimesFM 3.0 預測</title>
@@ -347,7 +365,19 @@ def build_report(bt: dict, latest: dict, meta: dict) -> str:
 <p>目標序列是<strong>全國每週類流感門診就診人次</strong>（健保申報），另以全國類流感急診就診人次、RODS 急診類流感就診百分比、22 縣市與 18 年齡層做延伸驗證。模型是 Google TimesFM 3.0（330M 參數的時間序列基礎模型），<strong>零樣本、未經任何微調</strong>，逐層加入已知未來共變數（春節旗標、平日假日天數、季節相位）、過去共變數（實驗室型別、RODS、重症）與多變量聯合預測。基準模型為 last-value naive、MA3（前 3 週移動平均，2 週以上遞迴代入）、季節性 naive、AutoETS 與 Theta。</p>
 <p>評估指標：WIS（由 9 個分位數組成 4 個對稱區間加中位數，越低越好）、MAE、MAPE、MASE、80%/60% 區間涵蓋率、方向命中率、±10% 容忍帶命中率，以及閾值命中率與誤報率（門診人次以第 75 百分位 {fmt(t['threshold'])} 人次為閾值，RODS 急診類流感%以流行閾值 10% 為閾值）。結果分 COVID 前（2018–2019）、COVID 期（2020–2022）、COVID 後（2023–2025）三段報告，決策看 COVID 後。</p></section>
 
-<section><h2>2. 主要結果</h2>
+<section><h2>2. 使用的資料</h2>
+<p>五個常規監測來源加上 2025 年起的社區合約實驗室檢測，全部以疾管署疫情週（週日起算）對齊成全國、縣市、年齡層三層週資料面板；回測只用 2016w01–2025w53，即時預測用到各來源最新的完整週。</p>
+<table class="tbl compact"><thead><tr><th>來源</th><th>內容</th><th>粒度</th><th>完整週範圍</th></tr></thead><tbody>
+{data_rows}
+</tbody></table>
+<ul class="findings" style="font-size:13.5px">
+<li><strong>不完整週自動排除</strong>：各來源最後幾週若低於前 8 週中位數的 60%（重症 50%）視為申報未齊，不進入 context；重症以發病週計，再保守多排除 3 週，RESP_LAB 以檢體收件週計，多排除 1 週。</li>
+<li><strong>隱性零值</strong>：NIDDS 為病例列表彙總，沒有病例的週沒有資料列，建面板時補 0。</li>
+<li><strong>已知未來共變數</strong>：春節週旗標與每週平日假日天數來自行政機關辦公日曆（`tw_holiday.csv`，至 2026 年底）。</li>
+<li><strong>RESP_LAB（社區合約實驗室）</strong>：每週約 250 件檢體的多重 PCR 結果，涵蓋流感、RSV、SARS-CoV-2、hMPV、副流感、鼻病毒、腺病毒、黴漿菌；因 2025 年才開始，不在主回測窗內，另以 2025–2026 年的起點做「過去共變數」實驗（見第 3 節末）。</li>
+</ul></section>
+
+<section><h2>3. 主要結果</h2>
 <div class="two-col">
 <div class="card"><h3>各設定 WIS 依預測週數（COVID 後）</h3><div class="chart-box"><canvas id="c-wis" role="img" aria-label="最佳設定在 1 到 4 週的 WIS 均低於各基準模型"></canvas></div><p class="source">WIS 越低越好；灰色虛線為基準模型。</p></div>
 <div class="card"><h3>最佳設定 1 週前預測 vs 實際（2023–2025）</h3><div class="chart-box"><canvas id="c-ts" role="img" aria-label="1 週前預測中位數貼近實際值，80% 區間涵蓋大多數週"></canvas></div><p class="source">虛線為預測中位數，淺綠帶為 80% 預測區間。</p></div>
@@ -362,9 +392,10 @@ def build_report(bt: dict, latest: dict, meta: dict) -> str:
 <li><strong>校準良好。</strong>80% 區間涵蓋率 {best['cov80']:.2f}、60% 涵蓋率 {best['cov60']:.2f}，接近名目值；naive 的區間過窄（{naive['cov80']:.2f}）。</li>
 <li><strong>COVID 前也成立。</strong>2018–2019 最佳為 {pre_best['label']}，WIS {fmt(pre_best['wis'])}，相對 naive −{round(100*(1-pre_best['rel_naive']))}%。</li>
 <li><strong>延伸驗證。</strong>全國類流感急診就診人次（健保）：最佳設定 {ebest['label']}，WIS {fmt(ebest['wis'])}，相對 naive −{round(100*(1-ebest['rel_naive']))}%，MAPE {ebest['mape']:.1f}%，80% 涵蓋率 {ebest['cov80']:.2f}。RODS 急診類流感%：最佳 WIS {rbest['wis']:.2f} 個百分點，相對 naive −{round(100*(1-rbest['rel_naive']))}%，方向命中率 {rbest['dir_hit']:.2f}，以流行閾值 10% 計的閾值命中率 {rbest['thr_hit_rate']:.2f}、誤報率 {rbest['thr_false_alarm']:.2f}。22 縣市聯合預測相對逐縣市 naive 為 {cty['mv_cov']['rel_naive']:.2f}，18 年齡層為 {age['mv_cov']['rel_naive']:.2f}。</li>
-</ul></section>
+</ul>
+<p class="note"><strong>近兩年加入社區合約實驗室 PCR（RESP_LAB）的實驗。</strong>RESP_LAB 自 2025 年起才有資料，不在主回測窗內，因此另以 2025w09–2026w32 共 78 個起點比較「同一設定加不加 RESP 過去共變數」。結果：以流感陽性數與陽性率（延遲 1 週）為過去共變數，全國類流感門診人次的 1–4 週平均 WIS 比不加共變數的同一設定高 6.5%（7,341 對 6,895），加入所有病原體高 9.2%，3 週平滑或延遲 2 週仍高 6%，併入三變量聯合預測高 2.1%；急診人次高 1.2–2.9%。同一期間 LARS 陽性數作為共變數則大致持平（−0.2% / +1.7%）。原因是該哨點每週約 250 件檢體、流感陽性約 40 件，週間波動大，且與類流感就診的相關為同步而非領先（r ≈ 0.4–0.5）。目前 RESP_LAB 保留在資料面板並用於每週頁的病原體組成判讀，不作為 TimesFM 的共變數；累積兩個以上流感季後再重新評估，或改以其流感占比作為獨立預測目標。</p></section>
 
-<section><h2>3. 怎麼解讀</h2>
+<section><h2>4. 怎麼解讀</h2>
 <ul class="findings">
 <li><strong>1–2 週最可靠。</strong>WIS 隨 horizon 大致線性上升（{fmt(wh[t['best']][0])} → {fmt(wh[t['best']][3])}），方向命中率從 {dh[0]:.2f} 降到 {dh[3]:.2f}。4 週以上的預測應只做規劃參考。</li>
 <li><strong>峰值偏保守。</strong>高流行週（實際值在第 75 百分位以上）中位數低估 2–8%（1→4 週）；零樣本模型不知道今年疫苗策略或流行株變化，遇到創新高的季節會慢半拍。</li>
@@ -372,7 +403,7 @@ def build_report(bt: dict, latest: dict, meta: dict) -> str:
 <li><strong>COVID 期的分數不作決策依據。</strong>2020–2022 流感近乎消失，模型在該時期高估 4–12%，但區間涵蓋率仍在 0.75 以上。</li>
 </ul></section>
 
-<section><h2>4. 限制與注意事項</h2>
+<section><h2>5. 限制與注意事項</h2>
 <ul class="findings">
 <li>健保申報有回補，最近 1–2 週低報；管線以「低於前 8 週中位數 60%」自動排除不完整週，正式使用時應以首報/終報比值校正。</li>
 <li>假日檔只到 2025 年底，2026 年起春節週以農曆新年日期外推、平日假日天數假設 5 天；請以官方辦公日曆表延伸後重跑。</li>
@@ -380,14 +411,14 @@ def build_report(bt: dict, latest: dict, meta: dict) -> str:
 <li>回測資料窗只有十年，最早的起點僅兩季暖機；閾值以整段資料的分位數決定，帶有少量事後資訊。</li>
 </ul></section>
 
-<section><h2>5. 建議</h2>
+<section><h2>6. 建議</h2>
 <ul class="findings">
 <li>每週固定流程：更新資料 → 建面板 → 以四變量聯合 + 春節 + 假日設定產出 1–4 週預測與分位數 → 發布本站。</li>
 <li>發布時同時呈現中位數、80% 區間與「超過閾值的機率」，並註明資料截止週與申報回補風險。</li>
 <li>下一步：TimesFM 與 ETS 的簡單集成、健保申報回補校正、季節峰值時間/高度的專門評估，以及微調（2.5 LoRA）是否值得。</li>
 </ul></section>
 
-<section><h2>6. 最新預測摘要（起點 {f_out['origin_yw']}，{f_out['origin_date']} 當週）</h2>
+<section><h2>7. 最新預測摘要（起點 {f_out['origin_yw']}，{f_out['origin_date']} 當週）</h2>
 <p>全國類流感門診就診人次未來 4 週中位數：{'、'.join(fmt(x['median']) for x in f1)}；第 1 週 80% 區間 {fmt(f1[0]['q10'])}–{fmt(f1[0]['q90'])}{'（春節週）' if f1[0]['cny'] else ''}。完整內容見<a href="index.html">每週預測</a>。</p></section>
 
 <footer class="report-footer">資料：疾病管制署資料開放平台（健保、RODS、NIDDS、實驗室自動通報系統（LARS））。模型：google/timesfm-3.0-pytorch（非商業授權）。產生時間 {meta['generated_at']}。圖表依《疫情資料視覺化指引》v1.1。</footer>

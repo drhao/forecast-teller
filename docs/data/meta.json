@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-09-17T10:50+08:00",
+ "generated_at": "2026-09-17T11:15+08:00",
  "coverage": {
   "nhi": {
    "first_complete": "200502",
@@ -30,6 +30,12 @@
    "last_complete": "202636",
    "first_date": "2015-01-11",
    "last_date": "2026-09-06"
+  },
+  "resp": {
+   "first_complete": "202502",
+   "last_complete": "202634",
+   "first_date": "2025-01-05",
+   "last_date": "2026-08-23"
   }
  },
  "backtest_window": {

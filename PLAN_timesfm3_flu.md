@@ -325,7 +325,7 @@ for name, (y0, y1) in {"COVID前": (2018, 2019), "COVID期": (2020, 2022), "COVI
 | 項目 | 狀態 | 位置 |
 |---|---|---|
 | 環境 | `.venv`（Python 3.11.6）+ `timesfm[mlx]` 3.0.2、pandas、pyarrow、matplotlib、statsforecast | `pyproject.toml`、`README.md` |
-| 資料管線 | cp950 讀取、疫情週對應、頭尾不完整週自動偵測、縣市/年齡層名稱正規化、NIDDS 隱性零值補 0；產出全國/縣市/年齡層面板與 QA 報告（11 秒） | `src/forecast_teller/{io,weeks,panel}.py`、`scripts/build_panel.py`、`data_processed/` |
+| 資料管線 | cp950 讀取、疫情週對應、頭尾不完整週自動偵測、縣市/年齡層名稱正規化、NIDDS 隱性零值補 0；產出全國/縣市/年齡層面板與 QA 報告（11 秒）；2026-09-17 加入 RESP_LAB（社區合約實驗室 PCR，UTF-8，2025 起）為 `resp_*` 欄 | `src/forecast_teller/{io,weeks,panel}.py`、`scripts/build_panel.py`、`data_processed/` |
 | 共變數 | 季節相位 sin/cos、春節週旗標、每週平日假日天數（`tw_holiday.csv`，2026 起以農曆新年日期外推） | `src/forecast_teller/covariates.py` |
 | 模型包裝 | MLX 後端 `TimesFM3Forecaster`，支援單/多變量、過去與未來共變數、log1p、對稱平均、非負裁切 | `src/forecast_teller/model_timesfm3.py` |
 | 回測引擎 | 擴張/滑動視窗、任意國家級目標、多變量聯合目標、過去共變數延遲平移；WIS/MAE/WAPE/MASE/涵蓋率；三段分層 | `src/forecast_teller/{backtest,metrics,baselines}.py`、`scripts/run_backtest.py` |
@@ -462,3 +462,22 @@ WIS 依 horizon（COVID 後）：最佳設定 4,145 / 5,794 / 7,993 / 9,497，na
 - `docs/report.html` 一頁式解讀與評估報告，由 `scripts/build_site.py` 以最新數字填入，可列印。
 - 圖表風格依《疫情資料視覺化指引》v1.1：主色 Sage、折線加深版 `#5D7F58`、類別順序綠→藍→黃、基準用中性灰虛線與不同點形狀、紅色不作類別色、Noto Sans/Serif TC、tabular-nums、僅水平格線、直條圖 Y 軸從零。
 - 每週更新：`scripts/weekly_update.sh [--push]`；資料流為 `outputs/` → `docs/data/*.json`（`build_site.py`）→ 靜態頁面 fetch。GitHub Pages 設定步驤見 `README.md`。
+
+### 12.7 社區合約實驗室呼吸道病原體 PCR（RESP_LAB）近兩年實驗（2026-09-17）
+
+- **資料**：`data/RESP_LAB.csv`，2025w01 起每週全國多重 PCR 結果（流感、RSV、SARS-CoV-2、hMPV、副流感、鼻病毒、腺病毒、黴漿菌陽性數、總陽性率；每週約 250 件檢體、流感陽性約 40 件）。已納入面板（`resp_*` 欄，含流感占比、估計檢體數、流感陽性率與 3 週平滑）；來源 `resp` 以檢體收件週計，尾端多排除 1 週。
+- **與目標的關係**：與門診類流感人次同步相關 r ≈ 0.38（陽性數）/ 0.49（陽性率），無領先性；LARS 陽性數 r ≈ 0.56 且領先 1 週 0.64。
+- **實驗設計**：起點 2025w09–2026w32（78 個），目標至 2026w36，context 自 2016 擴張（RESP 在 2025 前以首值平填），過去共變數延遲 1 週；聯合設定用門診 + 急診 + RODS 三變量（重症延遲 3 週，此期間不納入）。
+- **結果（全國類流感門診人次，h = 1–4 平均 WIS；不加共變數的單變量 = 6,895）**：
+
+| 設定 | WIS | 相對不加共變數 |
+|---|---:|---:|
+| 三變量聯合 + 春節 + 假日 | 6,865 | 1.00 |
+| + LARS 陽性數/陽性率（過去共變數） | 6,879 | 1.00 |
+| + RESP 流感陽性數/陽性率 | 7,341 | 1.06 |
+| + RESP 3 週平滑 | 7,318 | 1.06 |
+| + RESP 全部病原體 | 7,532 | 1.09 |
+| 三變量聯合 + RESP | 7,012 | 1.02（對聯合） |
+| last-value naive | 9,156 | 1.33 |
+
+急診人次同樣加 RESP 後高 1.2–2.9%。**結論**：RESP_LAB 目前不作為 TimesFM 共變數；保留在面板並用於每週頁「目前疫情趨勢」的病原體組成判讀。累積兩個以上流感季、或改以流感占比作為獨立預測目標時再評估。完整表：`outputs/backtest/resp_experiment_REPORT.md`。

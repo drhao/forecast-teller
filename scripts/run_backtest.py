@@ -63,6 +63,30 @@ def suite(name: str, target: str, H: int) -> list[Config]:
             Config("tfm_cov_season_cny_hol_sym", covariates=("season", "cny", "holiday"), symmetric=True, **base),
             Config("tfm_cov_season_cny_hol_slide260", covariates=("season", "cny", "holiday"), window=260, **base),
         ]
+    if name == "resp":
+        # recent-period experiment (origins 2025w09–2026w32, targets to 2026w36): does the community
+        # contract-lab respiratory PCR panel (RESP_LAB, from 2025w01) help as a past-only covariate?
+        # NIDDS (onset week) lags ~3 weeks behind the other sources, so the joint configs here use the
+        # three timely series only (target + outpatient/ER + RODS)
+        others = [c for c in ["nhi_out_ili", "nhi_er_ili", "rods_ili"] if c != target]
+        rb = dict(target=target, horizon=H, end="202636", origin_start="202509")
+        ch = dict(covariates=("cny", "holiday"))
+        return [
+            Config("snaive", model="snaive", **rb), Config("naive", model="naive", **rb), Config("ma3", model="ma3", **rb),
+            Config("tfm_cov_cny_hol", **ch, **rb),
+            Config("tfm_mv3_cny_hol", targets=(target, *others), **ch, **rb),
+            Config("tfm_po_resp_flu", past_covariates=("resp_flu", "resp_flu_pos_rate"), past_lag=1, **ch, **rb),
+            Config("tfm_po_resp_flu_share", past_covariates=("resp_flu", "resp_flu_share", "resp_pos_pct"), past_lag=1, **ch, **rb),
+            Config("tfm_po_resp_all", past_covariates=("resp_flu", "resp_rsv", "resp_covid", "resp_hmpv", "resp_pos_pct"), past_lag=1, **ch, **rb),
+            Config("tfm_po_lars", past_covariates=("lab_flu_a", "lab_pos_rate"), past_lag=1, **ch, **rb),
+            Config("tfm_po_resp_lars", past_covariates=("resp_flu", "resp_flu_pos_rate", "lab_flu_a", "lab_pos_rate"), past_lag=1, **ch, **rb),
+            Config("tfm_mv3_po_resp", targets=(target, *others), past_covariates=("resp_flu", "resp_flu_pos_rate"), past_lag=1, **ch, **rb),
+            Config("tfm_po_resp_flu_slide104", past_covariates=("resp_flu", "resp_flu_pos_rate"), past_lag=1, window=104, **ch, **rb),
+        ]
+    if name == "resp_smooth":
+        rb = dict(target=target, horizon=H, end="202636", origin_start="202509"); ch = dict(covariates=("cny", "holiday"))
+        return [Config("tfm_po_resp_smooth", past_covariates=("resp_flu_ma3", "resp_flu_pos_rate_ma3"), past_lag=1, **ch, **rb),
+                Config("tfm_po_resp_smooth_lag2", past_covariates=("resp_flu_ma3", "resp_flu_pos_rate_ma3"), past_lag=2, **ch, **rb)]
     if name == "layer3":
         cov = dict(covariates=("season", "cny"))
         return [

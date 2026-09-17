@@ -53,6 +53,7 @@ class Config:
     end: str = "202553"
     warmup: int = 104
     horizon: int = 4
+    origin_start: str | None = None       # if set, only origins whose first target week >= this yw (overrides warmup)
 
 
 def load_series(targets: tuple[str, ...], start: str, end: str) -> tuple[list[str], np.ndarray, pd.DataFrame]:
@@ -68,7 +69,9 @@ def load_series(targets: tuple[str, ...], start: str, end: str) -> tuple[list[st
 
 
 def _past_only_matrix(sub: pd.DataFrame, cols: tuple[str, ...], lag: int) -> np.ndarray:
-    return sub[list(cols)].shift(lag).bfill().to_numpy(np.float32).T  # (K, N)
+    # lag = reporting delay; bfill flat-fills weeks before a covariate exists (e.g. RESP_LAB before 2025),
+    # ffill carries the last complete week over a trailing gap (TimesFM would interpolate the same way)
+    return sub[list(cols)].shift(lag).bfill().ffill().to_numpy(np.float32).T  # (K, N)
 
 
 def run_config(cfg: Config, model=None, verbose: bool = True) -> pd.DataFrame:
@@ -79,6 +82,8 @@ def run_config(cfg: Config, model=None, verbose: bool = True) -> pd.DataFrame:
     yws, Y, sub = load_series(targets, cfg.start, cfg.end)
     V, N, H = Y.shape[0], Y.shape[1], cfg.horizon
     origins = list(range(cfg.warmup, N - H + 1))
+    if cfg.origin_start:
+        origins = [t for t in origins if yws[t] >= cfg.origin_start]
     t0 = time.time()
 
     def ctx_slice(t):

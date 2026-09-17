@@ -58,5 +58,17 @@
     "dropped_tail": [
       "202637"
     ]
+  },
+  "resp": {
+    "raw_first": "202501",
+    "raw_last": "202635",
+    "first_complete": "202502",
+    "last_complete": "202634",
+    "dropped_head": [
+      "202501"
+    ],
+    "dropped_tail": [
+      "202635"
+    ]
   }
 }

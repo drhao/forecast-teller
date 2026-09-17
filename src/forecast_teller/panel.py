@@ -21,7 +21,7 @@ from .weeks import week_table, yw_range
 
 # Extra weeks trimmed from the tail beyond automatic partial-week detection
 # (reporting lag: NIDDS is by onset week and keeps being back-filled for weeks).
-DEFAULT_LAG = {"nhi": 0, "nhi_er": 0, "rods": 0, "nidds": 3, "lab": 0}
+DEFAULT_LAG = {"nhi": 0, "nhi_er": 0, "rods": 0, "nidds": 3, "lab": 0, "resp": 1}  # resp: specimen-received week, allow 1 week for results
 
 # Which national column is the "denominator" used to detect partial edge weeks.
 SOURCE_DENOM = {
@@ -30,13 +30,17 @@ SOURCE_DENOM = {
     "rods": "rods_total",
     "nidds": "nidds_severe",
     "lab": "lab_tests",
+    "resp": "resp_total_pos",
 }
+RESP_COLS = ["resp_flu", "resp_rsv", "resp_covid", "resp_hmpv", "resp_para", "resp_rhino", "resp_adeno", "resp_myco",
+             "resp_pos_pct", "resp_total_pos", "resp_flu_share", "resp_tests_est", "resp_flu_pos_rate", "resp_flu_ma3", "resp_flu_pos_rate_ma3"]
 SOURCE_COLUMNS = {
     "nhi": ["nhi_out_ili", "nhi_out_total", "nhi_inp_ili", "nhi_inp_total", "nhi_out_flu", "nhi_inp_flu"],
     "nhi_er": ["nhi_er_ili", "nhi_er_total", "nhi_er_flu"],
     "rods": ["rods_ili", "rods_total"],
     "nidds": ["nidds_severe"],
     "lab": ["lab_flu_a", "lab_flu_b", "lab_flu_u", "lab_tests"],
+    "resp": RESP_COLS,
 }
 ZERO_FILL_SOURCES = {"nidds"}  # case lists: a week with no rows is a true zero
 
@@ -77,6 +81,9 @@ def _national_parts(raw: dict[str, pd.DataFrame]) -> pd.DataFrame:
     for c in ["flu_a", "flu_b", "flu_u"]:
         parts[f"lab_{c}"] = lt[c]
     parts["lab_tests"] = raw["lab_tests"].groupby("yw")["tests"].sum()
+    if raw.get("resp_lab") is not None:
+        for c in RESP_COLS:
+            parts[c] = raw["resp_lab"][c]
     df = pd.DataFrame(parts)
     df.index = df.index.astype(str)
     valid = [i for i in df.index if len(i) == 6 and i.isdigit()]
@@ -89,6 +96,8 @@ def coverage_from_national(nat: pd.DataFrame, lag: dict[str, int] | None = None)
     cov = {}
     yws = list(nat.index)
     for src, denom in SOURCE_DENOM.items():
+        if denom not in nat.columns or nat[denom].dropna().empty:
+            continue
         s = nat[denom].dropna()
         raw_first, raw_last = str(s.index[0]), str(s.index[-1])
         first, last = detect_edges(s, ratio=0.5 if src == "nidds" else 0.6)
@@ -108,7 +117,7 @@ def _apply_coverage(df: pd.DataFrame, cov: dict, cols_by_source: dict[str, list[
     df = df.copy()
     for src, cols in cols_by_source.items():
         cols = [c for c in cols if c in df.columns]
-        if not cols:
+        if not cols or src not in cov:
             continue
         lo, hi = yws.index(cov[src]["first_complete"]), yws.index(cov[src]["last_complete"])
         inside = np.zeros(len(df), dtype=bool)
