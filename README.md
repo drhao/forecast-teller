@@ -45,7 +45,7 @@ python scripts/forecast_now.py --joint nhi_out_ili nhi_er_ili rods_ili --covaria
 ## 回測設計
 
 - 資料窗 2016w01–2025w53（522 週），暖機 2016–2017，起點 2018w01 起每週一個，h = 1–4。
-- 指標：WIS、MAE、MAPE、WAPE、MASE、80%/60% 區間涵蓋率，以及命中率（方向命中率、三分類命中率、±10% 容忍帶、閾值命中率/誤報率/準確率；`scripts/add_hit_rates.py` 可對既有結果補算，`make_report.py --threshold` 指定流行閾值；RODS 急診類流感%預設用流行閾值 10%）；基準：季節性 naive、last value、MA3（前 3 週移動平均，2 週以上遞迴代入）、AutoETS、Theta。
+- 指標：WIS、MAE、MAPE、WAPE、MASE、80%/60% 區間涵蓋率，以及命中率（方向命中率、三分類命中率、±10% 容忍帶、閾值命中率/誤報率/準確率；`scripts/add_hit_rates.py` 可對既有結果補算，`make_report.py --threshold` 指定流行閾值；RODS 急診類流感%預設用流行閾值 11%）；基準：季節性 naive、last value、MA3（前 3 週移動平均，2 週以上遞迴代入）、AutoETS、Theta。
 - 結果分 COVID 前（2018–2019）、COVID 期（2020–2022）、COVID 後（2023–2025）三段報告。
 
 ## 回測結論（2026-09-17）

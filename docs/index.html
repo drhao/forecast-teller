@@ -85,7 +85,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const ch = (f1.median - last) / last * 100; const arrow = ch > 1 ? '↑' : (ch < -1 ? '↓' : '→');
     const verified = f1.observed != null;
     kpi.insertAdjacentHTML('beforeend', `<div class="kpi"><div class="label">${ind.short} · ${f1.yw}</div>
-      <div class="value">${fmt(f1.median, d)}<small>${ind.unit}</small>${f1.cny ? '<span class="badge cny">春節週</span>' : ''}${verified ? '<span class="badge verified">已驗證</span>' : ''}</div>
+      <div class="value">${fmt(f1.median, d)}<small>${ind.unit}</small>${f1.cny ? '<span class="badge cny">春節週</span>' : ''}${verified ? '<span class="badge verified">已驗證</span>' : ''}${ind.threshold != null && last >= ind.threshold ? `<span class="badge alert">高於${ind.threshold_label}</span>` : ''}</div>
       <div class="sub">80% 區間 ${fmt(f1.q10, d)} – ${fmt(f1.q90, d)}</div>
       <div class="delta"><span class="arrow">${arrow}</span> 相對起點週 ${fmt(last, d)}：${ch >= 0 ? '+' : ''}${ch.toFixed(1)}%${verified ? `，實際 ${fmt(f1.observed, d)}` : ''}</div></div>`);
   });
@@ -94,11 +94,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   const grid = document.getElementById('fan-grid'); const fans = {};
   inds.forEach(ind => {
     const id = 'fan-' + ind.key;
-    grid.insertAdjacentHTML('beforeend', `<div class="card"><h3>${ind.label}</h3><div class="sub">${ind.config}　·　起點 ${ind.origin_yw}（${ind.origin_date}）</div>
+    grid.insertAdjacentHTML('beforeend', `<div class="card"><h3>${ind.label}</h3><div class="sub">${ind.config}　·　起點 ${ind.origin_yw}（${ind.origin_date}）${ind.threshold != null ? `　·　紅色虛線 = ${ind.threshold_label}` : ''}</div>
       <div class="chart-box"><canvas id="${id}" role="img" aria-label="${ind.label}：未來 4 週預測中位數 ${ind.forecast.map(f => fmt(f.median, ind.decimals)).join('、')}"></canvas></div>
       <p class="source">資料來源：${ind.source}。觀測段不畫區間；預測段虛線為中位數。</p></div>`);
   });
-  const drawFans = weeks => inds.forEach(ind => { const id = 'fan-' + ind.key; if (fans[id]) fans[id].destroy(); fans[id] = EPI.fanChart(document.getElementById(id), ind, {unit: ind.unit, decimals: ind.decimals, historyWeeks: weeks}); });
+  const drawFans = weeks => inds.forEach(ind => { const id = 'fan-' + ind.key; if (fans[id]) fans[id].destroy(); fans[id] = EPI.fanChart(document.getElementById(id), ind, {unit: ind.unit, decimals: ind.decimals, threshold: ind.threshold, thresholdLabel: ind.threshold_label}); });
   drawFans(40);
   const hg = document.getElementById('hist-group');
   hg.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { hg.querySelectorAll('button').forEach(x => x.classList.toggle('active', x === b)); drawFans(Number(b.dataset.weeks)); }));

@@ -13,6 +13,8 @@ from pptx.util import Inches, Pt, Emu
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from forecast_teller import OUTPUT_DIR, ROOT  # noqa: E402
+from forecast_teller.backtest import DEFAULT_THRESHOLDS  # noqa: E402
+RTHR = DEFAULT_THRESHOLDS["rods_ili_pct"]
 
 C = {"p50": "F6F9F6", "p100": "E8EEE7", "p300": "B4C9B1", "p500": "739A6D", "p600": "5D7F58", "p800": "374C34", "p900": "253423",
      "n0": "FFFFFF", "n100": "F2F3F1", "n200": "E4E7E4", "n300": "CACFC9", "n400": "A2ABA0", "n500": "7A8778", "n600": "5D675B", "n700": "444C43", "n800": "2C312B", "n900": "181B18",
@@ -23,7 +25,7 @@ bt = json.loads((ROOT / "docs/data/backtest.json").read_text(encoding="utf-8"))
 latest = json.loads((ROOT / "docs/data/latest.json").read_text(encoding="utf-8"))
 T = bt["targets"]["nhi_out_ili"]; POST = T["segments"]["post_covid"]; LB = {x["config"]: x for x in POST["leaderboard"]}
 ER = bt["targets"]["nhi_er_ili"]; ERB = {x["config"]: x for x in ER["segments"]["post_covid"]["leaderboard"]}[ER["best"]]
-RD = bt["targets"]["rods_ili_pct"]; RDB = {x["config"]: x for x in RD["segments"]["post_covid"]["leaderboard"]}[RD["best"]]
+RD = bt["targets"]["rods_ili_pct"]; RDL = {x["config"]: x for x in RD["segments"]["post_covid"]["leaderboard"]}; RDB = RDL[RD["best"]]; RDN = RDL["naive"]
 CTY = {x["config"]: x for x in bt["groups"]["county"]["segments"]["post_covid"]}; AGE = {x["config"]: x for x in bt["groups"]["age"]["segments"]["post_covid"]}
 best, naive = LB[T["best"]], LB["naive"]
 impr = [round(100 * (1 - a / b)) for a, b in zip(POST["wis_by_h"][T["best"]], POST["wis_by_h"]["naive"])]
@@ -155,7 +157,7 @@ for i, (h, d) in enumerate(steps):
     text(s, 7.8, y - 0.02, 4.9, 0.3, h, size=13, color="p900", bold=True)
     text(s, 7.8, y + 0.3, 4.9, 0.55, d, size=10.5, color="n700", line=1.1)
 rect(s, 0.6, 6.0, 12.1, 0.85, fill="p50")
-text(s, 0.85, 6.1, 11.7, 0.65, [[("評估指標　", {"bold": True, "color": "p900"}), ("WIS（加權區間分數，主指標）、MAE、MAPE、MASE、80%/60% 區間涵蓋率、方向命中率、±10% 容忍帶命中率、閾值命中率與誤報率（門診以第 75 百分位、RODS 以流行閾值 10%）。", {})],
+text(s, 0.85, 6.1, 11.7, 0.65, [[("評估指標　", {"bold": True, "color": "p900"}), (f"WIS（加權區間分數，主指標）、MAE、MAPE、MASE、80%/60% 區間涵蓋率、方向命中率、±10% 容忍帶命中率、閾值命中率與誤報率（門診以第 75 百分位、RODS 以流行閾值 {RTHR:g}%）。", {})],
                                  [("決策規則　", {"bold": True, "color": "p900"}), ("以 COVID 後（2023–2025）1–4 週平均 WIS 選定設定，並確認 COVID 前不退步。", {})]], size=10.5, color="n700", space_after=2)
 footer(s, 2)
 s.notes_slide.notes_text_frame.text = "強調：模型完全零樣本；所有比較都在同一組 415 個起點上；COVID 期（2020–2022）不做決策依據但保留在 context。"
@@ -180,7 +182,7 @@ s = prs.slides.add_slide(BLANK); title(s, "延伸驗證與命中率", "同一套
 s.shapes.add_picture(str(SL / "backtest_h1.png"), Inches(0.6), Inches(1.7), width=Inches(7.2))
 s.shapes.add_picture(str(SL / "county_rel.png"), Inches(8.3), Inches(1.7), height=Inches(4.95))
 ext = [[("全國類流感急診人次（健保）　", {"bold": True, "color": "p900"}), (f"最佳同為四變量聯合＋春節＋假日：WIS {fmt0(ERB['wis'])}，相對 naive {ERB['rel_naive']:.2f}，MAPE {ERB['mape']:.1f}%，80% 涵蓋率 {ERB['cov80']:.2f}。", {})],
-       [("RODS 急診類流感%　", {"bold": True, "color": "p900"}), (f"最佳 WIS {RDB['wis']:.2f} 個百分點，相對 naive {RDB['rel_naive']:.2f}；以流行閾值 10% 計，閾值命中率（敏感度）{RDB['thr_hit_rate']:.2f}、誤報率 {RDB['thr_false_alarm']:.2f}（naive 0.89 / 0.30）。", {})],
+       [("RODS 急診類流感%　", {"bold": True, "color": "p900"}), (f"最佳 WIS {RDB['wis']:.2f} 個百分點，相對 naive {RDB['rel_naive']:.2f}；以流行閾值 {RTHR:g}% 計，閾值命中率（敏感度）{RDB['thr_hit_rate']:.2f}、誤報率 {RDB['thr_false_alarm']:.2f}（naive {RDN['thr_hit_rate']:.2f} / {RDN['thr_false_alarm']:.2f}）。", {})],
        [("縣市與年齡層聯合預測　", {"bold": True, "color": "p900"}), (f"22 縣市總 WIS 相對逐縣市 naive {CTY['mv_cov']['rel_naive']:.2f}（每個縣市都 < 1，右圖）；18 年齡層 {AGE['mv_cov']['rel_naive']:.2f}。", {})],
        [("命中率　", {"bold": True, "color": "p900"}), (f"門診最佳設定方向命中率 {best['dir_hit']:.2f}（1 週前 {POST['dir_hit_by_h'][T['best']][0]:.2f}），三分類（漲/持平/跌）{best['dir_hit3']:.2f}，±10% 容忍帶 {best['hit_tol10']:.2f}；ETS 與 Theta 的方向命中率僅 0.4 左右。", {})]]
 text(s, 0.6, 5.25, 7.4, 1.7, ext, size=10.5, color="n700", bullets=True, space_after=4, line=1.1)
@@ -194,7 +196,7 @@ rect(s, 8.2, 1.7, 4.5, 1.55, fill="p50")
 text(s, 8.4, 1.8, 4.1, 1.4, NAR["headline"], size=11.5, color="p900", bold=True, line=1.2)
 f = OUT_IND["forecast"]
 kpis = [("類流感門診 4 週中位數", " → ".join(fmt0(x["median"]) for x in f), f"第 1 週 80% 區間 {fmt0(f[0]['q10'])}–{fmt0(f[0]['q90'])}"),
-        ("RODS 急診類流感%", " → ".join(f"{x['median']:.1f}" for x in next(i for i in latest["indicators"] if i["key"] == "rods_ili_pct")["forecast"]) + " %", "維持在 10% 以上的機率約 95%"),
+        ("RODS 急診類流感%", " → ".join(f"{x['median']:.1f}" for x in next(i for i in latest["indicators"] if i["key"] == "rods_ili_pct")["forecast"]) + " %", [x for x in NAR["outlook"] if x.startswith("RODS")][0].split("；")[-1].rstrip("。")),
         ("類流感急診人次", " → ".join(fmt0(x["median"]) for x in next(i for i in latest["indicators"] if i["key"] == "nhi_er_ili")["forecast"]), "高點落在第 3 週"),
         ("流感併發重症（起點 202633）", " → ".join(fmt0(x["median"]) for x in next(i for i in latest["indicators"] if i["key"] == "nidds_severe")["forecast"]) + " 例", "通報延遲約 3 週")]
 for i, (lab, val, sub) in enumerate(kpis):

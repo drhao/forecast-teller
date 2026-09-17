@@ -26,7 +26,7 @@
   <section>
     <div class="section-head"><span class="section-num">01</span><h2>排行榜</h2><span class="en">Leaderboard · mean over h = 1–4 · click headers to sort</span></div>
     <div class="tbl-wrap"><table class="tbl" id="lb"></table></div>
-    <p class="source">WIS = 加權區間分數（越低越好）；相對 naive = WIS ÷ last-value naive 的 WIS；MA3 = 前 3 週移動平均（2 週以上遞迴代入預測值）；MAPE = 平均絕對百分比誤差（%）；MASE 以季節性 naive 的 in-sample MAE 為分母；方向命中 = 預測相對起點週的漲跌方向正確的比例；閾值命中 = 實際超過閾值的週中預測也超過的比例（敏感度）。灰字為基準模型。</p>
+    <p class="source">WIS = 加權區間分數（越低越好）；相對 naive = WIS ÷ last-value naive 的 WIS；MA3 = 前 3 週移動平均（2 週以上遞迴代入預測值）；MAPE = 平均絕對百分比誤差（%）；MASE 以季節性 naive 的 in-sample MAE 為分母；方向命中 = 預測相對起點週的漲跌方向正確的比例；閾值命中 = 實際超過閾值的週中預測也超過的比例（敏感度）。灰字為基準模型。<span id="thr-foot"></span></p>
   </section>
 
   <section>
@@ -100,6 +100,7 @@ function renderCharts() {
     `<div class="kpi"><div class="label">方向命中率 · 閾值命中率</div><div class="value">${best.dir_hit.toFixed(2)}<small>/ ${best.thr_hit_rate == null ? '—' : best.thr_hit_rate.toFixed(2)}</small></div><div class="sub">無共變數 zero-shot：${zs ? zs.dir_hit.toFixed(2) + ' / ' + (zs.thr_hit_rate == null ? '—' : zs.thr_hit_rate.toFixed(2)) : '—'}</div></div>`;
   document.getElementById('ctl-note').textContent = `${seg.label}：${seg.n_origins} 個起點 × 4 個 horizon`;
   document.getElementById('thr-sub').textContent = `閾值 = ${fmt(t.threshold, d)} ${t.unit}（${t.thr_note}）；命中率 = 敏感度`;
+  document.getElementById('thr-foot').textContent = ` 本序列閾值命中率所用閾值：${fmt(t.threshold, d)} ${t.unit}（${t.thr_note}）。`;
   ['c-wis', 'c-dir', 'c-cov', 'c-thr'].forEach(destroy);
   const wisFmt = v => fmt(v, d);
   charts['c-wis'] = EPI.linesChart(document.getElementById('c-wis'), EPI.byHorizonSeries(seg, cfgs, 'wis_by_h', labels), {yLabel: 'WIS（越低越好）', xLabel: '預測週數 h', fmt: wisFmt});

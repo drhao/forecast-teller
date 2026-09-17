@@ -67,6 +67,7 @@ section { margin-bottom:44px; }
 .badge { display:inline-block; font-family:var(--mono); font-size:10px; letter-spacing:1.2px; padding:2px 7px; border:1px solid var(--n-300); border-radius:2px; color:var(--n-600); vertical-align:middle; margin-left:6px; }
 .badge.cny { border-color:var(--mustard); color:var(--mustard-line); }
 .badge.verified { border-color:var(--p-400); color:var(--p-700); }
+.badge.alert { border-color:var(--alert); color:var(--alert); }
 
 /* 控制列（放所有圖表上方的一列） */
 .controls { display:flex; flex-wrap:wrap; align-items:center; gap:14px 22px; background:var(--n-0); border:1px solid var(--n-200); border-radius:4px; padding:12px 18px; margin-bottom:22px; }
