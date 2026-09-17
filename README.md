@@ -2,6 +2,8 @@
 
 以 Google **TimesFM 3.0** 對台灣流感監測資料做零樣本（zero-shot）預測。規劃文件見 [PLAN_timesfm3_flu.md](PLAN_timesfm3_flu.md)。
 
+**線上 dashboard（GitHub Pages）**：[每週預測](https://drhao.github.io/forecast-teller/) · [回測](https://drhao.github.io/forecast-teller/backtest.html) · [解讀與評估報告](https://drhao.github.io/forecast-teller/report.html)
+
 ## 環境
 
 ```bash
@@ -72,4 +74,4 @@ python3 -m http.server 8765 --directory docs
 發布到 GitHub Pages（首次）：
 1. `git init && git add -A && git commit -m "init"`，在 GitHub 建 repo 並 `git remote add origin ... && git push -u origin main`。`data/*.csv` 已在 `.gitignore`（RODS 檔 196 MB 超過 GitHub 單檔上限），只有假日與週對應表會進版控。
 2. GitHub repo → Settings → Pages → Source 選「Deploy from a branch」→ Branch `main`、資料夾 `/docs` → Save。
-3. 1–2 分鐘後網址為 `https://<帳號>.github.io/forecast-teller/`。之後每次 push `docs/` 的變動都會自動重新部署。
+3. 1–2 分鐘後網址為 https://drhao.github.io/forecast-teller/ 。之後每次 push `docs/` 的變動都會自動重新部署（已於 2026-09-17 設定完成）。
