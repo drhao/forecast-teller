@@ -44,7 +44,7 @@
       });
       (o.horizontal || []).forEach(l => {
         const y = scales.y.getPixelForValue(l.at); if (!isFinite(y)) return;
-        ctx.save(); ctx.strokeStyle = l.color || N[400]; ctx.setLineDash(l.dash || [4, 4]); ctx.lineWidth = 1.5;
+        ctx.save(); ctx.strokeStyle = l.color || N[400]; ctx.setLineDash(l.dash || [4, 4]); ctx.lineWidth = l.width || 1.5;
         ctx.beginPath(); ctx.moveTo(left, y); ctx.lineTo(right, y); ctx.stroke();
         if (l.label) { ctx.fillStyle = l.color || N[600]; ctx.font = `11px ${FONT}`; ctx.textAlign = 'right'; ctx.fillText(l.label, right - 4, y - 5); }
         ctx.restore();
@@ -86,6 +86,8 @@
     ];
     const vertical = [{at: originIdx, label: '預測起點 ' + d.origin_date, color: N[500]}];
     cnyIdx.forEach(i => vertical.push({at: i, label: '春節週', color: '#A8821F', dash: [2, 3], row: 1}));
+    // 警戒/流行閾值線：1.5px 紅色虛線（指引 02-line-chart），只在有閾值的指標出現
+    const horizontal = opt.threshold != null ? [{at: opt.threshold, label: opt.thresholdLabel || `流行閾值 ${opt.threshold}%`, color: ACCENT.alert, dash: [6, 4], width: 1.5}] : [];
     return new Chart(canvas, {
       type: 'line', data: {labels, datasets},
       options: {
@@ -95,7 +97,7 @@
             const items = Chart.defaults.plugins.legend.labels.generateLabels(chart).filter(legendFilter);
             items.forEach(it => { if (it.text.includes('預測區間')) { it.pointStyle = 'rect'; it.fillStyle = it.text.startsWith('80') ? 'rgba(180,201,177,0.5)' : 'rgba(180,201,177,0.9)'; it.strokeStyle = 'transparent'; } else { it.pointStyle = 'line'; } });
             return items; }}},
-          refLines: {vertical},
+          refLines: {vertical, horizontal},
           tooltip: {filter: item => !String(item.dataset.label).startsWith('_') && item.parsed.y != null,
             callbacks: {
               title: items => items.length ? labels[items[0].dataIndex] + (fc.find(f => idx[f.date] === items[0].dataIndex) ? '（預測）' : '') : '',
@@ -108,7 +110,7 @@
         },
         scales: {
           x: {grid: {display: false}, ticks: {maxTicksLimit: 9, maxRotation: 0, callback: dateTick(labels)}, border: {color: N[300]}},
-          y: {beginAtZero: true, grid: {color: N[200]}, border: {display: false}, ticks: {callback: v => fmtNum(v, dec)}, title: {display: !!unit, text: unit, font: {size: 11}, color: N[500]}}
+          y: {beginAtZero: true, suggestedMax: opt.threshold != null ? opt.threshold * 1.15 : undefined, grid: {color: N[200]}, border: {display: false}, ticks: {callback: v => fmtNum(v, dec)}, title: {display: !!unit, text: unit, font: {size: 11}, color: N[500]}}
         }
       }
     });
