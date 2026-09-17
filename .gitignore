@@ -5,7 +5,7 @@ __pycache__/
 data_processed/*.parquet
 outputs/backtest/*.parquet
 
-# 原始資料檔過大（RODS 196 MB > GitHub 100 MB 上限），預設不納入版控
-data/*.csv
+# 原始資料檔過大（RODS 196 MB > GitHub 100 MB 上限），data/ 預設整個不納入版控，只保留假日與週對應表
+data/*
 !data/tw_holiday.csv
 !data/date_week_mapping.csv
