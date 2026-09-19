@@ -56,9 +56,12 @@ class Config:
     origin_start: str | None = None       # if set, only origins whose first target week >= this yw (overrides warmup)
 
 
-def load_series(targets: tuple[str, ...], start: str, end: str) -> tuple[list[str], np.ndarray, pd.DataFrame]:
-    """Returns (yws, Y (V, N), panel slice). Raises if any target has missing weeks."""
-    nat = load_national()
+def load_series(targets: tuple[str, ...], start: str, end: str,
+                panel: pd.DataFrame | None = None) -> tuple[list[str], np.ndarray, pd.DataFrame]:
+    """Returns (yws, Y (V, N), panel slice). Raises if any target has missing weeks.
+
+    `panel` defaults to the influenza national panel; sub-projects (e.g. ev_forecast) pass their own."""
+    nat = load_national() if panel is None else panel
     yws = yw_range(start, end)
     sub = nat.loc[yws]
     Y = sub[list(targets)].to_numpy(np.float64).T
@@ -74,12 +77,17 @@ def _past_only_matrix(sub: pd.DataFrame, cols: tuple[str, ...], lag: int) -> np.
     return sub[list(cols)].shift(lag).bfill().ffill().to_numpy(np.float32).T  # (K, N)
 
 
-def run_config(cfg: Config, model=None, verbose: bool = True) -> pd.DataFrame:
-    """Long DataFrame: one row per (target variate, origin, h) with truth, median, q10..q90 and scores."""
+def run_config(cfg: Config, model=None, verbose: bool = True,
+               panel: pd.DataFrame | None = None, covariate_fn=None) -> pd.DataFrame:
+    """Long DataFrame: one row per (target variate, origin, h) with truth, median, q10..q90 and scores.
+
+    `panel` / `covariate_fn` let a sub-project supply its own national panel and its own
+    future_covariates(yws, H, kinds) implementation (defaults: influenza panel, covariates.future_covariates)."""
     targets = tuple(cfg.targets) if cfg.targets else (cfg.target,)
     if cfg.targets and cfg.targets[0] != cfg.target:
         raise ValueError("cfg.target must be the first entry of cfg.targets")
-    yws, Y, sub = load_series(targets, cfg.start, cfg.end)
+    yws, Y, sub = load_series(targets, cfg.start, cfg.end, panel=panel)
+    fcov = covariate_fn or future_covariates
     V, N, H = Y.shape[0], Y.shape[1], cfg.horizon
     origins = list(range(cfg.warmup, N - H + 1))
     if cfg.origin_start:
@@ -94,7 +102,7 @@ def run_config(cfg: Config, model=None, verbose: bool = True) -> pd.DataFrame:
     if cfg.model == "timesfm3":
         assert model is not None, "pass a TimesFM3Model"
         contexts, pfs, pos = [], [], []
-        pf_full = future_covariates(yws, H, kinds=cfg.covariates) if cfg.covariates else None
+        pf_full = fcov(yws, H, kinds=cfg.covariates) if cfg.covariates else None
         po_full = _past_only_matrix(sub, cfg.past_covariates, cfg.past_lag) if cfg.past_covariates else None
         for t in origins:
             lo, hi = ctx_slice(t)

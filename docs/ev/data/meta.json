@@ -1,0 +1,221 @@
+{
+ "generated_at": "2026-09-19T22:46+08:00",
+ "coverage": {
+  "nhi": {
+   "raw_first": "201601",
+   "raw_last": "202636",
+   "first_complete": "201601",
+   "last_complete": "202636"
+  },
+  "rods": {
+   "raw_first": "200701",
+   "raw_last": "202636",
+   "first_complete": "200701",
+   "last_complete": "202636"
+  },
+  "rods_total": {
+   "first": "200901",
+   "last": "202636",
+   "source": "influenza panel data_processed/national_weekly.parquet (RODS_RS.csv)"
+  },
+  "n_weeks": 1029,
+  "age_groups_nhi": [
+   "0~2",
+   "13~15",
+   "16~18",
+   "19~24",
+   "25~64",
+   "3~6",
+   "65+",
+   "7~12",
+   "不詳"
+  ],
+  "age_groups_rods": [
+   "0",
+   "16+",
+   "1~3",
+   "4~6",
+   "7~15"
+  ],
+  "counties": 22
+ },
+ "calibration": {
+  "rows": [
+   {
+    "yw": "201617",
+    "official": 11174,
+    "out": 10340,
+    "rods": 603,
+    "composite": 10943,
+    "diff_pct": -2.1,
+    "implied_er": 834
+   },
+   {
+    "yw": "202317",
+    "official": 10230,
+    "out": 8936,
+    "rods": 454,
+    "composite": 9390,
+    "diff_pct": -8.2,
+    "implied_er": 1294
+   },
+   {
+    "yw": "202318",
+    "official": 11252,
+    "out": 10040,
+    "rods": 439,
+    "composite": 10479,
+    "diff_pct": -6.9,
+    "implied_er": 1212
+   },
+   {
+    "yw": "202335",
+    "official": 12366,
+    "out": 10809,
+    "rods": 504,
+    "composite": 11313,
+    "diff_pct": -8.5,
+    "implied_er": 1557
+   },
+   {
+    "yw": "202336",
+    "official": 12163,
+    "out": 10986,
+    "rods": 531,
+    "composite": 11517,
+    "diff_pct": -5.3,
+    "implied_er": 1177
+   },
+   {
+    "yw": "202339",
+    "official": 12463,
+    "out": 11139,
+    "rods": 545,
+    "composite": 11684,
+    "diff_pct": -6.3,
+    "implied_er": 1324
+   },
+   {
+    "yw": "202340",
+    "official": 12643,
+    "out": 11306,
+    "rods": 580,
+    "composite": 11886,
+    "diff_pct": -6.0,
+    "implied_er": 1337
+   },
+   {
+    "yw": "202418",
+    "official": 16564,
+    "out": 15788,
+    "rods": 449,
+    "composite": 16237,
+    "diff_pct": -2.0,
+    "implied_er": 776
+   },
+   {
+    "yw": "202419",
+    "official": 17895,
+    "out": 17480,
+    "rods": 519,
+    "composite": 17999,
+    "diff_pct": 0.6,
+    "implied_er": 415
+   },
+   {
+    "yw": "202449",
+    "official": 22279,
+    "out": 22263,
+    "rods": 560,
+    "composite": 22823,
+    "diff_pct": 2.4,
+    "implied_er": 16
+   },
+   {
+    "yw": "202450",
+    "official": 17508,
+    "out": 17808,
+    "rods": 410,
+    "composite": 18218,
+    "diff_pct": 4.1,
+    "implied_er": -300
+   },
+   {
+    "yw": "202546",
+    "official": 11223,
+    "out": 11510,
+    "rods": 346,
+    "composite": 11856,
+    "diff_pct": 5.6,
+    "implied_er": -287
+   },
+   {
+    "yw": "202620",
+    "official": 5153,
+    "out": 5144,
+    "rods": 159,
+    "composite": 5303,
+    "diff_pct": 2.9,
+    "implied_er": 9
+   },
+   {
+    "yw": "202621",
+    "official": 5573,
+    "out": 5660,
+    "rods": 172,
+    "composite": 5832,
+    "diff_pct": 4.6,
+    "implied_er": -87
+   },
+   {
+    "yw": "202635",
+    "official": 8641,
+    "out": 8242,
+    "rods": 374,
+    "composite": 8616,
+    "diff_pct": -0.3,
+    "implied_er": 399
+   },
+   {
+    "yw": "202636",
+    "official": 10203,
+    "out": 9741,
+    "rods": 467,
+    "composite": 10208,
+    "diff_pct": 0.0,
+    "implied_er": 462
+   }
+  ],
+  "mean_diff_pct": -1.6,
+  "min_diff_pct": -8.5,
+  "max_diff_pct": 5.6
+ },
+ "backtest_window": {
+  "start": "201601",
+  "end": "202553",
+  "weeks": 522,
+  "warmup": 104,
+  "origins": 415
+ },
+ "model": {
+  "name": "TimesFM 3.0",
+  "checkpoint": "google/timesfm-3.0-pytorch",
+  "license": "timesfm-non-commercial-license-v1.0（非商業、非生產用途）"
+ },
+ "best_config": "tfm_mv_out_rods",
+ "best_label": "三變量聯合（門急診合計 + 門診 + RODS）+ 學校行事曆 + 假日",
+ "rule": "單週門急診就診人次達流行閾值即進入流行期；連續 2 週低於閾值即脫離（第 2 週起視為非流行期）。閾值由疾管署每年設定，本專案依各年新聞稿記錄於 data/thresholds.csv。",
+ "thresholds_by_year": {
+  "2016": 11000.0,
+  "2017": 11000.0,
+  "2018": 11000.0,
+  "2019": 11000.0,
+  "2020": 11000.0,
+  "2021": 11000.0,
+  "2022": 11000.0,
+  "2023": 11000.0,
+  "2024": 11000.0,
+  "2025": 11000.0,
+  "2026": 12000.0
+ }
+}

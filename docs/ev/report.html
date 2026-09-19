@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>解讀與評估報告 · 台灣腸病毒 TimesFM 3.0 預測</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&family=Noto+Serif+TC:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/epi.css?v=ev1">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="../assets/charts.js?v=ev1" defer></script></head>
+<body>
+<header class="masthead"><div class="masthead-inner"><div class="masthead-left"><div class="crest">FT</div><div class="masthead-title">台灣腸病毒疫情預測 · TimesFM 3.0<small>FORECAST-TELLER · EV · 解讀與評估報告</small></div></div>
+<nav class="masthead-right"><a href="../index.html">流感</a><a href="index.html">每週預測</a><a href="backtest.html">回測</a><a href="report.html" class="active">報告</a><a href="../dengue/">登革熱預警</a></nav></div></header>
+<main class="report">
+<div class="hero-kicker">EVALUATION REPORT · 2026-09-19</div>
+<h1 class="report-title">以 TimesFM 3.0 零樣本預測台灣腸病毒門急診就診：<em>回測解讀與評估</em></h1>
+<p class="lead">資料窗 2016w01–2025w53（522 週），以 2016–2017 為暖機 context，2018w01 起每週一個起點共 415 個，預測未來 1–4 週；主要決策依據為 COVID 後（2023–2025）的加權區間分數（WIS）。目標序列為全國腸病毒門急診就診人次，其中急診部分暫以 RODS 急診腸病毒人次代替。</p>
+
+<div class="kpi-strip">
+  <div class="kpi"><div class="label">最佳設定 WIS（COVID 後，h=1–4）</div><div class="value">1,105</div><div class="sub">三變量聯合（門急診合計 + 門診 + RODS）+ 學校行事曆 + 假日</div></div>
+  <div class="kpi"><div class="label">相對 last-value naive</div><div class="value">−19%</div><div class="sub">1–4 週分別 −21% / −20% / −18% / −17%</div></div>
+  <div class="kpi"><div class="label">80% 預測區間涵蓋率</div><div class="value">0.75</div><div class="sub">理想值 0.80；60% 區間 0.54</div></div>
+  <div class="kpi"><div class="label">流行閾值命中率 · 誤報率</div><div class="value">0.84<small>/ 0.08</small></div><div class="sub">閾值 11,000（2016–2025）；naive 0.80 / 0.13</div></div>
+</div>
+
+<section><h2>1. 我們評估了什麼</h2>
+<p>目標序列是<strong>全國每週腸病毒門急診就診人次</strong>：健保申報的門診腸病毒就診人次（疾管署資料開放平台）加上 RODS 急診腸病毒就診人次。這是疾管署判定腸病毒流行期的指標；開放資料的健保檔只有門診與住院，沒有急診，因此急診部分<strong>暫以 RODS 人次代替</strong>（使用者決定，2026-09-19），日後取得健保急診檔再替換。另以健保門診人次單獨做完整的分層實驗（第 3 節）。</p>
+<p>模型是 Google TimesFM 3.0（330M 參數的時間序列基礎模型），<strong>零樣本、未經微調</strong>，逐層加入已知未來共變數（學校行事曆：暑假、寒假、開學前兩週；每週平日假日天數；春節旗標；季節相位）、過去共變數（RODS、住院）與多變量聯合預測。基準為 last-value naive、MA3、季節性 naive、AutoETS、Theta。評估指標：WIS、MAE、MAPE、MASE、80%/60% 涵蓋率、方向命中率、±10% 命中率、流行閾值命中率與誤報率；結果分 COVID 前／期／後三段。</p></section>
+
+<section><h2>2. 使用的資料與流行閾值</h2>
+<table class="tbl compact"><thead><tr><th>來源</th><th>內容</th><th>粒度</th><th>完整週範圍</th></tr></thead><tbody>
+<tr><td>健保門診及住院就診人次統計－腸病毒（開放資料）</td><td>腸病毒健保就診人次、健保就診總人次；門診與住院</td><td>週 × 9 年齡層 × 22 縣市</td><td class="num">201601–202636</td></tr>
+<tr><td>急診傳染病監測統計－腸病毒（開放資料，RODS）</td><td>急診腸病毒就診人次（無分母）</td><td>週 × 5 年齡層 × 22 縣市</td><td class="num">200701–202636</td></tr>
+<tr><td>RODS 急診總人次（流感面板 RODS_RS.csv）</td><td>急診就診總人次，用來算腸病毒急診就診百分比</td><td>週 × 醫院</td><td class="num">200901–202636</td></tr>
+<tr><td>行事曆</td><td>學校暑假／寒假／開學週（近似規則）、平日假日天數、春節（tw_holiday.csv）</td><td>週</td><td class="num">2016–2027</td></tr>
+</tbody></table>
+<div class="two-col">
+<div class="card"><h3>流行閾值（疾管署每年設定，依新聞稿記錄）</h3>
+<table class="tbl compact"><thead><tr><th>年</th><th class="num">門急診就診人次</th></tr></thead><tbody><tr><td>2016</td><td class='num'>11,000</td></tr><tr><td>2017</td><td class='num'>11,000</td></tr><tr><td>2018</td><td class='num'>11,000</td></tr><tr><td>2019</td><td class='num'>11,000</td></tr><tr><td>2020</td><td class='num'>11,000</td></tr><tr><td>2021</td><td class='num'>11,000</td></tr><tr><td>2022</td><td class='num'>11,000</td></tr><tr><td>2023</td><td class='num'>11,000</td></tr><tr><td>2024</td><td class='num'>11,000</td></tr><tr><td>2025</td><td class='num'>11,000</td></tr><tr><td>2026</td><td class='num'>12,000</td></tr></tbody></table>
+<p class="source">2016、2023、2024、2025、2026 年有新聞稿佐證；其餘年份推定沿用 11,000。流行期規則（暫定）：單週門急診就診人次達流行閾值即進入流行期；連續 2 週低於閾值即脫離（第 2 週起視為非流行期）。閾值由疾管署每年設定，本專案依各年新聞稿記錄於 data/thresholds.csv。</p></div>
+<div class="card"><h3>合成指標（門診 + RODS）與疾管署公布值的比較</h3>
+<table class="tbl compact"><thead><tr><th>週</th><th class="num">公布門急診</th><th class="num">開放資料門診</th><th class="num">RODS</th><th class="num">合成</th><th class="num">差</th></tr></thead><tbody><tr><td>201617</td><td class='num'>11,174</td><td class='num'>10,340</td><td class='num'>603</td><td class='num'>10,943</td><td class='num'>-2.1%</td></tr><tr><td>202317</td><td class='num'>10,230</td><td class='num'>8,936</td><td class='num'>454</td><td class='num'>9,390</td><td class='num'>-8.2%</td></tr><tr><td>202318</td><td class='num'>11,252</td><td class='num'>10,040</td><td class='num'>439</td><td class='num'>10,479</td><td class='num'>-6.9%</td></tr><tr><td>202335</td><td class='num'>12,366</td><td class='num'>10,809</td><td class='num'>504</td><td class='num'>11,313</td><td class='num'>-8.5%</td></tr><tr><td>202336</td><td class='num'>12,163</td><td class='num'>10,986</td><td class='num'>531</td><td class='num'>11,517</td><td class='num'>-5.3%</td></tr><tr><td>202339</td><td class='num'>12,463</td><td class='num'>11,139</td><td class='num'>545</td><td class='num'>11,684</td><td class='num'>-6.3%</td></tr><tr><td>202340</td><td class='num'>12,643</td><td class='num'>11,306</td><td class='num'>580</td><td class='num'>11,886</td><td class='num'>-6.0%</td></tr><tr><td>202418</td><td class='num'>16,564</td><td class='num'>15,788</td><td class='num'>449</td><td class='num'>16,237</td><td class='num'>-2.0%</td></tr><tr><td>202419</td><td class='num'>17,895</td><td class='num'>17,480</td><td class='num'>519</td><td class='num'>17,999</td><td class='num'>+0.6%</td></tr><tr><td>202449</td><td class='num'>22,279</td><td class='num'>22,263</td><td class='num'>560</td><td class='num'>22,823</td><td class='num'>+2.4%</td></tr><tr><td>202450</td><td class='num'>17,508</td><td class='num'>17,808</td><td class='num'>410</td><td class='num'>18,218</td><td class='num'>+4.1%</td></tr><tr><td>202546</td><td class='num'>11,223</td><td class='num'>11,510</td><td class='num'>346</td><td class='num'>11,856</td><td class='num'>+5.6%</td></tr><tr><td>202620</td><td class='num'>5,153</td><td class='num'>5,144</td><td class='num'>159</td><td class='num'>5,303</td><td class='num'>+2.9%</td></tr><tr><td>202621</td><td class='num'>5,573</td><td class='num'>5,660</td><td class='num'>172</td><td class='num'>5,832</td><td class='num'>+4.6%</td></tr><tr><td>202635</td><td class='num'>8,641</td><td class='num'>8,242</td><td class='num'>374</td><td class='num'>8,616</td><td class='num'>-0.3%</td></tr><tr><td>202636</td><td class='num'>10,203</td><td class='num'>9,741</td><td class='num'>467</td><td class='num'>10,208</td><td class='num'>+0.0%</td></tr></tbody></table>
+<p class="source">公布值為新聞稿首報數字，開放資料為回補後數值。合成指標在 2016–2023 年偏低 2–9%（RODS 只涵蓋部分急診），2024 年後在 ±5% 內（平均 -1.6%，範圍 -8.5% 至 +5.6%）。以合成指標套用官方閾值時，早年略偏保守。</p></div>
+</div></section>
+
+<section><h2>3. 主要結果</h2>
+<div class="two-col">
+<div class="card"><h3>各設定 WIS 依預測週數（門急診合計，COVID 後）</h3><div class="chart-box"><canvas id="c-wis"></canvas></div><p class="source">WIS 越低越好；灰色虛線為基準模型。</p></div>
+<div class="card"><h3>最佳設定 1 週前預測 vs 實際（2023–2025）</h3><div class="chart-box"><canvas id="c-ts"></canvas></div><p class="source">虛線為預測中位數，淺綠帶為 80% 預測區間。</p></div>
+</div>
+<table class="tbl compact"><thead><tr><th>設定（門急診合計）</th><th class="num">WIS</th><th class="num">相對 naive</th><th class="num">MAPE %</th><th class="num">80% 涵蓋</th><th class="num">方向命中</th><th class="num">閾值命中</th><th class="num">誤報率</th></tr></thead><tbody><tr class='best'><td>三變量聯合（門急診合計 + 門診 + RODS）+ 學校行事曆 + 假日</td><td class='num'>1,105</td><td class='num'>0.81</td><td class='num'>15.3</td><td class='num'>0.75</td><td class='num'>0.71</td><td class='num'>0.84</td><td class='num'>0.08</td></tr><tr class=''><td>TimesFM + 學校行事曆 + 假日</td><td class='num'>1,115</td><td class='num'>0.82</td><td class='num'>15.5</td><td class='num'>0.73</td><td class='num'>0.71</td><td class='num'>0.85</td><td class='num'>0.08</td></tr><tr class=''><td>TimesFM zero-shot（無共變數）</td><td class='num'>1,160</td><td class='num'>0.85</td><td class='num'>16.8</td><td class='num'>0.75</td><td class='num'>0.69</td><td class='num'>0.85</td><td class='num'>0.09</td></tr><tr class=''><td>AutoETS</td><td class='num'>1,293</td><td class='num'>0.95</td><td class='num'>18.7</td><td class='num'>0.79</td><td class='num'>0.34</td><td class='num'>0.80</td><td class='num'>0.13</td></tr><tr class=''><td>MA3（前 3 週移動平均）</td><td class='num'>1,604</td><td class='num'>1.18</td><td class='num'>22.0</td><td class='num'>0.77</td><td class='num'>0.33</td><td class='num'>0.72</td><td class='num'>0.14</td></tr><tr class=''><td>last-value naive</td><td class='num'>1,358</td><td class='num'>1.00</td><td class='num'>18.7</td><td class='num'>0.74</td><td class='num'>0.40</td><td class='num'>0.80</td><td class='num'>0.13</td></tr><tr class=''><td>季節性 naive（去年同週）</td><td class='num'>5,375</td><td class='num'>3.96</td><td class='num'>81.9</td><td class='num'>0.60</td><td class='num'>0.50</td><td class='num'>0.35</td><td class='num'>0.33</td></tr></tbody></table>
+<ul class="findings">
+<li><strong>零樣本已勝過統計基準。</strong>不加共變數的 TimesFM，WIS 比 last-value naive 低 15%、比 MA3 低 28%、比 AutoETS 低 10%。季節性 naive 的 WIS 是 naive 的 4.0 倍：腸病毒一年兩波且波形逐年不同，去年同週幾乎沒有參考價值。</li>
+<li><strong>最佳設定：三變量聯合（門急診合計 + 門診 + RODS）+ 學校行事曆 + 假日</strong>，相對 naive 在 1–4 週分別改善 21% / 20% / 18% / 17%；方向命中率 1 週前 0.72、4 週前 0.71。</li>
+<li><strong>校準。</strong>80% 區間涵蓋率 0.75、60% 涵蓋率 0.54；naive 為 0.74。</li>
+<li><strong>COVID 前（2018–2019）</strong>最佳為 四變量聯合（門急診合計 + 門診 + RODS + 住院）+ 學校行事曆 + 假日，WIS 859，相對 naive −31%。</li>
+<li><strong>流行閾值（11,000）命中。</strong>最佳設定 1–4 週平均命中率 0.84、誤報率 0.08；naive 為 0.80 / 0.13。</li>
+</ul>
+<h3 style="margin-top:18px">門診人次的分層實驗（COVID 後，h = 1–4 平均）</h3>
+<table class="tbl compact"><thead><tr><th>設定（門診）</th><th class="num">WIS</th><th class="num">相對 naive</th><th class="num">MAPE %</th><th class="num">80% 涵蓋</th><th class="num">方向命中</th></tr></thead><tbody><tr class='best '><td>二變量聯合（+ RODS）+ 學校行事曆 + 假日</td><td class='num'>1,069</td><td class='num'>0.80</td><td class='num'>15.6</td><td class='num'>0.76</td><td class='num'>0.72</td></tr><tr class=' '><td>TimesFM + RODS（過去共變數）+ 學校行事曆 + 假日</td><td class='num'>1,069</td><td class='num'>0.80</td><td class='num'>15.6</td><td class='num'>0.76</td><td class='num'>0.72</td></tr><tr class=' '><td>TimesFM + 假日天數</td><td class='num'>1,087</td><td class='num'>0.82</td><td class='num'>16.2</td><td class='num'>0.74</td><td class='num'>0.69</td></tr><tr class=' '><td>TimesFM + 學校行事曆 + 假日（log1p）</td><td class='num'>1,088</td><td class='num'>0.82</td><td class='num'>14.8</td><td class='num'>0.75</td><td class='num'>0.72</td></tr><tr class=' '><td>TimesFM + 學校行事曆 + 假日</td><td class='num'>1,090</td><td class='num'>0.82</td><td class='num'>15.8</td><td class='num'>0.73</td><td class='num'>0.71</td></tr><tr class=' '><td>TimesFM + RODS + 住院（過去共變數）+ 學校行事曆 + 假日</td><td class='num'>1,092</td><td class='num'>0.82</td><td class='num'>15.8</td><td class='num'>0.78</td><td class='num'>0.71</td></tr><tr class=' '><td>三變量聯合（+ RODS + 住院）+ 學校行事曆 + 假日</td><td class='num'>1,092</td><td class='num'>0.82</td><td class='num'>15.8</td><td class='num'>0.78</td><td class='num'>0.71</td></tr><tr class=' '><td>多變量聯合（門診/RODS/住院）+ 學校行事曆 + 假日</td><td class='num'>1,092</td><td class='num'>0.82</td><td class='num'>15.8</td><td class='num'>0.78</td><td class='num'>0.71</td></tr><tr class=' '><td>TimesFM + 雙諧波季節 + 學校行事曆 + 假日</td><td class='num'>1,092</td><td class='num'>0.82</td><td class='num'>16.2</td><td class='num'>0.72</td><td class='num'>0.70</td></tr><tr class=' '><td>TimesFM + 單諧波季節 + 學校行事曆 + 假日</td><td class='num'>1,102</td><td class='num'>0.83</td><td class='num'>16.2</td><td class='num'>0.72</td><td class='num'>0.71</td></tr><tr class=' '><td>TimesFM + 學校行事曆</td><td class='num'>1,109</td><td class='num'>0.83</td><td class='num'>16.0</td><td class='num'>0.72</td><td class='num'>0.69</td></tr><tr class=' '><td>TimesFM + 春節 + 假日</td><td class='num'>1,114</td><td class='num'>0.84</td><td class='num'>16.4</td><td class='num'>0.71</td><td class='num'>0.70</td></tr><tr class=' '><td>TimesFM + 雙諧波季節相位</td><td class='num'>1,136</td><td class='num'>0.85</td><td class='num'>17.4</td><td class='num'>0.75</td><td class='num'>0.69</td></tr><tr class=' '><td>TimesFM（對稱平均）</td><td class='num'>1,138</td><td class='num'>0.86</td><td class='num'>17.5</td><td class='num'>0.77</td><td class='num'>0.68</td></tr><tr class=' '><td>TimesFM zero-shot（無共變數）</td><td class='num'>1,143</td><td class='num'>0.86</td><td class='num'>17.6</td><td class='num'>0.74</td><td class='num'>0.69</td></tr><tr class=' '><td>TimesFM（滑動 260 週）</td><td class='num'>1,143</td><td class='num'>0.86</td><td class='num'>17.4</td><td class='num'>0.75</td><td class='num'>0.66</td></tr><tr class=' '><td>TimesFM（log1p）</td><td class='num'>1,144</td><td class='num'>0.86</td><td class='num'>17.3</td><td class='num'>0.79</td><td class='num'>0.67</td></tr><tr class=' '><td>三變量聯合（+ RODS + 住院）+ 學校行事曆 + 假日（log1p）</td><td class='num'>1,156</td><td class='num'>0.87</td><td class='num'>15.7</td><td class='num'>0.77</td><td class='num'>0.73</td></tr><tr class=' '><td>TimesFM（滑動 156 週）</td><td class='num'>1,232</td><td class='num'>0.93</td><td class='num'>19.2</td><td class='num'>0.72</td><td class='num'>0.65</td></tr><tr class=' baseline'><td>AutoETS</td><td class='num'>1,281</td><td class='num'>0.96</td><td class='num'>19.6</td><td class='num'>0.79</td><td class='num'>0.33</td></tr><tr class=' baseline'><td>Theta</td><td class='num'>1,330</td><td class='num'>1.00</td><td class='num'>19.5</td><td class='num'>0.72</td><td class='num'>0.36</td></tr><tr class=' baseline'><td>last-value naive</td><td class='num'>1,330</td><td class='num'>1.00</td><td class='num'>19.4</td><td class='num'>0.74</td><td class='num'>0.40</td></tr><tr class=' baseline'><td>MA3（前 3 週移動平均）</td><td class='num'>1,566</td><td class='num'>1.18</td><td class='num'>22.6</td><td class='num'>0.78</td><td class='num'>0.32</td></tr></tbody></table>
+<p class="source">門診最佳：二變量聯合（+ RODS）+ 學校行事曆 + 假日（相對 naive 0.80）。灰字為基準模型；季節性 naive 略去。</p></section>
+
+<section><h2>4. 怎麼解讀</h2>
+<ul class="findings">
+<li><strong>1–2 週最可靠。</strong>WIS 隨 horizon 上升（544 → 1,596）。4 週的預測應只做規劃參考。</li>
+<li><strong>用機率而非單點判斷是否進入流行期。</strong>每週頁以 9 個分位數推得「達閾值的機率」；建議以機率 ≥ 50% 作為「可能進入流行期」的預警，並與規則（連續 2 週低於閾值才脫離）一起看。</li>
+<li><strong>型別轉換是模型看不到的。</strong>流行規模與重症由 EV-A71、CVA6、CVA16、E11、EV-D68 等型別組成決定，零樣本模型只從就診人次的形狀外推；遇到型別轉換造成的異常季節（如 2025 年秋末才進入流行期）會慢半拍。</li>
+<li><strong>COVID 期分數不作決策依據。</strong>2020–2022 幾乎沒有腸病毒流行。</li>
+</ul></section>
+
+<section><h2>5. 限制與注意事項</h2>
+<ul class="findings">
+<li>急診以 RODS 代替：RODS 只涵蓋部分急診，合成指標早年偏低 2–9%；取得健保急診檔後應重跑。</li>
+<li>開放資料有回補：新聞稿首報值與日後開放資料相差可達 3–5%；建議每週保存快照以估計回補係數。</li>
+<li>學校行事曆為近似規則（暑假 7/1–8/29、寒假 1/21 至春節後 6 天、開學前兩週），非各學年實際日期。</li>
+<li>閾值 2017–2019 年未找到新聞稿佐證，推定為 11,000；2026 年 12,000 依新聞稿，均待疾管署正式文件確認。</li>
+<li>TimesFM 3.0 權重為非商業、非生產用途授權。</li>
+</ul></section>
+
+<section><h2>6. 最新預測摘要（起點 202636，2026-09-06 當週）</h2>
+<p>門急診合計未來 4 週中位數：11,113、11,643、12,390、12,866 人次；第 1 週 80% 區間 10,277–12,146。2026 年流行閾值 12,000 人次；目前未進入流行期。完整內容見<a href="index.html">每週預測</a>。</p></section>
+
+<footer class="report-footer">資料：疾病管制署資料開放平台（健保門診腸病毒、RODS 急診腸病毒）、RODS_RS.csv（急診總人次）。模型：google/timesfm-3.0-pytorch（非商業授權）。產生時間 2026-09-19T22:46+08:00。圖表依《疫情資料視覺化指引》v1.1。</footer>
+</main>
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+  const bt = await (await fetch('data/backtest.json')).json();
+  const t = bt.targets['ev_oe']; const seg = t.segments.post_covid;
+  const cfgs = [t.best, 'tfm_cov_school_hol', 'tfm_expanding', 'ets', 'ma3', 'naive'].filter((c, i, a) => a.indexOf(c) === i && seg.wis_by_h[c]);
+  EPI.linesChart(document.getElementById('c-wis'), EPI.byHorizonSeries(seg, cfgs, 'wis_by_h', bt.config_labels), {yLabel: 'WIS', xLabel: '預測週數（h）', fmt: v => v.toLocaleString('zh-TW', {maximumFractionDigits: 0})});
+  EPI.backtestTsChart(document.getElementById('c-ts'), t.timeseries.h1, {unit: t.unit, decimals: t.decimals});
+});
+</script>
+</body></html>

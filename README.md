@@ -30,6 +30,7 @@ python scripts/run_group_backtest.py --by county --indicator nhi_out_ili   # 22 
 python scripts/make_report.py --tags nhi_out_ili_layer1 nhi_out_ili_layer2 nhi_out_ili_layer2b nhi_out_ili_layer3 nhi_out_ili_layer4 nhi_out_ili_stats --title 全國類流感門診人次 --name nhi_out_ili
 python scripts/forecast_now.py --joint nhi_out_ili nhi_er_ili rods_ili --covariates cny holiday   # 即時預測（最佳設定；outputs/latest/）
 # 登革熱鄉鎮預警（CHG 情境一）是獨立子專案：見 dengue_ewarn/README.md
+# 腸病毒疫情預測是獨立子專案：見 ev_forecast/README.md（網站 docs/ev/）
 ```
 
 ## 目錄
@@ -63,6 +64,7 @@ python scripts/forecast_now.py --joint nhi_out_ili nhi_er_ili rods_ili --covaria
 | `docs/backtest.html` | 回測 dashboard：排行榜（可排序）、WIS/命中率/涵蓋率依 horizon、預測 vs 實際、各年、縣市與年齡層 |
 | `docs/report.html` | 一頁式解讀與評估報告（可列印） |
 | `docs/dengue/index.html` | 登革熱鄉鎮預測式預警的視覺化報告（子專案 `dengue_ewarn/` 產生） |
+| `docs/ev/` | 腸病毒每週預測、回測、報告（子專案 `ev_forecast/` 產生；門急診合計 = 健保門診 + RODS 急診，流行閾值依年設定） |
 | `docs/data/*.json` | 由 `scripts/build_site.py` 從 `outputs/` 產生 |
 
 本機預覽（頁面用 fetch 讀 JSON，需走 HTTP）：

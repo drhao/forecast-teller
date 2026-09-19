@@ -1,19 +1,19 @@
 <!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>回測 · 台灣流感 TimesFM 3.0</title>
+<title>回測 · 台灣腸病毒 TimesFM 3.0</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&family=Noto+Serif+TC:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/epi.css?v=20260917b">
+<link rel="stylesheet" href="../assets/epi.css?v=ev1">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="assets/charts.js?v=20260917b" defer></script>
+<script src="../assets/charts.js?v=ev1" defer></script>
 </head><body>
 <header class="masthead"><div class="masthead-inner">
-  <div class="masthead-left"><div class="crest">FT</div><div class="masthead-title">台灣流感疫情預測 · TimesFM 3.0<small>FORECAST-TELLER · BACKTEST</small></div></div>
-  <nav class="masthead-right"><a href="index.html">每週預測</a><a href="backtest.html" class="active">回測</a><a href="report.html">報告</a><a href="ev/">腸病毒</a><a href="dengue/">登革熱預警</a></nav>
+  <div class="masthead-left"><div class="crest">FT</div><div class="masthead-title">台灣腸病毒疫情預測 · TimesFM 3.0<small>FORECAST-TELLER · EV · BACKTEST</small></div></div>
+  <nav class="masthead-right"><a href="../index.html">流感</a><a href="index.html">每週預測</a><a href="backtest.html" class="active">回測</a><a href="report.html">報告</a><a href="../dengue/">登革熱預警</a></nav>
 </div></header>
 <main>
   <div class="hero-kicker">Rolling-origin backtest · 2016–2025</div>
   <h1 class="page-title">回測儀表板 <em>2016w01–2025w53，415 個起點，h = 1–4</em></h1>
-  <p class="lead">每個起點只用截至該週的資料預測未來 1–4 週；起點自 2018w01 起每週一個。結果分 COVID 前（2018–2019）、COVID 期（2020–2022）、COVID 後（2023–2025）三段，決策看 COVID 後。所有分數為各起點的平均。</p>
+  <p class="lead">每個起點只用截至該週的資料預測未來 1–4 週；起點自 2018w01 起每週一個。結果分 COVID 前（2018–2019）、COVID 期（2020–2022）、COVID 後（2023–2025）三段，決策看 COVID 後。所有分數為各起點的平均。目標「門急診合計」= 健保門診 + RODS 急診（急診暫以 RODS 代替）。</p>
 
   <div class="controls">
     <div><label for="sel-target">目標序列</label><select id="sel-target"></select></div>
@@ -26,7 +26,7 @@
   <section>
     <div class="section-head"><span class="section-num">01</span><h2>排行榜</h2><span class="en">Leaderboard · mean over h = 1–4 · click headers to sort</span></div>
     <div class="tbl-wrap"><table class="tbl" id="lb"></table></div>
-    <p class="source">WIS = 加權區間分數（越低越好）；相對 naive = WIS ÷ last-value naive 的 WIS；MA3 = 前 3 週移動平均（2 週以上遞迴代入預測值）；MAPE = 平均絕對百分比誤差（%）；MASE 以季節性 naive 的 in-sample MAE 為分母；方向命中 = 預測相對起點週的漲跌方向正確的比例；閾值命中 = 實際超過閾值的週中預測也超過的比例（敏感度）。灰字為基準模型。<span id="thr-foot"></span></p>
+    <p class="source">WIS = 加權區間分數（越低越好）；相對 naive = WIS ÷ last-value naive 的 WIS；MA3 = 前 3 週移動平均（2 週以上遞迴代入預測值）；MAPE = 平均絕對百分比誤差（%）；MASE 以季節性 naive 的 in-sample MAE 為分母（腸病毒季節性弱，MASE 偏小，請以 WIS 與相對 naive 為主）；方向命中 = 預測相對起點週的漲跌方向正確的比例；閾值命中 = 實際超過閾值的週中預測也超過的比例（敏感度）。灰字為基準模型。<span id="thr-foot"></span></p>
   </section>
 
   <section>
@@ -55,19 +55,11 @@
     <div class="tbl-wrap"><table class="tbl compact" id="yearly"></table></div>
   </section>
 
-  <section>
-    <div class="section-head"><span class="section-num">05</span><h2>縣市與年齡層：聯合多變量預測</h2><span class="en">County / age-group joint forecasts · relative WIS vs per-series naive</span></div>
-    <div class="grid-2">
-      <div class="card"><h3>22 縣市：聯合多變量 + 共變數 相對 naive 的 WIS（COVID 後）</h3><div class="sub">小於 1.0 表示優於逐縣市 last-value naive；灰線 = 1.0</div><div class="chart-box tall"><canvas id="c-county"></canvas></div></div>
-      <div class="card"><h3>18 年齡層：聯合多變量 + 共變數 相對 naive 的 WIS（COVID 後）</h3><div class="sub">同左；年齡層跨序列相關較強</div><div class="chart-box tall"><canvas id="c-age"></canvas></div></div>
-    </div>
-    <div class="tbl-wrap" style="margin-top:18px"><table class="tbl compact" id="group-tbl"></table></div>
-  </section>
 </main>
 <footer class="site-footer" id="footer"></footer>
 <script>
 const fmt = (v, d = 0) => (v == null) ? '—' : Number(v).toLocaleString('zh-TW', {minimumFractionDigits: d, maximumFractionDigits: d});
-const state = {target: 'nhi_out_ili', seg: 'post_covid', h: 'h1', sort: {key: 'wis', asc: true}};
+const state = {target: 'ev_oe', seg: 'post_covid', h: 'h1', sort: {key: 'wis', asc: true}};
 const charts = {};
 let BT, META;
 function destroy(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
@@ -87,13 +79,13 @@ function renderLeaderboard() {
 function focusConfigs(t, seg) {
   const lb = seg.leaderboard; const models = lb.filter(r => r.kind === 'timesfm').slice(0, 3).map(r => r.config);
   // 季節性 naive 的 WIS 高出一個量級，畫進折線圖會壓扁其他序列，只留在排行榜
-  return [...models, 'tfm_expanding', 'ets', 'ma3', 'naive'].filter((c, i, a) => a.indexOf(c) === i && seg.wis_by_h[c]);
+  return [...models, 'tfm_expanding', 'tfm_cov_school_hol', 'ets', 'ma3', 'naive'].filter((c, i, a) => a.indexOf(c) === i && seg.wis_by_h[c]);
 }
 
 function renderCharts() {
   const t = BT.targets[state.target]; const seg = t.segments[state.seg]; const d = t.decimals; const labels = BT.config_labels;
   const cfgs = focusConfigs(t, seg);
-  const kp = document.getElementById('kpi-strip'); const best = seg.leaderboard.find(r => r.kind === 'timesfm'); const naive = seg.leaderboard.find(r => r.config === 'naive'); const zs = seg.leaderboard.find(r => r.config === 'tfm_expanding');
+  const kp = document.getElementById('kpi-strip'); const best = seg.leaderboard.find(r => r.kind === 'timesfm') || seg.leaderboard[0]; const naive = seg.leaderboard.find(r => r.config === 'naive'); const zs = seg.leaderboard.find(r => r.config === 'tfm_expanding');
   kp.innerHTML = `<div class="kpi"><div class="label">最佳設定（${seg.label}）</div><div class="value" style="font-size:18px">${best.label}</div><div class="sub">WIS ${fmt(best.wis, d)}；MASE ${best.mase.toFixed(2)}</div></div>` +
     `<div class="kpi"><div class="label">相對 last-value naive</div><div class="value">−${Math.round(100 * (1 - best.rel_naive))}%</div><div class="sub">1–4 週：${seg.wis_by_h[best.config].map((w, i) => '−' + Math.round(100 * (1 - w / seg.wis_by_h['naive'][i])) + '%').join(' / ')}</div></div>` +
     `<div class="kpi"><div class="label">80% / 60% 區間涵蓋率</div><div class="value">${best.cov80.toFixed(2)}<small>/ ${best.cov60.toFixed(2)}</small></div><div class="sub">理想 0.80 / 0.60；naive ${naive.cov80.toFixed(2)}</div></div>` +
@@ -124,16 +116,6 @@ function renderYearly() {
     rows.flatMap(c => [[1, y1[c]], [4, y4[c]]].map(([h, v]) => `<tr class="${['naive', 'ma3', 'snaive', 'ets', 'theta'].includes(c) ? 'baseline' : ''} ${c === t.best ? 'best' : ''}"><td>${h === 1 ? labels[c] || c : ''}</td><td>h=${h}</td>${years.map(y => `<td class="num">${fmt(v[y], d)}</td>`).join('')}</tr>`)).join('') + '</tbody>';
 }
 
-function renderGroups() {
-  const g = BT.groups;
-  ['county', 'age'].forEach(k => {
-    const rel = g[k].per_group_rel; const id = 'c-' + k; destroy(id);
-    charts[id] = EPI.hbarChart(document.getElementById(id), rel.map(r => r.name), rel.map(r => r.mv_cov), {label: '相對 naive 的 WIS', fmt: v => Number(v).toFixed(2), refAt: 1.0, refLabel: 'naive = 1.0', xMax: 1.1, xLabel: '相對 WIS（< 1 優於 naive）'});
-  });
-  const segs = ['post_covid', 'pre_covid', 'covid', 'all'];
-  document.getElementById('group-tbl').innerHTML = `<thead><tr><th>層級</th><th>設定</th>${segs.map(s => `<th class="num">${BT.seg_labels[s]}<br><span style="font-weight:400">相對 naive WIS</span></th>`).join('')}<th class="num">80% 涵蓋（COVID 後）</th><th class="num">方向命中（COVID 後）</th></tr></thead><tbody>` +
-    ['county', 'age'].flatMap(k => g[k].segments.post_covid.map(r => { const by = s => g[k].segments[s].find(x => x.config === r.config); return `<tr class="${['naive', 'ma3'].includes(r.config) ? 'baseline' : ''}"><td>${g[k].label}</td><td>${r.label}</td>${segs.map(s => `<td class="num">${by(s).rel_naive.toFixed(2)}</td>`).join('')}<td class="num">${r.cov80.toFixed(2)}</td><td class="num">${r.dir_hit.toFixed(2)}</td></tr>`; })).join('') + '</tbody>';
-}
 
 document.addEventListener('DOMContentLoaded', async () => {
   [BT, META] = await Promise.all([fetch('data/backtest.json').then(r => r.json()), fetch('data/meta.json').then(r => r.json())]);
@@ -143,7 +125,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const sg = document.getElementById('seg-group');
   ['post_covid', 'pre_covid', 'covid', 'all'].forEach(s => sg.insertAdjacentHTML('beforeend', `<button class="seg-btn ${s === state.seg ? 'active' : ''}" data-seg="${s}">${BT.seg_labels[s]}</button>`));
   sg.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { state.seg = b.dataset.seg; sg.querySelectorAll('button').forEach(x => x.classList.toggle('active', x === b)); renderLeaderboard(); renderCharts(); }));
-  renderLeaderboard(); renderCharts(); renderGroups();
+  renderLeaderboard(); renderCharts();
   document.getElementById('footer').textContent = `回測資料窗 ${META.backtest_window.start}–${META.backtest_window.end}（${META.backtest_window.weeks} 週），暖機 ${META.backtest_window.warmup} 週，起點 ${META.backtest_window.origins} 個。模型 ${META.model.checkpoint}（${META.model.license}）。圖表依《疫情資料視覺化指引》v1.1。產生時間 ${META.generated_at}。`;
 });
 </script>
