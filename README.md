@@ -37,7 +37,7 @@ python scripts/forecast_now.py --joint nhi_out_ili nhi_er_ili rods_ili --covaria
 
 | 路徑 | 內容 |
 |---|---|
-| `data/` | 原始 CSV（健保、RODS、NIDDS、實驗室自動通報系統（LARS）；Big5 編碼）與 `RESP_LAB.csv`（社區合約實驗室呼吸道病原體 PCR，UTF-8，2025 起；目前用於病原體組成監測，回測顯示作為共變數無增益） |
+| `data/` | 原始 CSV（健保、RODS、NIDDS、實驗室自動通報系統（LARS）；Big5 編碼）與 `RESP_LAB.csv`（社區合約實驗室呼吸道病原體 PCR，UTF-8，2025 起；由 `scripts/fetch_resp_lab.py` 從 NIDSS 網站抓取，每次抓到的值留存於 `resp_lab_history.csv`；目前用於病原體組成監測，回測顯示作為共變數無增益） |
 | `data_processed/` | `national_weekly.*`、`county_weekly.parquet`、`age_weekly.parquet`、`coverage.json`、`qa_report.md` |
 | `src/forecast_teller/` | `io` 讀檔、`weeks` 疫情週、`panel` 面板、`covariates` 共變數、`model_timesfm3` 模型包裝、`baselines`、`metrics`（WIS）、`backtest`、`report` |
 | `scripts/` | 可執行流程 |
@@ -73,7 +73,7 @@ python scripts/forecast_now.py --joint nhi_out_ili nhi_er_ili rods_ili --covaria
 python3 -m http.server 8765 --directory docs
 ```
 
-每週更新一鍵流程：`scripts/weekly_update.sh`（加 `--push` 會 commit 並 push `docs/`）。
+每週更新一鍵流程：`scripts/weekly_update.sh`（抓 RESP_LAB → 面板 → 預測 → 記錄預測到 `outputs/forecast_log/` → 評估歷次預測 → 站台；加 `--push` 會 commit 並 push）。歷次即時預測與實際值的比對：`python scripts/evaluate_forecasts.py`。
 
 發布到 GitHub Pages（首次）：
 1. `git init && git add -A && git commit -m "init"`，在 GitHub 建 repo 並 `git remote add origin ... && git push -u origin main`。`data/*.csv` 已在 `.gitignore`（RODS 檔 196 MB 超過 GitHub 單檔上限），只有假日與週對應表會進版控。

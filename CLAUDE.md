@@ -10,13 +10,14 @@
 ## 環境與執行
 - `source .venv/bin/activate`（Python 3.11、`timesfm[mlx]` 3.0.2、MLX 後端，Apple M1 16 GB）。
 - 檢查：`python tests/test_basics.py`（無輸出即通過）。
-- 流感流程：`scripts/build_panel.py` → `scripts/forecast_now.py --joint nhi_out_ili nhi_er_ili rods_ili --covariates cny holiday` → `scripts/build_site.py`；一鍵 `scripts/weekly_update.sh [--push]`。
+- 流感流程：`scripts/fetch_resp_lab.py` → `scripts/build_panel.py` → `scripts/forecast_now.py --joint nhi_out_ili nhi_er_ili rods_ili --covariates cny holiday` → `scripts/log_forecast.py` → `scripts/evaluate_forecasts.py` → `scripts/build_site.py`；一鍵 `scripts/weekly_update.sh [--push]`。
 - 腸病毒：`ev_forecast/scripts/weekly_update.sh [--push]`。登革熱：見 `dengue_ewarn/README.md`。
 - 本機預覽站台：`python3 -m http.server 8765 --directory docs`（或 `.claude/launch.json` 的 `docs-site`）。頁面用 fetch，必須走 HTTP。
 - 改了網頁要在瀏覽器實際驗證（本機或線上加 `?v=時間戳` 避免快取）。內建瀏覽器對 Chart.js 頁面固定會報 `Cannot convert object to primitive value`，不是頁面錯誤。
 
 ## 資料
-- `data/` 的流感原始檔是 cp950（Big5）的內部檔，由使用者手動更新，不進 git；`tw_holiday.csv`、`date_week_mapping.csv` 與 `RESP_LAB.csv` 為 UTF-8。
+- `data/` 的流感原始檔是 cp950（Big5）的內部檔，由使用者手動更新，不進 git；`tw_holiday.csv`、`date_week_mapping.csv` 與 `RESP_LAB.csv` 為 UTF-8。`RESP_LAB.csv` 由 `scripts/fetch_resp_lab.py` 從 NIDSS 網站抓，每次抓到的值留存於 `data/resp_lab_history.csv`（進 git）。
+- 每週預測值累積在 `outputs/forecast_log/forecast_log.csv`（進 git），不要刪；`evaluate_forecasts.py` 用它評估實際預測表現。
 - 疫情週用 `forecast_teller.weeks`；頭尾不完整週由 `panel.detect_edges` 自動剔除，更新後先看 `data_processed/coverage.json`。
 - 實驗室 A/B 型資料來源是「實驗室自動通報系統（LARS）」，不是合約實驗室。
 - RODS 急診類流感%的流行閾值 11%（`backtest.DEFAULT_THRESHOLDS`）。腸病毒閾值依年記錄在 `ev_forecast/data/thresholds.csv`。

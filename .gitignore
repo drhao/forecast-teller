@@ -9,6 +9,7 @@ outputs/backtest/*.parquet
 data/*
 !data/tw_holiday.csv
 !data/date_week_mapping.csv
+!data/resp_lab_history.csv
 outputs/slides/*.pdf
 
 # dengue_ewarn sub-project: raw data and large derived files stay out of git
