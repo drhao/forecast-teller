@@ -55,7 +55,7 @@ python scripts/evaluate_forecasts.py --quiet && head -3 outputs/forecast_log/eva
 | PyTorch 後端 | 選配：`pip install "timesfm[torch]"`，`TimesFM3Model(backend="torch")` |
 | 本機預覽 | `.claude/launch.json` 有 `docs-site`（`python3 -m http.server 8765 --directory docs`）；頁面用 fetch 讀 JSON，必須走 HTTP |
 | 疾管署開放資料 TLS | `od.cdc.gov.tw` 憑證鏈缺 TWCA 中繼憑證，`curl` 會報 `unable to get local issuer certificate`。解法在 `ev_forecast/scripts/refresh_data.sh`：`ev_forecast/data/twca_intermediate.pem` + certifi 合成 bundle 後 `--cacert`。流感版 `scripts/refresh_data.sh` 尚未套用同一修法 |
-| 投影片 QA | 用 PowerPoint AppleScript 匯出 PDF：`tell application id "com.microsoft.Powerpoint"`，HFS 路徑，先 `close every presentation saving no`；再用 PyMuPDF 轉圖檢查 |
+| 投影片 QA | 用 PowerPoint 匯出 PDF 再以 PyMuPDF 轉圖檢查。AppleScript 直接 `open` 檔案會逾時或報 -9074（2026-10-02），改成 `open -a "Microsoft PowerPoint" 檔案` 讓系統開檔，輪詢 `get name of every presentation` 等它載入，再 `tell application id "com.microsoft.Powerpoint"` 以 HFS 路徑 `save ... as save as PDF`；開檔前先 `close every presentation saving no` |
 
 ---
 
@@ -165,7 +165,8 @@ forecast-teller/
 | `scripts/evaluate_forecasts.py` | 把 forecast_log 與 `national_weekly.csv` 實際值對上 → `outputs/forecast_log/evaluation.csv`（逐列 abs_err / ape / in60 / in80 / wis）與 `evaluation_summary.csv`（mode × target × h）；`--since 起點週` 篩選 |
 | `scripts/build_site.py` | `outputs/` → `docs/data/{latest,backtest,meta}.json` + `docs/report.html`；`build_narrative`（規則生成的趨勢判讀）、`combine_out_er`（門急診合計圖） |
 | `scripts/weekly_update.sh [--push]` | 抓 RESP_LAB → 面板 → 聯合與單變量即時預測 → `log_forecast.py` → `evaluate_forecasts.py` → 站台；`--push` 只 add `docs`、`data_processed/{coverage.json,qa_report.md,national_weekly.csv}`、`outputs/latest`、`outputs/forecast_log`、`data/resp_lab_history.csv` |
-| `scripts/make_slide_charts.py`、`build_deck.py` | 投影片（`outputs/slides/forecast-teller_成果報告_2026-09-17.pptx`，6 頁，PingFang TC） |
+| `scripts/make_slide_charts.py`、`build_deck.py` | 流感 6 頁成果投影片（`outputs/slides/forecast-teller_成果報告_2026-09-17.pptx`，PingFang TC）；`make_slide_charts.py` 現在同時產生流感與腸病毒的圖 |
+| `scripts/deck_lib.py`、`build_deck_flu_ev.py` | 流感 + 腸病毒 9 頁投影片（封面 + 流感 4 + 腸病毒 4：資料方法 / 回測 / 驗證與命中率 / 最新預測與即時評估），`outputs/slides/forecast-teller_流感與腸病毒成果_<日期>.pptx`；數字全部從 `docs/data`、`docs/ev/data`、`outputs/forecast_log` 讀。流程：`make_slide_charts.py` → `build_deck_flu_ev.py` → PowerPoint 匯出 PDF（§2）→ PyMuPDF 轉圖檢查 |
 
 ### 5.2 回測結果（COVID 後 2023–2025，h = 1–4 平均）
 
