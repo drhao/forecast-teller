@@ -18,6 +18,7 @@ dengue_ewarn/data_processed/*.parquet
 dengue_ewarn/data_processed/*.npz
 dengue_ewarn/outputs/backtest/*.parquet
 dengue_ewarn/outputs/backtest/dengue_checkpoints/
+dengue_ewarn/outputs/backtest/*_checkpoints/
 # ev_forecast sub-project: raw open data and large derived files stay out of git
 ev_forecast/data/*
 !ev_forecast/data/thresholds.csv

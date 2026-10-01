@@ -2,6 +2,10 @@
 
 Source: 疾管署「登革熱1998年起每日確定病例統計」(Dengue_Daily.csv; the portal copy is delisted, the
 project uses the Internet Archive snapshot of the official file, onset dates through 2025-07).
+
+Scopes (2026-10-01): "tn_kh" = 台南市 + 高雄市 only (panel tag "dengue", versions 1–2);
+"all" = every township in Taiwan with a local case since PANEL_START (panel tag "dengue_all", version 3).
+Panel files are data_processed/{tag}_township_daily.parquet and {tag}_delay_hist.npz.
 """
 from __future__ import annotations
 
@@ -13,7 +17,10 @@ import pandas as pd
 from . import DATA_DIR, PROCESSED_DIR
 
 CITIES = ("台南市", "高雄市")
+SCOPES = {"tn_kh": CITIES, "all": None}   # None = every county
 DMAX = 120  # cap on report delay (days) tracked for as-of reconstruction
+PANEL_START = "2008-01-01"   # 2026-10-01: moved back from 2012 so that 2010–2012 (≈1,200–1,500 local cases/yr) become test years
+EPIDEMIC_MIN_CASES = 1000    # a year with >= this many local cases in the panel counts as 流行年 in the reports
 
 
 def load_line_list(path: str | Path | None = None) -> pd.DataFrame:
@@ -35,13 +42,19 @@ def load_line_list(path: str | Path | None = None) -> pd.DataFrame:
     return out
 
 
-def township_panel(ll: pd.DataFrame, cities=CITIES, start="2012-01-01", end: str | None = None):
+def township_panel(ll: pd.DataFrame, cities=CITIES, start=PANEL_START, end: str | None = None):
     """Returns (counts DataFrame [date × series], hist ndarray [series, day, delay]) for local cases.
+
+    The line list already uses post-2010 administrative names (台南市/高雄市 and 區) for earlier years,
+    so no recoding is needed when the panel starts before the 2010-12-25 county–city mergers.
 
     counts are final onset-date counts; hist supports as-of reconstruction:
     cases with onset day t known at day d = sum_{k <= d - t} hist[s, t, k].
     """
-    loc = ll[(~ll.imported) & ll.county.isin(cities)].copy()
+    loc = ll[~ll.imported]
+    if cities:
+        loc = loc[loc.county.isin(cities)]
+    loc = loc.dropna(subset=["county", "township"]).copy()
     end = pd.Timestamp(end) if end else loc.onset.max()
     days = pd.date_range(start, end, freq="D")
     loc = loc[(loc.onset >= days[0]) & (loc.onset <= days[-1])]
@@ -74,6 +87,35 @@ def completeness(hist: np.ndarray, upto: int, lookback: int = 730) -> np.ndarray
     return np.maximum(c, 0.05)
 
 
+def region_of(series_name: str) -> str:
+    """Report stratum of a series ("county|township"): 台南高雄 or 其他縣市."""
+    return "台南高雄" if series_name.split("|")[0] in CITIES else "其他縣市"
+
+
+def epidemic_years(counts: pd.DataFrame, min_cases: int = EPIDEMIC_MIN_CASES) -> set[int]:
+    """流行年 = years whose 台南 + 高雄 local cases in the panel total >= min_cases.
+
+    Other counties are ignored on purpose so the split is the same for every scope; local outbreaks
+    elsewhere (e.g. 2013 屏東, 2018 台中/新北) are evaluated through the region × event-type strata instead.
+    """
+    cols = [c for c in counts.columns if region_of(c) == "台南高雄"] or list(counts.columns)
+    yearly = counts[cols].groupby(counts.index.year).sum().sum(axis=1)
+    return {int(y) for y, v in yearly.items() if v >= min_cases}
+
+
+def panel_paths(tag: str = "dengue", out_dir: str | Path | None = None) -> tuple[Path, Path]:
+    out = Path(out_dir) if out_dir else PROCESSED_DIR
+    return out / f"{tag}_township_daily.parquet", out / f"{tag}_delay_hist.npz"
+
+
+def load_panel(tag: str = "dengue") -> tuple[pd.DataFrame, np.ndarray]:
+    """(counts [date × series], hist [series, day, delay]) for a panel tag."""
+    cp, hp = panel_paths(tag)
+    counts = pd.read_parquet(cp)
+    hist = np.load(hp, allow_pickle=True)["hist"]
+    return counts, hist
+
+
 def rolling7(x: np.ndarray) -> np.ndarray:
     """Trailing 7-day sum along the last axis (partial windows at the start use available days)."""
     c = np.cumsum(x, axis=-1)
@@ -91,11 +133,11 @@ def ewarn_threshold(daily: np.ndarray, d: int, weeks: int = 3, factor: float = 2
     return np.maximum(factor * np.mean(blocks, axis=0), floor)
 
 
-def build(out_dir: str | Path | None = None) -> dict:
-    out = Path(out_dir) if out_dir else PROCESSED_DIR
+def build(out_dir: str | Path | None = None, scope: str = "tn_kh", tag: str = "dengue") -> dict:
     ll = load_line_list()
-    counts, hist = township_panel(ll, end=str(ll.onset.max().date()))  # keep quiet 2025 weeks for false-alarm evaluation
-    counts.to_parquet(out / "dengue_township_daily.parquet")
-    np.savez_compressed(out / "dengue_delay_hist.npz", hist=hist, days=counts.index.values.astype("datetime64[D]"), series=np.array(counts.columns))
+    counts, hist = township_panel(ll, cities=SCOPES[scope], end=str(ll.onset.max().date()))  # keep quiet 2025 weeks for false-alarm evaluation
+    cp, hp = panel_paths(tag, out_dir)
+    counts.to_parquet(cp)
+    np.savez_compressed(hp, hist=hist, days=counts.index.values.astype("datetime64[D]"), series=np.array(counts.columns))
     yearly = counts.groupby(counts.index.year).sum().sum(axis=1)
     return {"counts": counts, "hist": hist, "yearly": yearly, "line_list": ll}

@@ -4,6 +4,7 @@ from __future__ import annotations
 import datetime as dt
 import json
 import shutil
+from pathlib import Path
 
 import matplotlib
 matplotlib.use("Agg")
@@ -14,7 +15,7 @@ from matplotlib import font_manager
 
 from . import OUTPUT_DIR, PROCESSED_DIR, SITE_DIR
 from .alerts import episodes, prob_ge
-from .data import completeness, ewarn_threshold, rolling7
+from .data import CITIES, completeness, epidemic_years, ewarn_threshold, load_panel, region_of, rolling7
 
 P = {"300": "#B4C9B1", "500": "#739A6D", "600": "#5D7F58", "800": "#374C34"}
 N = {"200": "#E4E7E4", "400": "#A2ABA0", "600": "#5D675B", "700": "#444C43", "900": "#181B18"}
@@ -35,14 +36,32 @@ def r(x, nd=3):
     return None if x is None or (isinstance(x, float) and np.isnan(x)) or pd.isna(x) else round(float(x), nd)
 
 
-def illustration(res: pd.DataFrame, tag: str, years=(2015, 2023), min_lead: int = 3, min_cases: float = 20) -> tuple[str, dict]:
+def records(df_or_list) -> list[dict]:
+    """DataFrame / list of dicts → JSON-safe list of dicts (NaN → None, numpy scalars → Python)."""
+    rows = df_or_list.to_dict(orient="records") if isinstance(df_or_list, pd.DataFrame) else list(df_or_list)
+    out = []
+    for row in rows:
+        clean = {}
+        for k, v in row.items():
+            if isinstance(v, (np.floating, float)):
+                clean[k] = None if np.isnan(v) else float(v)
+            elif isinstance(v, (np.integer,)):
+                clean[k] = int(v)
+            elif isinstance(v, (np.bool_,)):
+                clean[k] = bool(v)
+            else:
+                clean[k] = v
+        out.append(clean)
+    return out
+
+
+def illustration(res: pd.DataFrame, tag: str, counts: pd.DataFrame, hist: np.ndarray, years=(2015, 2023), min_lead: int = 3, min_cases: float = 20) -> tuple[str, dict]:
     """One origin, one township: as-of-adjusted context, quantile fan, threshold, crossing probabilities.
 
     Picks, over all townships and the given years, the (episode, origin) pair where the model flagged
     most strongly at least `min_lead` days before an actual crossing of a threshold >= min_cases.
     """
-    counts = pd.read_parquet(PROCESSED_DIR / "dengue_township_daily.parquet"); dates = counts.index
-    z = np.load(PROCESSED_DIR / "dengue_delay_hist.npz", allow_pickle=True); hist = z["hist"]; series = list(z["series"])
+    dates = counts.index; series = list(counts.columns)
     C = counts.to_numpy().T.astype(float); S7 = rolling7(C)
     thr_full = np.stack([ewarn_threshold(C, t) for t in range(C.shape[1])], axis=1)  # (S, T)
     a_all = res[(res.h == 0) & (res["mode"] == "asof_adj") & (res.model == "tfm") & (res.year.isin(years))]
@@ -92,14 +111,33 @@ def illustration(res: pd.DataFrame, tag: str, years=(2015, 2023), min_lead: int 
     return path.name, info
 
 
-def build(tag: str = "dengue", n_sites: int = 20) -> dict:
-    SITE_DIR.mkdir(parents=True, exist_ok=True); (SITE_DIR / "figures").mkdir(exist_ok=True)
+def build(tag: str = "dengue", panel: str | None = None, n_sites: int = 20, site_dir: str | Path | None = None) -> dict:
+    site_dir = Path(site_dir) if site_dir else SITE_DIR
+    site_dir.mkdir(parents=True, exist_ok=True); (site_dir / "figures").mkdir(exist_ok=True)
     files = [BT / f"{tag}_{m}_forecasts.parquet" for m in ("final", "asof", "asof_adj") if (BT / f"{tag}_{m}_forecasts.parquet").exists()]
     res = pd.concat([pd.read_parquet(f) for f in files], ignore_index=True); res["origin"] = pd.to_datetime(res["origin"])
     modes = [m for m in ("asof_adj", "final", "asof") if m in set(res["mode"])]
     sweep = pd.read_csv(BT / f"{tag}_alert_sweep.csv"); leads = pd.read_csv(BT / f"{tag}_lead_times.csv")
     det = pd.read_csv(BT / f"{tag}_detectors.csv"); matched = pd.read_csv(BT / f"{tag}_matched.csv"); leads_long = pd.read_csv(BT / f"{tag}_leads_long.csv")
-    years = sorted(int(y) for y in res.year.unique()); big = {2014, 2015, 2023}
+    years = sorted(int(y) for y in res.year.unique())
+    counts, hist = load_panel(panel or tag); big = epidemic_years(counts)
+    ep_yrs = [y for y in years if y in big]; quiet_yrs = [y for y in years if y not in big]
+    counties = sorted({c.split("|")[0] for c in counts.columns}); n_tnkh = sum(region_of(c) == "台南高雄" for c in counts.columns)
+    scope_text = (f"台南 + 高雄 {len(counts.columns)} 個鄉鎮" if set(counties) <= set(CITIES)
+                  else f"全台 {len(counties)} 縣市 {len(counts.columns)} 個鄉鎮（含台南 + 高雄 {n_tnkh} 區）")
+    asof_ref = None   # when the asof ablation was not run in this tag, quote it from the 台南高雄 run (tag dengue)
+    if "asof" not in modes and (BT / "dengue_alert_sweep.csv").exists():
+        sref = pd.read_csv(BT / "dengue_alert_sweep.csv")
+        if "asof" in set(sref["mode"]):
+            asof_ref = {"tag": "dengue", "auc_asof": r(sref[(sref["mode"] == "asof") & (sref.model == "tfm")].auc.iloc[0], 3),
+                        "auc_adj": r(sref[(sref["mode"] == "asof_adj") & (sref.model == "tfm")].auc.iloc[0], 3)}
+    main_mode = "asof_adj" if "asof_adj" in modes else modes[0]
+    keep_methods = {"EWMA", "CUSUM", f"TimesFM {main_mode} p*=0.3", f"TimesFM {main_mode} p*=0.5"}
+    strata_leads = [x for x in (records(pd.read_csv(BT / f"{tag}_strata_leads.csv")) if (BT / f"{tag}_strata_leads.csv").exists() else []) if x["方法"] in keep_methods]
+    strata_sweep = [x for x in (records(pd.read_csv(BT / f"{tag}_strata_sweep.csv")) if (BT / f"{tag}_strata_sweep.csv").exists() else []) if x["mode"] == main_mode]
+    dh = hist.sum(axis=(0, 1)).astype(float); cdf = np.cumsum(dh) / dh.sum()
+    delay = {"median": int(np.searchsorted(cdf, 0.5)), "p95": int(np.searchsorted(cdf, 0.95)),
+             "recent7_complete": r(float(np.mean(completeness(hist, hist.shape[1] - 1)[:7])), 3)}   # mean reported share of the last 7 days at an origin
     # --- WIS / coverage by horizon
     g = res[res.h > 0].groupby(["mode", "model", "h"]).agg(wis=("wis", "mean"), cov80=("cov80", "mean")).reset_index()
     wis_by_h = {m: {mdl: [r(v, 2) for v in g[(g["mode"] == m) & (g.model == mdl)].sort_values("h").wis] for mdl in ("tfm", "naive", "snaive")} for m in modes}
@@ -116,7 +154,7 @@ def build(tag: str = "dengue", n_sites: int = 20) -> dict:
     bins = np.array([0, .1, .2, .3, .4, .5, .6, .7, .8, .9, 1.0001]); idx = np.digitize(wk.prob, bins) - 1
     calib = [{"bin": f"{bins[i]:.1f}–{bins[i+1] if i < 9 else 1.0:.1f}", "n": int((idx == i).sum()), "observed": r(wk.event[idx == i].mean(), 3) if (idx == i).any() else None, "mid": r((bins[i] + min(bins[i + 1], 1)) / 2, 2)} for i in range(10)]
     # --- leads
-    lead_tab = leads.to_dict(orient="records")
+    lead_tab = records(leads)
     lead_stats = {}
     for name, grp in leads_long.groupby("method"):
         lv = grp.lead.dropna(); lead_stats[name] = {"detected": r(grp.lead.notna().mean(), 3), "median": r(lv.median(), 1) if len(lv) else None, "ge3": r((lv >= 3).mean(), 3) if len(lv) else None, "n": int(len(grp))}
@@ -128,31 +166,35 @@ def build(tag: str = "dengue", n_sites: int = 20) -> dict:
                      "alerts_per_site_week": r(row.alerts / row.n_weeks, 4), "alerts_week_district": r(row.alerts / row.n_weeks * n_sites, 1),
                      "false_week_district": r(row.alerts / row.n_weeks * n_sites * (1 - (row.ppv if not np.isnan(row.ppv) else 0)), 1),
                      "detected": ls.get("detected"), "lead_median": ls.get("median")})
-    cal_metrics = pd.read_csv(BT / f"{tag}_calibration_metrics.csv").to_dict(orient="records") if (BT / f"{tag}_calibration_metrics.csv").exists() else []
+    cal_metrics = records(pd.read_csv(BT / f"{tag}_calibration_metrics.csv")) if (BT / f"{tag}_calibration_metrics.csv").exists() else []
     cal_bins = pd.read_csv(BT / f"{tag}_calibration_bins.csv") if (BT / f"{tag}_calibration_bins.csv").exists() else None
     cal_bins_json = [{"bin": r_.bin, "n": int(r_.n_raw), "pred_raw": r(r_.mean_pred_raw), "obs_raw": r(r_.observed_raw), "pred_cal": r(r_.mean_pred_cal), "obs_cal": r(r_.observed_cal)} for r_ in cal_bins.itertuples()] if cal_bins is not None else []
     sweep_fine = pd.read_csv(BT / f"{tag}_sweep_calibrated.csv") if (BT / f"{tag}_sweep_calibrated.csv").exists() else None
-    sweep_raw_fine = sweep_fine[sweep_fine.version == "raw"].to_dict(orient="records") if sweep_fine is not None else []
-    tiers = pd.read_csv(BT / f"{tag}_two_tier.csv").to_dict(orient="records") if (BT / f"{tag}_two_tier.csv").exists() else []
-    cost_loss = pd.read_csv(BT / f"{tag}_cost_loss.csv").to_dict(orient="records") if (BT / f"{tag}_cost_loss.csv").exists() else []
+    sweep_raw_fine = records(sweep_fine[sweep_fine.version == "raw"]) if sweep_fine is not None else []
+    tiers = records(pd.read_csv(BT / f"{tag}_two_tier.csv")) if (BT / f"{tag}_two_tier.csv").exists() else []
+    cost_loss = records(pd.read_csv(BT / f"{tag}_cost_loss.csv")) if (BT / f"{tag}_cost_loss.csv").exists() else []
     # recommended pair: alert tier = highest sensitivity with <= 0.5 false work orders/week for n_sites; watch tier = 0.3
     rec = None
     if tiers:
         ok = [t for t in tiers if t["watch_p"] == 0.3 and t[f"false_orders_week_{n_sites}"] <= 0.5]
         rec = max(ok, key=lambda t: t["alert_sensitivity"]) if ok else min(tiers, key=lambda t: t[f"false_orders_week_{n_sites}"])
-    fig_name, illus = illustration(res, tag)
+    fig_name, illus = illustration(res, tag, counts, hist)
     for f in list(FIGS.glob(f"{tag}_*.png")):
-        shutil.copy(f, SITE_DIR / "figures" / f.name)
+        shutil.copy(f, site_dir / "figures" / f.name)
     cases = sorted(p.name for p in FIGS.glob(f"{tag}_20*_*.png"))
     data = {"generated_at": dt.datetime.now().astimezone().isoformat(timespec="minutes"), "years": years, "n_series": int(res.series.nunique()),
             "n_origins_per_year": int(res[(res.h == 1) & (res.model == "tfm") & (res["mode"] == modes[0])].groupby("year").origin.nunique().iloc[0]),
             "modes": modes, "mode_label": MODE_LABEL, "hs": HS, "wis_by_h": wis_by_h, "cov_by_h": cov_by_h, "wis_h7": wis_h7, "auc": auc, "sweep": sweep_json,
-            "calibration": calib, "lead_table": lead_tab, "lead_stats": lead_stats, "detectors": det.to_dict(orient="records"), "matched": matched.to_dict(orient="records"),
+            "calibration": calib, "lead_table": lead_tab, "lead_stats": lead_stats, "detectors": records(det), "matched": records(matched),
             "workload": work, "n_sites_example": n_sites, "illustration": {"figure": fig_name, **illus}, "cases": cases,
             "calibration": {"metrics": cal_metrics, "bins": cal_bins_json}, "sweep_raw_fine": sweep_raw_fine, "tiers": tiers, "cost_loss": cost_loss, "recommended": rec,
-            "n_events": int(leads_long[leads_long.method == "CUSUM"].shape[0])}
-    (SITE_DIR / "data.json").write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
-    (SITE_DIR / "index.html").write_text(render_html(data), encoding="utf-8")
+            "n_events": int(leads_long[leads_long.method == "CUSUM"].shape[0]),
+            "n_events_epidemic": int(pd.to_datetime(leads_long[leads_long.method == "CUSUM"].crossing).dt.year.isin(big).sum()),
+            "epidemic_years": ep_yrs, "quiet_years": quiet_yrs, "panel_start": str(counts.index[0].date()), "panel_end": str(counts.index[-1].date()), "delay": delay,
+            "tag": tag, "scope_text": scope_text, "counties": counties, "n_tnkh": int(n_tnkh), "asof_ref": asof_ref, "main_mode": main_mode,
+            "strata_leads": strata_leads, "strata_sweep": strata_sweep}
+    (site_dir / "data.json").write_text(json.dumps(data, ensure_ascii=False, allow_nan=False, default=str), encoding="utf-8")
+    (site_dir / "index.html").write_text(render_html(data), encoding="utf-8")
     return data
 
 
@@ -168,6 +210,10 @@ def render_html(D: dict) -> str:
         m = next((x for x in mc if x["對照偵測器"] == det), None)
         return m
     m_cus, m_ewm = matched_row("CUSUM"), matched_row("EWMA")
+    lt = {x['方法']: x for x in D['lead_table']}
+    cus_lead, ewm_lead = fmt(lt.get('CUSUM', {}).get('前置時間中位數（天）'), 0), fmt(lt.get('EWMA', {}).get('前置時間中位數（天）'), 0)
+    ece_raw = next((m['ece'] for m in D['calibration']['metrics'] if m['version'] == 'raw'), None)
+    cov80_adj = D['cov_by_h']['asof_adj']['tfm'][D['hs'].index(7)]
     lead_rows = "".join(f"<tr class='{'best' if x['方法'].startswith('TimesFM asof_adj p*=0.5') else ('baseline' if not x['方法'].startswith('TimesFM') else '')}'><td>{x['方法']}</td><td class='num'>{fmt(x['偵測到的事件比例'])}</td><td class='num'>{fmt(x['前置時間中位數（天）'], 1)}</td><td class='num'>{fmt(x['前置 ≥ 3 天的比例'])}</td></tr>" for x in D["lead_table"])
     work_rows = "".join(f"<tr class='{'best' if w['p'] == 0.5 else ''}'><td class='num'>{w['p']}</td><td class='num'>{fmt(w['sens'])}</td><td class='num'>{fmt(w['far'])}</td><td class='num'>{fmt(w['ppv'])}</td><td class='num'>{fmt(w['alerts_week_district'], 1)}</td><td class='num'>{fmt(w['false_week_district'], 1)}</td><td class='num'>{fmt(w['detected'])}</td><td class='num'>{fmt(w['lead_median'], 1)}</td></tr>" for w in D["workload"])
     il_rows = "".join(f"<tr><td class='num'>{x['h']}</td><td>{x['date']}</td><td class='num'>{fmt(x['median'], 0)}</td><td class='num'>{fmt(x['q10'], 0)}–{fmt(x['q90'], 0)}</td><td class='num'><b>{fmt(x['prob'])}</b></td><td class='num'>{fmt(x['truth'], 0)}</td></tr>" for x in il["rows"])
@@ -177,6 +223,19 @@ def render_html(D: dict) -> str:
     tier_rows = "".join(f"<tr class='{'best' if rec and t['watch_p']==rec['watch_p'] and t['alert_p']==rec['alert_p'] else ''}'><td class='num'>{t['watch_p']}</td><td class='num'>{t['alert_p']}</td><td class='num'>{fmt(t[f'watch_flags_week_{ns}'],1)}</td><td class='num'>{fmt(t[f'alert_orders_week_{ns}'],1)}</td><td class='num'>{fmt(t[f'false_orders_week_{ns}'],1)}</td><td class='num'>{fmt(t['watch_sensitivity'])}</td><td class='num'>{fmt(t['alert_sensitivity'])}</td><td class='num'>{fmt(t['alert_ppv'])}</td><td class='num'>{fmt(t['events_detected_alert'])}</td><td class='num'>{fmt(t['lead_median_alert'],1)}</td><td class='num'>{fmt(t['watch_earlier_than_alert'])}</td><td class='num'>{fmt(t['days_watch_to_alert_median_if_earlier'],1)}</td></tr>" for t in D['tiers'])
     rec_text = (f"<b>建議起點：注意 {rec['watch_p']} / 警示 {rec['alert_p']}。</b>{ns} 站的轄區每週約 {fmt(rec[f'watch_flags_week_{ns}'],1)} 個注意標示、{fmt(rec[f'alert_orders_week_{ns}'],1)} 張查證單（其中約 {fmt(rec[f'false_orders_week_{ns}'],1)} 張為假警報）；警示層偵測 {fmt(rec['events_detected_alert'])} 的事件、前置中位數 {fmt(rec['lead_median_alert'],0)} 天，注意層偵測 {fmt(rec['events_detected_watch'])}、前置 {fmt(rec['lead_median_watch'],0)} 天。有警示的事件中 {fmt(rec['watch_earlier_than_alert'])} 先出現注意標示，兩者相隔中位數 {fmt(rec['days_watch_to_alert_median_if_earlier'],0)} 天，注意層因此是給 focal point 預先關注的前哨。" if rec else "")
     cl_rows = "".join(f"<tr><td class='num'>{c['C_over_L']}</td><td class='num'>{c['p_star']}</td><td class='num'>{fmt(c['sensitivity'])}</td><td class='num'>{fmt(c['false_alarm_per100'],1)}</td><td class='num'>{fmt(c['ppv'])}</td><td class='num'>{fmt(c['events_detected'])}</td><td class='num'>{fmt(c['lead_median'],1)}</td></tr>" for c in D['cost_loss'])
+    asof_auc_txt = fmt(D['auc']['asof']['tfm']) if 'asof' in D['auc'] else (f"{fmt(D['asof_ref']['auc_asof'])}（第二輪台南高雄回測）" if D.get('asof_ref') else "—")
+    n_modes_cn = {2: "兩", 3: "三"}.get(len(D['modes']), str(len(D['modes'])))
+    MODE_DESC = {"final": "<b>final</b>：用最終資料（無延遲，樂觀上限）", "asof": "<b>asof</b>：只用起點當日已通報者（誠實但尾端偏低）",
+                 "asof_adj": "<b>asof_adj</b>：as-of 除以歷史通報完整度（下限 0.2），是實務可行的版本"}
+    modes_desc = "；".join(MODE_DESC[m] for m in ("final", "asof", "asof_adj") if m in D['modes']) + ("。" if 'asof' in D['modes'] else "。asof（只用已通報、不校正）在第二輪台南高雄回測已證明不可用，本輪未跑。")
+    f0 = lambda v: "—" if v is None or (isinstance(v, float) and np.isnan(v)) else f"{v:.2f}"
+    strata_rows = "".join(f"<tr class='{'best' if str(x['方法']).startswith('TimesFM') and str(x['方法']).endswith('0.5') else ('baseline' if not str(x['方法']).startswith('TimesFM') else '')}'><td>{x['區域']}</td><td>{x['事件型態']}</td><td class='num'>{x['事件數']}</td><td class='num'>{x['其中平靜年']}</td><td>{x['方法']}</td><td class='num'>{f0(x['偵測到的事件比例'])}</td><td class='num'>{fmt(x['前置時間中位數（天）'], 1)}</td><td class='num'>{f0(x['前置 ≥ 3 天的比例'])}</td></tr>" for x in D.get('strata_leads', []))
+    strata_sweep_rows = "".join(f"<tr><td>{x['區域']}</td><td>{x['事件型態']}</td><td class='num'>{x['鄉鎮週']:,}</td><td class='num'>{x['事件週']:,}</td><td class='num'>{f0(x['AUC'])}</td><td class='num'>{x['p_star']}</td><td class='num'>{f0(x['敏感度'])}</td><td class='num'>{fmt(x['假警報/100'], 1)}</td><td class='num'>{f0(x['PPV'])}</td></tr>" for x in D.get('strata_sweep', []))
+    strata_html = (f"""
+    <h3 style="margin-top:22px">分層：區域 × 事件型態</h3>
+    <div class="sub">下限群聚 = 閾值在 3 例下限（非流行區的第一個群聚，情境一最在意的狀況）；流行中加速 = 閾值高於下限（流行已在進行）。上表依事件（前置時間），下表依鄉鎮週（{D['main_mode']}，TimesFM）。</div>
+    <div class="tbl-wrap"><table class="tbl compact"><thead><tr><th>區域</th><th>事件型態</th><th class="num">事件數</th><th class="num">其中平靜年</th><th>方法</th><th class="num">偵測到的事件比例</th><th class="num">前置中位數（天）</th><th class="num">前置 ≥ 3 天</th></tr></thead><tbody>{strata_rows}</tbody></table></div>
+    <div class="tbl-wrap" style="margin-top:10px"><table class="tbl compact"><thead><tr><th>區域</th><th>事件型態</th><th class="num">鄉鎮週</th><th class="num">事件週</th><th class="num">AUC</th><th class="num">p*</th><th class="num">敏感度</th><th class="num">假警報 / 100 週</th><th class="num">PPV</th></tr></thead><tbody>{strata_sweep_rows}</tbody></table></div>""" if D.get('strata_leads') else "")
     cases_html = "".join(f"<div class='card'><h3>{'台南市 北區 2015：史上最大流行' if '2015' in c else '台南市 南區 2023：2015 後最大流行'}</h3><div class='sub'>上：最終資料的 7 日累計與 EWARN 閾值（虛線）；下：模型每個起點給的「14 天內突破閾值」機率；紅色虛線 = 實際突破日</div><img src='figures/{c}' alt='{c}' style='width:100%'></div>" for c in D["cases"])
     return f"""<!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -196,13 +255,13 @@ def render_html(D: dict) -> str:
   <div class="hero-kicker">Validation report · {D['generated_at'][:10]}</div>
   <h1 class="page-title">登革熱鄉鎮層級預測式預警：<em>TimesFM 3.0 在承平期資料上的驗證</em></h1>
   <p class="lead">對應 CHG 情境一（複合災難下收容所自報的離線早期警示）第一至二年的驗證工作：以疾管署登革熱每日確定病例，模擬「小區域、每日、低計數」的症候群序列，檢驗時序基礎模型能否在 WHO EWARN 靜態閾值被突破之前數天、帶著不確定區間發出預警。本頁說明資料、方法、模型輸出的讀法、驗證結果與應用情境。</p>
-  <div class="meta-strip"><span>資料：疾管署登革熱每日確定病例（本土，居住鄉鎮），台南 + 高雄 <b>{D['n_series']} 個鄉鎮</b></span><span>回測年份：<b>{'、'.join(map(str, D['years']))}</b> 年 6–12 月，每 2 天一個起點（每年 {D['n_origins_per_year']} 個）</span><span>模型：TimesFM 3.0（零樣本，未微調）</span></div>
+  <div class="meta-strip"><span>資料：疾管署登革熱每日確定病例（本土，居住鄉鎮），<b>{D['scope_text']}</b></span><span>回測年份：<b>{'、'.join(map(str, D['years']))}</b> 年 6–12 月，每 2 天一個起點（每年 {D['n_origins_per_year']} 個）</span><span>模型：TimesFM 3.0（零樣本，未微調）</span></div>
 
   <div class="kpi-strip">
-    <div class="kpi"><div class="label">突破閾值的預警能力（AUC）</div><div class="value">{fmt(aa['tfm'])}</div><div class="sub">只用當日已通報資料 + 完整度校正；naive {fmt(aa['naive'])}、無校正 {fmt(D['auc']['asof']['tfm'])}</div></div>
-    <div class="kpi"><div class="label">前置時間中位數（p* = 0.5）</div><div class="value">{fmt(ls5.get('median'), 0)}<small>天</small></div><div class="sub">EWARN 靜態規則 0 天、CUSUM 1 天、EWMA 2 天</div></div>
+    <div class="kpi"><div class="label">突破閾值的預警能力（AUC）</div><div class="value">{fmt(aa['tfm'])}</div><div class="sub">只用當日已通報資料 + 完整度校正；naive {fmt(aa['naive'])}、無校正 {asof_auc_txt}</div></div>
+    <div class="kpi"><div class="label">前置時間中位數（p* = 0.5）</div><div class="value">{fmt(ls5.get('median'), 0)}<small>天</small></div><div class="sub">EWARN 靜態規則 0 天、CUSUM {cus_lead} 天、EWMA {ewm_lead} 天</div></div>
     <div class="kpi"><div class="label">假警報（p* = 0.5）</div><div class="value">{fmt(sw['far'][i5], 1)}<small>/100 鄉鎮週</small></div><div class="sub">敏感度 {fmt(sw['sens'][i5])}；EWMA {fmt(ewm['每 100 鄉鎮週假警報'])}、CUSUM {fmt(cus['每 100 鄉鎮週假警報'])}</div></div>
-    <div class="kpi"><div class="label">7 日累計 WIS vs naive（大流行年，h = 7）</div><div class="value">−{impr:.0f}%</div><div class="sub">無通報延遲時 −{impr_f:.0f}%；季節性 naive 對登革熱無用</div></div>
+    <div class="kpi"><div class="label">7 日累計 WIS vs naive（流行年，h = 7）</div><div class="value">−{impr:.0f}%</div><div class="sub">無通報延遲時 −{impr_f:.0f}%；季節性 naive 對登革熱無用</div></div>
   </div>
 
   <section>
@@ -213,8 +272,8 @@ def render_html(D: dict) -> str:
         <li>不只判定「現在是否超標」，而是前瞻 N 天、帶不確定區間地預測「是否即將突破流行閾值」。</li>
         <li>比 WHO EWARN 的靜態規則（達前 3 週均值兩倍）更早，且假警報可控；校準衰退時要能降級。</li></ul></div>
       <div class="card"><h3>承平期的替代驗證</h3><ul class="findings readme">
-        <li>以「鄉鎮 × 日」的登革熱本土確定病例模擬「收容所 × 日」，涵蓋 2014 高雄、2015 台南高雄、2023 台南三次大流行與三個平靜年。</li>
-        <li>目標 = 7 日累計病例；閾值 = max(2 × 前 3 週週均值, 3 例)。事件 = 未來 14 天內 7 日累計 ≥ 起點閾值。</li>
+        <li>以「鄉鎮 × 日」的登革熱本土確定病例模擬「收容所 × 日」，涵蓋 {len(D['epidemic_years'])} 個流行年（{'、'.join(map(str, D['epidemic_years']))}；該年本土病例 ≥ 1,000）與 {len(D['quiet_years'])} 個平靜年（{'、'.join(map(str, D['quiet_years']))}）。</li>
+        <li>目標 = 7 日累計病例；閾值 = max(2 × 前 3 週週均值, 3 例)。事件 = 未來 14 天內 7 日累計 ≥ 以最終資料計算的起點閾值（{n_modes_cn}種 context 模式共用同一組事件）；警示機率則用各模式當日可得資料算出的閾值。</li>
         <li>誠實回測：用通報日重建每個起點「當日可得」的資料，並比較有無通報完整度校正。</li></ul></div>
     </div>
   </section>
@@ -223,8 +282,8 @@ def render_html(D: dict) -> str:
     <div class="section-head"><span class="section-num">02</span><h2>資料與方法</h2><span class="en">Data &amp; method</span></div>
     <div class="tbl-wrap"><table class="tbl compact"><tbody>
       <tr><td><b>資料</b></td><td>疾管署「登革熱 1998 年起每日確定病例統計」個案檔（發病日、通報日、居住鄉鎮、本土/境外）。公開平台已於 2026 年 3 月下架，使用 Internet Archive 保存的官方檔案（發病日至 2025-07-23）。</td></tr>
-      <tr><td><b>面板</b></td><td>台南 37 區、高雄 38 區中 2012 年起有本土病例的 {D['n_series']} 區 × 日；同時建立「發病日 × 通報延遲」直方圖，通報延遲中位數 2 天、第 95 百分位 7 天，起點當日近 7 天約僅 68% 完整。</td></tr>
-      <tr><td><b>三種 context 模式</b></td><td><b>final</b>：用最終資料（無延遲，樂觀上限）；<b>asof</b>：只用起點當日已通報者（誠實但尾端偏低）；<b>asof_adj</b>：as-of 除以歷史通報完整度（下限 0.2），是實務可行的版本。</td></tr>
+      <tr><td><b>面板</b></td><td>{D['scope_text']}（{D['panel_start'][:4]} 年起有本土病例者）× 日（{D['panel_start']} 至 {D['panel_end']}）；同時建立「發病日 × 通報延遲」直方圖，通報延遲中位數 {D['delay']['median']} 天、第 95 百分位 {D['delay']['p95']} 天，起點當日最近 7 天平均約 {100 * D['delay']['recent7_complete']:.0f}% 已通報。</td></tr>
+      <tr><td><b>{n_modes_cn}種 context 模式</b></td><td>{modes_desc}</td></tr>
       <tr><td><b>模型</b></td><td>TimesFM 3.0 零樣本，單變量批次，context 2 年，horizon 1–14 天，輸出 9 個分位數；基準 last-value naive、季節性 naive（364 天）；偵測器 EWARN 靜態規則、EWMA、CUSUM。</td></tr>
       <tr><td><b>評估</b></td><td>分布：WIS（近似 CRPS）、80% 涵蓋率。警示：事件 vs 機率的 AUC；p* 掃描下的敏感度、每 100 鄉鎮週假警報、PPV（鄉鎮週層級）；前置時間 = 事件前 14 天內最早警示到突破日的天數；配對比較 = 在不高於偵測器假警報率的 p* 下比較。</td></tr>
     </tbody></table></div>
@@ -245,7 +304,7 @@ def render_html(D: dict) -> str:
       <div class="card"><h3>三種資料狀態的意義</h3><ul class="findings readme">
         <li><b>final</b> 是理論上限：假設所有病例當天就通報。實務上不存在。</li>
         <li><b>asof</b> 是災難現場真正看到的樣子：最近幾天永遠偏低。直接餵給模型，它會把「通報未齊」誤讀成「疫情下降」，前置時間幾乎歸零（見第 4 節）。</li>
-        <li><b>asof_adj</b> 用歷史完整度把最近幾天放大回估計值，是一種簡單的 nowcast。這一步讓 AUC 從 {fmt(D['auc']['asof']['tfm'])} 回到 {fmt(aa['tfm'])}、前置時間回到 {fmt(ls5.get('median'), 0)} 天，是部署時的必要元件；文件裡的「分布位移偵測 → 降級」也應以完整度異常為第一個觸發條件。</li>
+        <li><b>asof_adj</b> 用歷史完整度把最近幾天放大回估計值，是一種簡單的 nowcast。這一步讓 AUC 從 {asof_auc_txt} 回到 {fmt(aa['tfm'])}、前置時間回到 {fmt(ls5.get('median'), 0)} 天，是部署時的必要元件；文件裡的「分布位移偵測 → 降級」也應以完整度異常為第一個觸發條件。</li>
         <li>閾值本身是反應式的：疫情爆發後閾值隨之升高、遠在病例之上，因此事件集中在流行「起始」與「加速」時刻，這正是 EWARN 想抓的時點。</li></ul></div>
     </div>
   </section>
@@ -256,17 +315,17 @@ def render_html(D: dict) -> str:
       <div class="card"><h3>7 日累計的 WIS 依 horizon</h3><div class="sub">越低越好；asof_adj 為實務可得資料，final 為無延遲上限</div><div class="chart-box"><canvas id="c-wis"></canvas></div></div>
       <div class="card"><h3>校準：預測機率 vs 實際發生比例（asof_adj，逐起點）</h3><div class="sub">原始機率已接近對角線；留一年交叉驗證的等張回歸重校準（灰）沒有改善，反而降低跨年的鑑別力（見下表）</div><div class="chart-box"><canvas id="c-cal"></canvas></div>
         <div class="tbl-wrap" style="margin-top:8px"><table class="tbl compact"><thead><tr><th>版本</th><th class="num">Brier</th><th class="num">Log loss</th><th class="num">ECE</th><th class="num">AUC</th></tr></thead><tbody>{cal_rows}</tbody></table></div>
-        <p class="source">結論：原始機率直接可用（ECE 0.02）；重校準的地圖無法跨流行季轉移（各年事件率 0%–19%），部署時改為監測校準是否衰退，而非重新映射。</p></div>
+        <p class="source">結論：原始機率直接可用（ECE {fmt(ece_raw, 3)}）；重校準的地圖無法跨流行季轉移（各年事件率 0%–19%），部署時改為監測校準是否衰退，而非重新映射。</p></div>
       <div class="card"><h3>p* 取捨：敏感度</h3><div class="sub">事件週中被警示的比例</div><div class="chart-box short"><canvas id="c-sens"></canvas></div></div>
       <div class="card"><h3>p* 取捨：每 100 鄉鎮週假警報</h3><div class="sub">灰線為 EWMA、CUSUM 在非事件期的假警報率</div><div class="chart-box short"><canvas id="c-far"></canvas></div></div>
     </div>
-    <div class="tbl-wrap" style="margin-top:18px"><table class="tbl compact"><thead><tr><th>context 模式</th><th class="num">WIS h=7 TimesFM</th><th class="num">naive</th><th class="num">季節性 naive</th><th class="num">大流行年 TimesFM / naive</th><th class="num">80% 涵蓋（h=7）</th><th class="num">AUC TimesFM / naive</th></tr></thead><tbody>{wis_rows}</tbody></table></div>
+    <div class="tbl-wrap" style="margin-top:18px"><table class="tbl compact"><thead><tr><th>context 模式</th><th class="num">WIS h=7 TimesFM</th><th class="num">naive</th><th class="num">季節性 naive</th><th class="num">流行年 TimesFM / naive</th><th class="num">80% 涵蓋（h=7）</th><th class="num">AUC TimesFM / naive</th></tr></thead><tbody>{wis_rows}</tbody></table></div>
     <div class="grid-2" style="margin-top:18px">
       <div class="card"><h3>前置時間：偵測到的事件比例</h3><div class="sub">{D['n_events']} 個突破事件；14 天窗內有無警示</div><div class="chart-box"><canvas id="c-lead-det"></canvas></div></div>
       <div class="card"><h3>前置時間中位數（天）</h3><div class="sub">EWARN 靜態規則定義上為 0</div><div class="chart-box"><canvas id="c-lead-med"></canvas></div></div>
     </div>
     <div class="tbl-wrap" style="margin-top:18px"><table class="tbl compact"><thead><tr><th>方法</th><th class="num">偵測到的事件比例</th><th class="num">前置中位數（天）</th><th class="num">前置 ≥ 3 天</th></tr></thead><tbody>{lead_rows}</tbody></table></div>
-    <p class="note"><b>配對比較。</b>在不高於 CUSUM 假警報率（{fmt(cus['每 100 鄉鎮週假警報'])}/100 鄉鎮週）的 p* 下，TimesFM（asof_adj，p* = {m_cus['模型 p*'] if m_cus else '—'}）偵測 {fmt(m_cus['模型偵測事件比例']) if m_cus else '—'} 的事件、前置中位數 {fmt(m_cus['模型前置中位數（天）'], 0) if m_cus else '—'} 天；CUSUM 偵測 {fmt(next(x for x in D['lead_table'] if x['方法']=='CUSUM')['偵測到的事件比例'])}、前置 {fmt(next(x for x in D['lead_table'] if x['方法']=='CUSUM')['前置時間中位數（天）'], 0)} 天。在不高於 EWMA 假警報率（{fmt(ewm['每 100 鄉鎮週假警報'])}）下，模型 p* = {m_ewm['模型 p*'] if m_ewm else '—'}：偵測 {fmt(m_ewm['模型偵測事件比例']) if m_ewm else '—'}、前置 {fmt(m_ewm['模型前置中位數（天）'], 0) if m_ewm else '—'} 天；EWMA 偵測 {fmt(ewm and next(x for x in D['lead_table'] if x['方法']=='EWMA')['偵測到的事件比例'])}、前置 {fmt(next(x for x in D['lead_table'] if x['方法']=='EWMA')['前置時間中位數（天）'], 0)} 天。模型的價值主要在「提前幾天」，偵測比例與 CUSUM 相近。</p>
+    <p class="note"><b>配對比較。</b>在不高於 CUSUM 假警報率（{fmt(cus['每 100 鄉鎮週假警報'])}/100 鄉鎮週）的 p* 下，TimesFM（asof_adj，p* = {m_cus['模型 p*'] if m_cus else '—'}）偵測 {fmt(m_cus['模型偵測事件比例']) if m_cus else '—'} 的事件、前置中位數 {fmt(m_cus['模型前置中位數（天）'], 0) if m_cus else '—'} 天；CUSUM 偵測 {fmt(next(x for x in D['lead_table'] if x['方法']=='CUSUM')['偵測到的事件比例'])}、前置 {fmt(next(x for x in D['lead_table'] if x['方法']=='CUSUM')['前置時間中位數（天）'], 0)} 天。在不高於 EWMA 假警報率（{fmt(ewm['每 100 鄉鎮週假警報'])}）下，模型 p* = {m_ewm['模型 p*'] if m_ewm else '—'}：偵測 {fmt(m_ewm['模型偵測事件比例']) if m_ewm else '—'}、前置 {fmt(m_ewm['模型前置中位數（天）'], 0) if m_ewm else '—'} 天；EWMA 偵測 {fmt(ewm and next(x for x in D['lead_table'] if x['方法']=='EWMA')['偵測到的事件比例'])}、前置 {fmt(next(x for x in D['lead_table'] if x['方法']=='EWMA')['前置時間中位數（天）'], 0)} 天。模型的價值主要在「提前幾天」，偵測比例與 CUSUM 相近。</p>{strata_html}
   </section>
 
   <section>
@@ -297,11 +356,11 @@ def render_html(D: dict) -> str:
     <div class="grid-2">
       <div class="card"><h3>限制</h3><ul class="findings readme">
         <li>用的是確定病例，不是情境一的自報症候群；病例數量級與雜訊都不同。</li>
-        <li>閾值以起點時的 EWARN 規則定義，事件集中在大流行年（{D['n_events']} 個事件中絕大多數在 2014、2015、2023），平靜年幾乎沒有事件可評估敏感度。</li>
-        <li>機率略保守、區間略寬（80% 涵蓋率約 0.87）；可做機率校準再用。</li>
+        <li>閾值以起點時的 EWARN 規則定義，事件集中在流行年（{D['n_events']} 個事件中 {D['n_events_epidemic']} 個在 {'、'.join(map(str, D['epidemic_years']))}），平靜年幾乎沒有事件可評估敏感度。</li>
+        <li>機率略保守、區間略寬（asof_adj 的 80% 涵蓋率 {fmt(cov80_adj)}，h = 7）；可做機率校準再用。</li>
         <li>TimesFM 3.0 為非商業授權且 330M 參數，邊緣端需蒸餾或改用 2.5；本頁只驗證「基礎模型層」的價值。</li></ul></div>
       <div class="card"><h3>下一步</h3><ul class="findings readme">
-        <li>機率校準與兩級門檻工作量表已完成（04、06 節）：原始機率直接使用、建議注意 0.3 / 警示 0.5；下一步把工作量表拆成大流行年與平靜年兩欄。</li>
+        <li>機率校準與兩級門檻工作量表已完成（04、06 節）：原始機率直接使用、建議注意 0.3 / 警示 0.5；下一步把工作量表拆成流行年與平靜年兩欄。</li>
         <li>同城市鄉鎮的多變量聯合預測、鄰區病例與雨量作為共變數。</li>
         <li>Farrington flexible 基準；每日起點；另一種「群聚起始」事件定義（7 日累計 ≥ 3 且前 14 天為 0）。</li>
         <li>把同一流程套到週層級的急性腹瀉、腸病毒、類流感（RODS），完成情境一四類症候群。</li></ul></div>
@@ -311,7 +370,7 @@ def render_html(D: dict) -> str:
 <footer class="site-footer">資料：疾病管制署登革熱每日確定病例（Internet Archive 保存之官方檔案）。模型：google/timesfm-3.0-pytorch（非商業授權）。子專案 dengue_ewarn；圖表依《疫情資料視覺化指引》v1.1。產生時間 {D['generated_at']}。</footer>
 <script>
 document.addEventListener('DOMContentLoaded', async () => {{
-  const D = await (await fetch('data.json')).json();
+  const D = await (await fetch('data.json?v={D['generated_at'][:16].replace(':', '')}')).json();   // cache-buster: regenerated with every build
   const H = D.hs.map(String);
   EPI.linesChart(document.getElementById('c-wis'), [
     {{label: 'TimesFM（asof_adj）', data: D.wis_by_h.asof_adj.tfm, kind: 'model'}},

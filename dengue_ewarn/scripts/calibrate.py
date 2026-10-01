@@ -8,13 +8,14 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from dengue_ewarn import OUTPUT_DIR, PROCESSED_DIR  # noqa: E402
+from dengue_ewarn import OUTPUT_DIR  # noqa: E402
 from dengue_ewarn.alerts import auc, episodes  # noqa: E402
 from dengue_ewarn.calibration import Isotonic, brier, ece, episode_leads, logloss, loyo_calibrate, reliability, sweep, two_tier_table, weekly_table  # noqa: E402
-from dengue_ewarn.data import ewarn_threshold, rolling7  # noqa: E402
+from dengue_ewarn.data import ewarn_threshold, load_panel, rolling7  # noqa: E402
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--tag", default="dengue"); ap.add_argument("--mode", default="asof_adj"); ap.add_argument("--n-sites", type=int, default=20)
+ap.add_argument("--panel", default=None, help="panel tag under data_processed/ (default: same as --tag)")
 ap.add_argument("--window", type=int, default=14)
 args = ap.parse_args()
 bt = OUTPUT_DIR / "backtest"
@@ -38,13 +39,13 @@ per_year = pd.DataFrame([{"year": yr, "n": int((rows.year == yr).sum()), "event_
 rel_raw, rel_cal = reliability(rows.prob, y), reliability(rows.prob_cal, y)
 rel = rel_raw.merge(rel_cal, on="bin", suffixes=("_raw", "_cal"))
 metrics.to_csv(bt / f"{args.tag}_calibration_metrics.csv", index=False); rel.to_csv(bt / f"{args.tag}_calibration_bins.csv", index=False); per_year.to_csv(bt / f"{args.tag}_calibration_by_year.csv", index=False)
-rows[["series", "origin", "year", "thr", "prob", "prob_cal", "prob_platt", "event"]].to_parquet(bt / f"{args.tag}_{args.mode}_calibrated.parquet")
+rows[[c for c in ["series", "origin", "year", "thr", "thr_final", "prob", "prob_cal", "prob_platt", "event"] if c in rows.columns]].to_parquet(bt / f"{args.tag}_{args.mode}_calibrated.parquet")
 
 # --- 2) weekly sweeps (raw vs calibrated) and lead times with calibrated probabilities
 pgrid = np.round(np.arange(0.1, 0.91, 0.05), 2)
 wk_raw, wk_cal = weekly_table(rows, "prob"), weekly_table(rows, "prob_cal")
 sw_raw, sw_cal = sweep(wk_raw, pgrid).assign(version="raw"), sweep(wk_cal, pgrid).assign(version="calibrated")
-counts = pd.read_parquet(PROCESSED_DIR / "dengue_township_daily.parquet"); dates = counts.index; series = list(counts.columns)
+counts, _hist = load_panel(args.panel or args.tag); dates = counts.index; series = list(counts.columns)
 C = counts.to_numpy().T.astype(float); S7 = rolling7(C)
 thr_final = np.stack([ewarn_threshold(C, t) for t in range(C.shape[1])], axis=1)
 ep = [(s_i, t) for s_i in range(C.shape[0]) for t in episodes(S7[s_i], thr_final[s_i]) if dates[t].year in years and 6 <= dates[t].month <= 12]

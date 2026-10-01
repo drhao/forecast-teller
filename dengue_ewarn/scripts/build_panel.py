@@ -1,22 +1,39 @@
 #!/usr/bin/env python
-"""Build data_processed/dengue_township_daily.parquet (+ delay histogram) from data/Dengue_Daily.csv."""
-import sys, time
+"""Build data_processed/{tag}_township_daily.parquet (+ delay histogram {tag}_delay_hist.npz) from data/Dengue_Daily.csv.
+
+  python scripts/build_panel.py                             # 台南 + 高雄（tag dengue）
+  python scripts/build_panel.py --scope all --tag dengue_all  # 全台有本土病例的鄉鎮（第三輪）
+"""
+import argparse, sys, time
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from dengue_ewarn.data import build, asof_counts, completeness, rolling7  # noqa: E402
+from dengue_ewarn.data import CITIES, SCOPES, asof_counts, build, completeness, rolling7  # noqa: E402
 
-t0 = time.time(); res = build(); c = res["counts"]; hist = res["hist"]
-print(f"built in {time.time()-t0:.0f}s | {c.shape[1]} series × {c.shape[0]} days ({c.index[0].date()} → {c.index[-1].date()})")
-print("local cases per year (台南+高雄):", res["yearly"].astype(int).to_dict())
-city = c.T.groupby(c.columns.str.split("|").str[0]).sum().T
-peak = {k: (v.idxmax().date().isoformat(), int(v.max())) for k, v in rolling7(city.T.to_numpy()).T.__array__().__class__ and {col: __import__("pandas").Series(rolling7(city[col].to_numpy()), index=city.index) for col in city.columns}.items()}
-print("peak 7-day sum by city:", peak)
-# report delay
-ll = res["line_list"]; loc = ll[(~ll.imported) & ll.county.isin(("台南市", "高雄市")) & (ll.onset >= "2012-01-01")]
+ap = argparse.ArgumentParser()
+ap.add_argument("--scope", default="tn_kh", choices=sorted(SCOPES))
+ap.add_argument("--tag", default="dengue", help="panel file prefix under data_processed/")
+args = ap.parse_args()
+
+t0 = time.time(); res = build(scope=args.scope, tag=args.tag); c = res["counts"]; hist = res["hist"]
+counties = sorted({s.split("|")[0] for s in c.columns})
+print(f"built in {time.time()-t0:.0f}s | scope {args.scope} → tag {args.tag} | {c.shape[1]} series in {len(counties)} counties × {c.shape[0]} days ({c.index[0].date()} → {c.index[-1].date()})")
+print("local cases per year:", res["yearly"].astype(int).to_dict())
+county_daily = c.T.groupby(c.columns.str.split("|").str[0]).sum().T          # day × county
+peak = {}
+for col in county_daily.columns:
+    if county_daily[col].sum() >= 100:
+        s7 = pd.Series(rolling7(county_daily[col].to_numpy()), index=county_daily.index)
+        peak[col] = (s7.idxmax().date().isoformat(), int(s7.max()))
+print("peak 7-day sum by county (counties with >= 100 cases):", peak)
+ll = res["line_list"]; loc = ll[(~ll.imported) & (ll.onset >= c.index[0])]
+if SCOPES[args.scope]:
+    loc = loc[loc.county.isin(SCOPES[args.scope])]
 print("report delay (days) quantiles 50/75/90/95:", loc.delay.quantile([.5, .75, .9, .95]).astype(int).tolist())
-d = c.index.get_loc(__import__("pandas").Timestamp("2015-09-15"))
+d = c.index.get_loc(pd.Timestamp("2015-09-15"))
 asof = asof_counts(hist, d); final = c.to_numpy().T[:, : d + 1]
-print(f"as-of check 2015-09-15: last 7 days known {int(asof[:, -7:].sum())} vs final {int(final[:, -7:].sum())} ({100*asof[:, -7:].sum()/max(final[:, -7:].sum(),1):.0f}% complete); completeness k=0..7:", np.round(completeness(hist, d)[:8], 2).tolist())
+print(f"as-of check 2015-09-15: last 7 days known {int(asof[:, -7:].sum())} vs final {int(final[:, -7:].sum())} "
+      f"({100 * asof[:, -7:].sum() / max(final[:, -7:].sum(), 1):.0f}% complete); completeness k=0..7:", np.round(completeness(hist, d)[:8], 2).tolist())

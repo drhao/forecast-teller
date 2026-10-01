@@ -35,7 +35,7 @@ python scripts/evaluate_forecasts.py --quiet && head -3 outputs/forecast_log/eva
 | 工作線 | 目錄 | 內容 | 狀態 | 線上頁面 |
 |---|---|---|---|---|
 | 流感主線 | 根目錄（`src/`、`scripts/`、`docs/`） | 以 TimesFM 3.0 零樣本預測全國類流感門診、急診、RODS 急診類流感%、重症；2016–2025 回測；每週預測 dashboard、回測 dashboard、一頁報告、投影片 | 完成並上線（2026-09-17 起） | https://drhao.github.io/forecast-teller/ 、`/backtest.html`、`/report.html` |
-| 登革熱預警 | `dengue_ewarn/` | CHG 情境一驗證：台南、高雄 74 鄉鎮每日病例的 7 日累計分布預測 → 14 天內突破 EWARN 閾值的機率、前置時間、假警報、機率校準、兩級門檻工作量 | 第一版完成並上線（2026-09-17）；一次性驗證，無每週流程 | https://drhao.github.io/forecast-teller/dengue/ |
+| 登革熱預警 | `dengue_ewarn/` | CHG 情境一驗證：台南、高雄 74 鄉鎮每日病例的 7 日累計分布預測 → 14 天內突破 EWARN 閾值的機率、前置時間、假警報、機率校準、兩級門檻工作量 | 第一版完成並上線（2026-09-17）；一次性驗證，無每週流程。**第二版在 `dengue` 分支進行（2026-10-01 起）**：事件定義統一、面板 2008 起、回測 9 年 | https://drhao.github.io/forecast-teller/dengue/ |
 | 腸病毒預測 | `ev_forecast/` | 開放資料（健保門診 + RODS 急診）的腸病毒每週預測與回測，流行閾值依年設定 | 完成並上線（2026-09-19） | https://drhao.github.io/forecast-teller/ev/ 、`/ev/backtest.html`、`/ev/report.html` |
 
 - GitHub：公開 repo `drhao/forecast-teller`，GitHub Pages 來源 `main` 分支的 `/docs`，push 後約 1–2 分鐘自動部署。
@@ -130,8 +130,11 @@ forecast-teller/
 ### 4.3 登革熱（`dengue_ewarn/`）
 
 - 疾管署「登革熱 1998 年起每日確定病例統計」已於 2026-03 下架，使用 Internet Archive 保存的官方檔（2025-07-29 快照，發病日至 2025-07-23，107,387 筆）。
-- 本土病例、台南 + 高雄 74 鄉鎮 × 日（2012 起）；以通報日重建「起點當日可得」快照，通報延遲中位數 2 天、第 95 百分位 7 天。
+- 本土病例、台南 + 高雄 74 鄉鎮 × 日；面板自 **2008-01-01** 起（`data.PANEL_START`，2026-10-01 由 2012 拉回，讓 2010–2012 成為測試年；原始檔對合併前年份已用現行「區」名，不需對照）；以通報日重建「起點當日可得」快照，通報延遲中位數 2 天、第 95 百分位 7 天。
 - 閾值 = max(2 × 前 3 週週均值, 3 例)（EWARN 2 倍規則加最小 3 例下限，使用者決定）。
+- **事件定義（2026-10-01 統一）**：警示機率用各 context 模式在起點當日可得資料算的閾值（`thr`）；事件（真值）一律用最終資料算的閾值（`thr_final`），三種模式共用同一組事件。第一版各模式各用自己的閾值定義事件，AUC 與 p* 掃描不可比。
+- 流行年 / 平靜年由資料判定：該年面板內本土病例 ≥ 1,000（`data.epidemic_years`），目前為 2010、2011、2012、2014、2015、2023。
+- 驗證用固定的歷史快照即可（使用者 2026-10-01 說明），資料來源斷線（開放平臺 2026-03 下架、NIDSS 只有全國週計數）暫不處理。
 
 ### 4.4 新聞稿數字一律「待確認」
 
@@ -202,11 +205,13 @@ forecast-teller/
 
 ## 6. 登革熱子專案 `dengue_ewarn/`
 
-- 流程：`build_panel.py` → `run_backtest.py --years 2014 2015 2016 2019 2023 2024 --step 2 --modes final asof_adj asof --batch 32 --chunk 1024 --context 730` → `make_report.py --tag dengue` → `calibrate.py` → `build_site.py`（→ `docs/dengue/index.html`）。回測約 20 分鐘，有 checkpoint 可續跑。
+- 流程：`build_panel.py` → `run_backtest.py --years 2010 2011 2012 2014 2015 2016 2019 2023 2024 --step 2 --modes final asof_adj asof --batch 32 --chunk 1024 --context 730` → `make_report.py --tag dengue` → `calibrate.py` → `build_site.py`（→ `docs/dengue/index.html`）。回測約 50 分鐘，有 checkpoint 可續跑（改面板或事件定義要先刪 `outputs/backtest/*_checkpoints/`）。第三輪（全台 274 鄉鎮）的指令見 `dengue_ewarn/README.md`，所有腳本都吃 `--tag` / `--panel`。
+- 機器會在長跑時睡眠：第二輪最後一個模式年花了 2.3 小時（其他 2 分鐘）。長回測前先用 keep-awake（Claude app 的 `request_keep_awake`），或在系統設定關閉睡眠。
 - 使用者決定（2026-09-17）：用確定病例、鄉鎮層級、EWARN 閾值加 3 例下限、先不比 TimesFM 2.5、假警報成本以工作量 / 取捨曲線 / 配對比較呈現。
-- 主要結果：asof_adj（已通報 ÷ 歷史完整度）模式 AUC 0.89（naive 0.76）；p* = 0.5 時敏感度 0.35、每 100 鄉鎮週假警報 1.9、前置中位數 4 天（CUSUM 1 天、EWMA 2 天）；完整度校正是關鍵（不校正 AUC 0.87、前置幾乎消失）。
-- 校準結論：原始機率已校準（ECE 0.02、Brier 0.058），留一年交叉驗證的等張 / Platt 重校準反而變差（各季事件率 0–19% 差太多），**部署用原始機率，只做校準監測**。
-- 兩級門檻建議：注意 0.3 / 警示 0.5；20 站轄區每週約 2 個注意標示、1 張查證單（0.35 張假警報）。
+- 主要結果（第二版，2026-10-01，74 區 × 9 年，事件定義統一）：asof_adj 模式 AUC 0.89（naive 0.77）；p* = 0.5 時敏感度 0.35、每 100 鄉鎮週假警報 1.6、前置中位數 4 天（CUSUM 0 天、EWMA 2 天）；完整度校正是關鍵（不校正 AUC 0.86、前置幾乎消失）。共同年份的 WIS 與第一版完全相同。分層：下限群聚（非流行區的第一個群聚，170 個）模型 p* = 0.3 偵測 0.37、前置 3 天，CUSUM 0.28、0 天，EWMA 0；流行中加速（143 個）模型 0.64、9 天。詳見 PLAN §12.1。
+- 校準結論：原始機率已校準（ECE 0.013、Brier 0.049），留一年交叉驗證的等張 / Platt 重校準反而變差（各季事件率 0–19% 差太多），**部署用原始機率，只做校準監測**。
+- 兩級門檻建議：注意 0.3 / 警示 0.4–0.5；20 站轄區每週約 1.6 個注意標示、0.85–1.14 張查證單（0.30–0.46 張假警報），前置 4 天。站台規則「假警報單 ≤ 0.5 張中敏感度最高」在第二版選到 0.4（0.46 張，剛好在界內）。
+- 第三輪（進行中，`dengue` 分支）：全台 274 鄉鎮、12 年（加 2013、2018、2020）、模式 final + asof_adj，tag `dengue_all`；報告與站台分層「台南高雄 / 其他縣市 × 下限群聚 / 流行中加速」。見 PLAN §13。
 - 未做（PLAN §10 末尾）：多變量聯合 + 鄰區共變數、Farrington flexible 基準、每日起點、週層級腹瀉 / 腸病毒 / 類流感症候群套用同流程、「群聚起始」事件定義。只在使用者要求時再做。
 
 ---
@@ -242,6 +247,8 @@ forecast-teller/
 | 2026-09-19 | 新聞稿數字需向使用者確認 |
 | 2026-10-01 | RESP_LAB 改由 `fetch_resp_lab.py` 從 NIDSS 網站抓；每次抓到的值留存於 `data/resp_lab_history.csv`（網站只顯示近兩年，舊時點的值日後找不到） |
 | 2026-10-01 | 每週預測值累積到 `outputs/forecast_log/forecast_log.csv`，供日後評估實際預測表現（`evaluate_forecasts.py`） |
+| 2026-10-01 | 登革熱第二版在 `dengue` 分支做（主線每週更新在 `main`），完成後再合併 |
+| 2026-10-01 | 登革熱：事件定義統一為最終資料閾值；面板起點拉到 2008；驗證只用固定的歷史快照，不處理資料來源斷線 |
 
 ### 8.2 工作規則
 
@@ -304,6 +311,7 @@ forecast-teller/
 - `git status` 乾淨；HEAD `ddf9cda`（2026-10-01）。當天的 commit 依序：`ac77d74` NIDSS 抓取腳本、`a8df283` 流感每週更新、`a7932df` 預測存檔與評估 + RESP_LAB 留存 + 文件、`ddf9cda` 腸病毒每週更新。remote `origin` = https://github.com/drhao/forecast-teller.git ；GitHub Pages 已部署（`/` 與 `/ev/` 的 latest.json 起點皆 202638）。
 - 線上七個頁面：`/`、`/backtest.html`、`/report.html`、`/dengue/`、`/ev/`、`/ev/backtest.html`、`/ev/report.html`；`docs/data/latest.json` 起點 202638、含 `combined`；`docs/ev/data/latest.json` 起點 202638。
 - 資料：流感各來源完整至 202638（NIDDS 202635、RESP 202636）；腸病毒至 202638（2026-10-01 更新）；登革熱至 2025-07-23。
+- `dengue` 分支（2026-10-01 開）：登革熱第二版，見 `dengue_ewarn/PLAN.md` §12；第一版的 outputs 備份在該 session 的 scratchpad，不在 repo。
 - `outputs/forecast_log/forecast_log.csv` 有 7 個起點（202603–202638）共 96 列，`ev_forecast/outputs/forecast_log/forecast_log.csv` 有 2 個起點（202636、202638）共 44 列；`data/resp_lab_history.csv` 有 2026-09-17 與 2026-10-01 兩次抓取。
 - 未追蹤 / 未納入流程：根目錄 `nidss_cdcwnh.py`（已進 git，只是參考程式）；流感版 `scripts/refresh_data.sh` 仍未套 TWCA 憑證修法（內部檔由使用者手動更新，所以暫時不需要）。
 - 虛擬環境可用，模型快取在本機。

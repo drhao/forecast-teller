@@ -4,6 +4,11 @@
 Modes: final   = context built from final onset-date counts (oracle, no reporting delay)
        asof    = context rebuilt from cases reported by the origin day (honest)
        asof_adj= as-of counts divided by historical reporting completeness (simple nowcast correction)
+
+Thresholds (2026-10-01): the alert probability uses the EWARN threshold computed from the data known at the
+origin in that mode (`thr`, what a deployed system would see); the event (truth) is the final 7-day sum >= the
+EWARN threshold computed from the final data (`thr_final`), identical across modes so AUC / sweeps compare on
+the same set of events.
 """
 import argparse, sys, time
 from pathlib import Path
@@ -12,10 +17,10 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from dengue_ewarn import OUTPUT_DIR, PROCESSED_DIR  # noqa: E402
+from dengue_ewarn import OUTPUT_DIR  # noqa: E402
 from dengue_ewarn.alerts import prob_ge  # noqa: E402
 from dengue_ewarn.baselines import naive_last, seasonal_naive  # noqa: E402
-from dengue_ewarn.data import completeness, ewarn_threshold, rolling7  # noqa: E402
+from dengue_ewarn.data import completeness, ewarn_threshold, load_panel, rolling7  # noqa: E402
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--years", nargs="+", type=int, default=list(range(2013, 2025)))
@@ -27,17 +32,17 @@ ap.add_argument("--context", type=int, default=1095)
 ap.add_argument("--horizon", type=int, default=14)
 ap.add_argument("--hs", nargs="+", type=int, default=[1, 3, 5, 7, 10, 14])
 ap.add_argument("--batch", type=int, default=64)
-ap.add_argument("--tag", default="dengue")
+ap.add_argument("--tag", default="dengue", help="output prefix under outputs/backtest/")
+ap.add_argument("--panel", default=None, help="panel tag under data_processed/ (default: same as --tag)")
 ap.add_argument("--floor", type=float, default=3.0, help="minimum-case floor of the EWARN threshold")
 ap.add_argument("--chunk", type=int, default=1024, help="contexts per TimesFM call (bounds GPU memory)")
 args = ap.parse_args()
 
-counts = pd.read_parquet(PROCESSED_DIR / "dengue_township_daily.parquet")
-z = np.load(PROCESSED_DIR / "dengue_delay_hist.npz", allow_pickle=True)
-hist = z["hist"]; dates = counts.index; series = list(counts.columns)
+counts, hist = load_panel(args.panel or args.tag)
+dates = counts.index; series = list(counts.columns)
 C = counts.to_numpy().T.astype(np.int64)                      # (S, T) final daily counts
 S7 = rolling7(C).astype(np.float64)                            # final 7-day sums
-CUM = np.cumsum(hist, axis=2)                                  # (S, T, K) cases reported within k days
+CUM = np.cumsum(hist, axis=2, dtype=np.int32)                 # (S, T, K) cases reported within k days (int32: 274 series × 6,414 days × 121 fits in 0.85 GB)
 S, T, K = hist.shape; H = args.horizon; L = args.context
 print(f"{S} series × {T} days ({dates[0].date()}→{dates[-1].date()}), modes={args.modes}, models={args.models}", flush=True)
 
@@ -95,14 +100,15 @@ for mode in args.modes:
         origins = [d for d in range(lo, hi + 1, args.step) if d >= 365 and d + H < T]
         if not origins:
             continue
-        ctxs, meta, thrs = [], [], []
+        ctxs, meta, thrs, thrs_final = [], [], [], []
         for d in origins:
             daily = known_daily(d, mode)
             s7 = rolling7(daily)[:, max(0, d + 1 - L): d + 1]
-            thr = ewarn_threshold(daily, d, floor=args.floor)
+            thr = ewarn_threshold(daily, d, floor=args.floor)      # alert threshold: data known at the origin (this mode)
+            thr_f = ewarn_threshold(C, d, floor=args.floor)        # event threshold: final data (same for every mode)
             for s_i in range(S):
-                ctxs.append(s7[s_i].astype(np.float32)); meta.append((s_i, d)); thrs.append(thr[s_i])
-        n = len(ctxs); thrs = np.array(thrs)
+                ctxs.append(s7[s_i].astype(np.float32)); meta.append((s_i, d)); thrs.append(thr[s_i]); thrs_final.append(thr_f[s_i])
+        n = len(ctxs); thrs = np.array(thrs); thrs_final = np.array(thrs_final)
         truth = np.stack([S7[s_i, d + 1: d + 1 + H] for s_i, d in meta])   # (n, H)
         preds = {}
         if model is not None:
@@ -117,15 +123,15 @@ for mode in args.modes:
                 qh = Q[:, h - 1, :]; y = truth[:, h - 1]
                 df = pd.DataFrame({"model": name, "mode": mode, "series": [series[s] for s, _ in meta], "origin": [dates[d] for _, d in meta],
                                    "year": year, "h": h, "y": y, "median": qh[:, 4], "q10": qh[:, 0], "q20": qh[:, 1], "q80": qh[:, 7], "q90": qh[:, 8],
-                                   "wis": wis_vec(y, qh), "cov80": (y >= qh[:, 0]) & (y <= qh[:, 8]), "thr": thrs,
-                                   "prob": prob_ge(qh, thrs), "event": y >= thrs})
+                                   "wis": wis_vec(y, qh), "cov80": (y >= qh[:, 0]) & (y <= qh[:, 8]), "thr": thrs, "thr_final": thrs_final,
+                                   "prob": prob_ge(qh, thrs), "event": y >= thrs_final})
                 frames.append(df)
             # 'any crossing within the horizon' summary row (h = 0 marker)
             pany = np.max(prob_ge(np.transpose(Q, (1, 0, 2)), np.broadcast_to(thrs, (H, n))), axis=0)
-            eany = (truth >= thrs[:, None]).any(axis=1)
+            eany = (truth >= thrs_final[:, None]).any(axis=1)
             frames.append(pd.DataFrame({"model": name, "mode": mode, "series": [series[s] for s, _ in meta], "origin": [dates[d] for _, d in meta],
                                         "year": year, "h": 0, "y": truth.max(axis=1), "median": np.nan, "q10": np.nan, "q20": np.nan, "q80": np.nan, "q90": np.nan,
-                                        "wis": np.nan, "cov80": False, "thr": thrs, "prob": pany, "event": eany}))
+                                        "wis": np.nan, "cov80": False, "thr": thrs, "thr_final": thrs_final, "prob": pany, "event": eany}))
         year_df = pd.concat(frames[-len(preds) * (len(args.hs) + 1):], ignore_index=True)
         year_df.to_parquet(ck)
         h7 = year_df[year_df.h == 7].groupby("model")["wis"].mean()

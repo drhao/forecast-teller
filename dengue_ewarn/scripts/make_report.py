@@ -2,7 +2,7 @@
 """Alert evaluation for the dengue backtest: WIS/coverage, threshold-crossing probability skill (AUC),
 p* sweep (sensitivity / false alarms per 100 township-weeks), lead time vs EWARN / EWMA / CUSUM, figures, markdown.
 
-  python scripts/dengue_alert_report.py --tag dengue
+  python scripts/make_report.py --tag dengue
 """
 import argparse, sys
 from pathlib import Path
@@ -15,12 +15,13 @@ import pandas as pd
 from matplotlib import font_manager
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from dengue_ewarn import OUTPUT_DIR, PROCESSED_DIR  # noqa: E402
+from dengue_ewarn import OUTPUT_DIR  # noqa: E402
 from dengue_ewarn.alerts import alert_metrics, auc, cusum_alarm, episodes, ewma_alarm  # noqa: E402
-from dengue_ewarn.data import ewarn_threshold, rolling7  # noqa: E402
+from dengue_ewarn.data import epidemic_years, ewarn_threshold, load_panel, region_of, rolling7  # noqa: E402
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--tag", default="dengue")
+ap.add_argument("--panel", default=None, help="panel tag under data_processed/ (default: same as --tag)")
 ap.add_argument("--floor", type=float, default=3.0)
 ap.add_argument("--p-grid", nargs="+", type=float, default=[0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9])
 ap.add_argument("--lead-window", type=int, default=14)
@@ -38,15 +39,21 @@ res = pd.concat([pd.read_parquet(f) for f in files], ignore_index=True).drop_dup
 res["origin"] = pd.to_datetime(res["origin"])
 modes = [m for m in ["final", "asof", "asof_adj"] if m in set(res["mode"])]
 models = [m for m in ["tfm", "naive", "snaive"] if m in set(res["model"])]
-years = sorted(res.year.unique()); big = {2014, 2015, 2023}
+years = sorted(res.year.unique())
 print(f"loaded {len(res):,} rows | modes {modes} | models {models} | years {years}")
 
-counts = pd.read_parquet(PROCESSED_DIR / "dengue_township_daily.parquet"); dates = counts.index; series = list(counts.columns)
+counts, _hist = load_panel(args.panel or args.tag); dates = counts.index; series = list(counts.columns)
 C = counts.to_numpy().T.astype(float); S7 = rolling7(C)
+big = epidemic_years(counts)   # 流行年：該年台南 + 高雄本土病例 ≥ 1,000
+tf_col = "thr_final" if "thr_final" in res.columns else "thr"   # event threshold (final data); old runs only have thr
+res["region"] = res.series.map(region_of); regions = sorted(res.region.unique())
+ETYPE = lambda thr: np.where(np.asarray(thr) <= args.floor, "下限群聚", "流行中加速")   # 起點閾值在下限 = 非流行區的第一個群聚
+big_txt = "、".join(map(str, sorted(y for y in big if y in years)))
 thr_final = np.stack([ewarn_threshold(C, t, floor=args.floor) for t in range(C.shape[1])], axis=1)  # (S, T) EWARN threshold each day
 lines = [f"# 登革熱鄉鎮每日回測：閾值突破預警（CHG 情境一，第一版）", "",
          f"資料：登革熱每日確定病例（本土，居住鄉鎮），台南 37 區 + 高雄 38 區中 2012 起有病例的 {C.shape[0]} 區；目標 = 7 日累計病例；閾值 = max(2 × 前 3 週週均值, {args.floor:g} 例)（EWARN 規則加下限）。",
-         f"起點：{', '.join(map(str, years))} 年 6–12 月每 2 天；horizon 1–14 天；context 2 年（730 天）。模式：final = 以最終資料為 context（無通報延遲）、asof = 只用起點當日已通報者、asof_adj = as-of 除以歷史通報完整度。", ""]
+         f"起點：{', '.join(map(str, years))} 年 6–12 月每 2 天；horizon 1–14 天；context 2 年（730 天）。模式：final = 以最終資料為 context（無通報延遲）、asof = 只用起點當日已通報者、asof_adj = as-of 除以歷史通報完整度。",
+         f"事件（真值）= 最終資料的 7 日累計 ≥ 以最終資料計算的起點當日 EWARN 閾值，三種模式共用同一組事件；警示機率則用各模式在起點當日可得資料算出的閾值。面板自 {dates[0].date()} 起；流行年 = {big_txt}（該年本土病例 ≥ 1,000）。", ""]
 
 # ---- 1) forecast skill
 lines += ["## 1. 7 日累計的分布預測表現（WIS 越低越好；cov80 理想 0.80）", ""]
@@ -55,12 +62,15 @@ tab = sk.pivot_table(index=["mode", "model"], columns="h", values="wis").round(2
 cov = sk.pivot_table(index=["mode", "model"], columns="h", values="cov80").round(2); cov.columns = [f"cov80 h={h}" for h in cov.columns]
 lines += [pd.concat([tab, cov[[c for c in cov.columns if c.endswith("h=7") or c.endswith("h=14")]]], axis=1).to_markdown(), ""]
 sub7 = res[res.h == 7]
-sk2 = sub7.assign(season=np.where(sub7.year.isin(big), "大流行年", "非流行年")).groupby(["mode", "model", "season"])["wis"].mean().unstack("season").round(2)
-lines += ["h = 7 的 WIS 依年份類型（大流行年 = 2014、2015、2023）：", "", sk2.to_markdown(), ""]
+sk2 = sub7.assign(season=np.where(sub7.year.isin(big), "流行年", "非流行年")).groupby(["mode", "model", "season"])["wis"].mean().unstack("season").round(2)
+lines += [f"h = 7 的 WIS 依年份類型（流行年 = {big_txt}）：", "", sk2.to_markdown(), ""]
+if len(regions) > 1:
+    sk3 = sub7.groupby(["mode", "model", "region"])["wis"].mean().unstack("region").round(2)
+    lines += ["h = 7 的 WIS 依區域：", "", sk3.to_markdown(), ""]
 
 # ---- 2) probability skill and p* sweep (weekly aggregation of daily/2-daily origins)
 lines += ["## 2. 閾值突破預警：機率技巧與 p* 取捨", "",
-          "事件 = 未來 14 天內 7 日累計 ≥ 起點當日的閾值；模型機率 = 各 horizon 機率的最大值。假警報率以「鄉鎮 × 週」計：該週任一起點發警示即算一次警示週，該週任一起點有事件即算事件週。", ""]
+          "事件 = 未來 14 天內 7 日累計 ≥ 起點當日以最終資料計算的閾值（三種模式相同）；模型機率 = 各 horizon 機率的最大值（機率的閾值為該模式當日可得資料所算）。假警報率以「鄉鎮 × 週」計：該週任一起點發警示即算一次警示週，該週任一起點有事件即算事件週。", ""]
 any_rows = res[res.h == 0].copy(); any_rows["week"] = any_rows.origin.dt.to_period("W")
 sweep_rows = []
 for mode in modes:
@@ -77,12 +87,29 @@ for mode in modes:
     t = sweep[(sweep["mode"] == mode) & (sweep.model == "tfm")][["p_star", "sensitivity", "false_alarm_per100", "ppv", "alerts"]].round(3)
     lines += [f"TimesFM（{mode}）p* 掃描（{int(sweep[(sweep['mode']==mode)&(sweep.model=='tfm')].n_weeks.iloc[0]):,} 鄉鎮週，其中事件週 {int(sweep[(sweep['mode']==mode)&(sweep.model=='tfm')].event_weeks.iloc[0]):,}）：", "", t.to_markdown(index=False), ""]
 
+# ---- 2b) strata: region × event type of the origin (weekly aggregation; TimesFM only)
+strat_rows = []
+for mode in modes:
+    a = any_rows[(any_rows["mode"] == mode) & (any_rows.model == "tfm")]
+    wk = a.groupby(["series", "week"]).agg(prob=("prob", "max"), event=("event", "max"), thr_max=(tf_col, "max"), region=("region", "first")).reset_index()
+    wk["etype"] = ETYPE(wk.thr_max)
+    for (region, etype), g in wk.groupby(["region", "etype"]):
+        ev, pr = g.event.to_numpy(bool), g.prob.to_numpy(float)
+        for p in (0.3, 0.5):
+            m = alert_metrics(ev, pr, p)
+            strat_rows.append({"mode": mode, "區域": region, "事件型態": etype, "鄉鎮週": len(g), "事件週": int(ev.sum()), "AUC": auc(ev, pr),
+                               "p_star": p, "敏感度": m["sensitivity"], "假警報/100": m["false_alarm_per100"], "PPV": m["ppv"]})
+strat_sweep = pd.DataFrame(strat_rows); strat_sweep.to_csv(bt / f"{args.tag}_strata_sweep.csv", index=False)
+main_mode = "asof_adj" if "asof_adj" in modes else modes[0]
+lines += [f"分層（{main_mode}，TimesFM）：區域 × 起點的事件型態。下限群聚 = 起點閾值在 {args.floor:g} 例下限（非流行區的第一個群聚）；流行中加速 = 閾值高於下限（流行已在進行）。", "",
+          strat_sweep[strat_sweep["mode"] == main_mode].drop(columns="mode").round(3).to_markdown(index=False), ""]
+
 # ---- 3) episodes, lead time, and statistical detectors on final daily counts
 lines += ["## 3. 前置時間：模型預警 vs EWARN 靜態規則、EWMA、CUSUM", "",
           f"事件（episode）= 最終資料的 7 日累計首次達到當日 EWARN 閾值，且之前至少 14 天低於閾值。EWARN 靜態規則在事件當天才觸發（前置 0 天）。模型：事件前 {args.lead_window} 天內最早發出警示（機率 ≥ p*）的起點到事件日的天數；EWMA/CUSUM：事件前 {args.lead_window} 天內最早的警報日。", ""]
 ewma = ewma_alarm(C); cusum = cusum_alarm(C)
 ep = [(s_i, t) for s_i in range(C.shape[0]) for t in episodes(S7[s_i], thr_final[s_i]) if dates[t].year in years and 6 <= dates[t].month <= 12]
-lines += [f"事件數（{', '.join(map(str, years))} 年 6–12 月）：{len(ep)}，其中大流行年 {sum(1 for _, t in ep if dates[t].year in big)}。", ""]
+lines += [f"事件數（{', '.join(map(str, years))} 年 6–12 月）：{len(ep)}，其中流行年 {sum(1 for _, t in ep if dates[t].year in big)}。", ""]
 
 _prob_cache = {}
 def model_leads(mode, model, p_star):
@@ -145,6 +172,22 @@ for name, lead in [("EWMA", detector_leads(ewma)), ("CUSUM", detector_leads(cusu
     for (s_i, t), lv in zip(ep, lead):
         lead_long.append({"method": name, "series": series[s_i], "crossing": dates[t], "lead": lv})
 pd.DataFrame(lead_long).to_csv(bt / f"{args.tag}_leads_long.csv", index=False)
+# strata of episodes: region × event type (threshold at the crossing day), lead per method
+ep_df = pd.DataFrame([{"series": series[s_i], "region": region_of(series[s_i]), "year": dates[t].year, "etype": str(ETYPE(thr_final[s_i, t]))} for s_i, t in ep])
+leads_by_method = {"EWMA": detector_leads(ewma), "CUSUM": detector_leads(cusum)}
+for m in modes:
+    for pp in (0.3, 0.5):
+        leads_by_method[f"TimesFM {m} p*={pp}"] = model_leads(m, "tfm", pp)
+strata_rows = []
+for (region, etype), g in ep_df.groupby(["region", "etype"]):
+    idx = g.index.to_numpy()
+    for name, lead in leads_by_method.items():
+        lv = lead[idx]; det_ = ~np.isnan(lv)
+        strata_rows.append({"區域": region, "事件型態": etype, "事件數": len(idx), "其中平靜年": int((~g.year.isin(big)).sum()), "方法": name,
+                            "偵測到的事件比例": round(float(det_.mean()), 2), "前置時間中位數（天）": float(np.nanmedian(lv)) if det_.any() else np.nan,
+                            "前置 ≥ 3 天的比例": round(float(np.nanmean(lv >= 3)), 2) if det_.any() else np.nan})
+strata = pd.DataFrame(strata_rows); strata.to_csv(bt / f"{args.tag}_strata_leads.csv", index=False)
+lines += [f"分層的前置時間：區域 × 事件型態（依突破當日的最終資料閾值；下限群聚 = 閾值在 {args.floor:g} 例下限）：", "", strata.round(2).to_markdown(index=False), ""]
 
 # ---- 4) figures: example townships in 2015 / 2023 Tainan
 def example(mode, series_name, year, path):
