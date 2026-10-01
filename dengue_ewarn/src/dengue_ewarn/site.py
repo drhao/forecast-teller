@@ -181,7 +181,7 @@ def build(tag: str = "dengue", panel: str | None = None, n_sites: int = 20, site
     fig_name, illus = illustration(res, tag, counts, hist)
     for f in list(FIGS.glob(f"{tag}_*.png")):
         shutil.copy(f, site_dir / "figures" / f.name)
-    cases = sorted(p.name for p in FIGS.glob(f"{tag}_20*_*.png"))
+    cases = records(pd.read_csv(BT / f"{tag}_cases.csv")) if (BT / f"{tag}_cases.csv").exists() else []   # [{year, series, mode, figure}]
     data = {"generated_at": dt.datetime.now().astimezone().isoformat(timespec="minutes"), "years": years, "n_series": int(res.series.nunique()),
             "n_origins_per_year": int(res[(res.h == 1) & (res.model == "tfm") & (res["mode"] == modes[0])].groupby("year").origin.nunique().iloc[0]),
             "modes": modes, "mode_label": MODE_LABEL, "hs": HS, "wis_by_h": wis_by_h, "cov_by_h": cov_by_h, "wis_h7": wis_h7, "auc": auc, "sweep": sweep_json,
@@ -236,7 +236,7 @@ def render_html(D: dict) -> str:
     <div class="sub">下限群聚 = 閾值在 3 例下限（非流行區的第一個群聚，情境一最在意的狀況）；流行中加速 = 閾值高於下限（流行已在進行）。上表依事件（前置時間），下表依鄉鎮週（{D['main_mode']}，TimesFM）。</div>
     <div class="tbl-wrap"><table class="tbl compact"><thead><tr><th>區域</th><th>事件型態</th><th class="num">事件數</th><th class="num">其中平靜年</th><th>方法</th><th class="num">偵測到的事件比例</th><th class="num">前置中位數（天）</th><th class="num">前置 ≥ 3 天</th></tr></thead><tbody>{strata_rows}</tbody></table></div>
     <div class="tbl-wrap" style="margin-top:10px"><table class="tbl compact"><thead><tr><th>區域</th><th>事件型態</th><th class="num">鄉鎮週</th><th class="num">事件週</th><th class="num">AUC</th><th class="num">p*</th><th class="num">敏感度</th><th class="num">假警報 / 100 週</th><th class="num">PPV</th></tr></thead><tbody>{strata_sweep_rows}</tbody></table></div>""" if D.get('strata_leads') else "")
-    cases_html = "".join(f"<div class='card'><h3>{'台南市 北區 2015：史上最大流行' if '2015' in c else '台南市 南區 2023：2015 後最大流行'}</h3><div class='sub'>上：最終資料的 7 日累計與 EWARN 閾值（虛線）；下：模型每個起點給的「14 天內突破閾值」機率；紅色虛線 = 實際突破日</div><img src='figures/{c}' alt='{c}' style='width:100%'></div>" for c in D["cases"])
+    cases_html = "".join(f"<div class='card'><h3>{c['series'].replace('|', ' ')} {c['year']}：該年 7 日累計最高的鄉鎮</h3><div class='sub'>上：最終資料的 7 日累計與 EWARN 閾值（虛線）；下：模型每個起點給的「14 天內突破閾值」機率（{c['mode']}）；紅色虛線 = 實際突破日</div><img src='figures/{c['figure']}' alt='{c['figure']}' style='width:100%'></div>" for c in D["cases"])
     return f"""<!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>登革熱鄉鎮預測式預警 · TimesFM 3.0 驗證報告</title>

@@ -209,9 +209,12 @@ peak_series = {}
 for year in [y for y in (2015, 2023) if y in years]:
     sel = dates.year == year; peak_series[year] = series[int(np.argmax(S7[:, sel].max(axis=1)))]
 mode_fig = "asof_adj" if "asof_adj" in modes else modes[0]
+case_rows = []
 for year, sname in peak_series.items():
-    p = figs / f"dengue_{year}_{sname.split('|')[1]}_{mode_fig}.png"; example(mode_fig, sname, year, p)
+    p = figs / f"{args.tag}_{year}_{sname.split('|')[1]}_{mode_fig}.png"; example(mode_fig, sname, year, p)
+    case_rows.append({"year": year, "series": sname, "mode": mode_fig, "figure": p.name})
     lines += [f"## 案例：{sname.replace('|', ' ')} {year}", "", f"![]( ../figures/{p.name})", ""]
+pd.DataFrame(case_rows).to_csv(bt / f"{args.tag}_cases.csv", index=False)
 (bt / f"{args.tag}_REPORT.md").write_text("\n".join(lines), encoding="utf-8")
 sweep.to_csv(bt / f"{args.tag}_alert_sweep.csv", index=False); lead_tab.to_csv(bt / f"{args.tag}_lead_times.csv", index=False)
 print("\n".join(lines[:60])); print("report:", bt / f"{args.tag}_REPORT.md")

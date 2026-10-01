@@ -16,4 +16,4 @@ ap.add_argument("--tag", default="dengue"); ap.add_argument("--panel", default=N
 ap.add_argument("--site-dir", default=None, help="override output dir (default docs/dengue)")
 args = ap.parse_args()
 d = build(tag=args.tag, panel=args.panel, site_dir=args.site_dir)
-print(f"site → {args.site_dir or SITE_DIR} | figures: {d['cases'] + [d['illustration']['figure']]} | AUC asof_adj tfm {d['auc']['asof_adj']['tfm']} | scope {d['scope_text']}")
+print(f"site → {args.site_dir or SITE_DIR} | figures: {[c['figure'] for c in d['cases']] + [d['illustration']['figure']]} | AUC asof_adj tfm {d['auc']['asof_adj']['tfm']} | scope {d['scope_text']}")
