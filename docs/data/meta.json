@@ -1,41 +1,41 @@
 {
- "generated_at": "2026-09-18T06:41+08:00",
+ "generated_at": "2026-10-01T16:03+08:00",
  "coverage": {
   "nhi": {
    "first_complete": "200502",
-   "last_complete": "202636",
+   "last_complete": "202638",
    "first_date": "2005-01-02",
-   "last_date": "2026-09-06"
+   "last_date": "2026-09-20"
   },
   "nhi_er": {
    "first_complete": "201601",
-   "last_complete": "202636",
+   "last_complete": "202638",
    "first_date": "2016-01-03",
-   "last_date": "2026-09-06"
+   "last_date": "2026-09-20"
   },
   "rods": {
    "first_complete": "200901",
-   "last_complete": "202636",
+   "last_complete": "202638",
    "first_date": "2008-12-28",
-   "last_date": "2026-09-06"
+   "last_date": "2026-09-20"
   },
   "nidds": {
    "first_complete": "200302",
-   "last_complete": "202633",
+   "last_complete": "202635",
    "first_date": "2003-01-05",
-   "last_date": "2026-08-16"
+   "last_date": "2026-08-30"
   },
   "lab": {
    "first_complete": "201502",
-   "last_complete": "202636",
+   "last_complete": "202638",
    "first_date": "2015-01-11",
-   "last_date": "2026-09-06"
+   "last_date": "2026-09-20"
   },
   "resp": {
    "first_complete": "202502",
-   "last_complete": "202634",
+   "last_complete": "202636",
    "first_date": "2025-01-05",
-   "last_date": "2026-08-23"
+   "last_date": "2026-09-06"
   }
  },
  "backtest_window": {
