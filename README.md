@@ -1,6 +1,6 @@
 # forecast-teller
 
-以 Google **TimesFM 3.0** 對台灣流感監測資料做零樣本（zero-shot）預測。規劃文件見 [PLAN_timesfm3_flu.md](PLAN_timesfm3_flu.md)。
+以 Google **TimesFM 3.0** 對台灣流感監測資料做零樣本（zero-shot）預測。規劃文件見 [PLAN_timesfm3_flu.md](PLAN_timesfm3_flu.md)；接手或交接請先讀 [HANDOFF.md](HANDOFF.md)（狀態快照、決定事項、每週 SOP）與 [CLAUDE.md](CLAUDE.md)（工作規則）。
 
 **線上 dashboard（GitHub Pages）**：[每週預測](https://drhao.github.io/forecast-teller/) · [回測](https://drhao.github.io/forecast-teller/backtest.html) · [解讀與評估報告](https://drhao.github.io/forecast-teller/report.html)
 
