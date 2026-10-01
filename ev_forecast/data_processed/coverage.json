@@ -1,22 +1,22 @@
 {
   "nhi": {
     "raw_first": "201601",
-    "raw_last": "202636",
+    "raw_last": "202638",
     "first_complete": "201601",
-    "last_complete": "202636"
+    "last_complete": "202638"
   },
   "rods": {
     "raw_first": "200701",
-    "raw_last": "202636",
+    "raw_last": "202638",
     "first_complete": "200701",
-    "last_complete": "202636"
+    "last_complete": "202638"
   },
   "rods_total": {
     "first": "200901",
-    "last": "202636",
+    "last": "202638",
     "source": "influenza panel data_processed/national_weekly.parquet (RODS_RS.csv)"
   },
-  "n_weeks": 1029,
+  "n_weeks": 1031,
   "age_groups_nhi": [
     "0~2",
     "13~15",

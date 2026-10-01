@@ -8,10 +8,12 @@ outputs/forecast_log/forecast_log.csv，供日後與實際值比對（scripts/ev
 - 另外加入「門急診合計」nhi_oe_ili（mode = joint_sum）：門診 + 急診兩個聯合預測的
   中位數與分位數同向相加，與 build_site.combine_out_er 的作法一致。
 - --from-git：從 git 歷史回填所有曾經 commit 過的 outputs/latest 快照（run_at 取 commit 時間）。
+- --project ev_forecast：改處理子專案（ev_forecast/outputs/latest → ev_forecast/outputs/forecast_log）。
 
 用法：
   python scripts/log_forecast.py             # 記錄目前 outputs/latest/
   python scripts/log_forecast.py --from-git  # 回填 git 歷史後再記錄目前的
+  python scripts/log_forecast.py --project ev_forecast [--from-git]
 """
 from __future__ import annotations
 
@@ -24,7 +26,8 @@ from pathlib import Path
 
 import pandas as pd
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[1]   # repo 根目錄（git 指令在此執行）
+PROJECT = ""                                   # "" = 流感主線；"ev_forecast" = 子專案（main 會覆寫）
 LATEST = ROOT / "outputs" / "latest"
 LOG_DIR = ROOT / "outputs" / "forecast_log"
 LOG = LOG_DIR / "forecast_log.csv"
@@ -75,14 +78,15 @@ def current_snapshot() -> pd.DataFrame:
 
 
 def git_snapshots() -> list[pd.DataFrame]:
-    out = subprocess.run(["git", "log", "--format=%H %cI", "--", *[f"outputs/latest/{f}" for f in FILES]],
+    rel = f"{PROJECT}/outputs/latest" if PROJECT else "outputs/latest"
+    out = subprocess.run(["git", "log", "--format=%H %cI", "--", *[f"{rel}/{f}" for f in FILES]],
                          cwd=ROOT, capture_output=True, text=True, check=True).stdout.split("\n")
     frames = []
     for line in reversed([l for l in out if l.strip()]):  # 舊 → 新，後者覆蓋前者
         sha, when = line.split()
         texts = []
         for f in FILES:
-            r = subprocess.run(["git", "show", f"{sha}:outputs/latest/{f}"], cwd=ROOT, capture_output=True, text=True)
+            r = subprocess.run(["git", "show", f"{sha}:{rel}/{f}"], cwd=ROOT, capture_output=True, text=True)
             if r.returncode == 0:
                 texts.append(r.stdout)
         if texts:
@@ -104,7 +108,14 @@ def merge_into_log(new_frames: list[pd.DataFrame]) -> tuple[pd.DataFrame, int, i
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--from-git", action="store_true", help="先從 git 歷史回填所有 outputs/latest 快照")
+    ap.add_argument("--project", default="", help="子專案目錄名（如 ev_forecast）；預設為流感主線")
     args = ap.parse_args()
+    global PROJECT, LATEST, LOG_DIR, LOG
+    PROJECT = args.project.strip("/")
+    base = ROOT / PROJECT if PROJECT else ROOT
+    LATEST = base / "outputs" / "latest"
+    LOG_DIR = base / "outputs" / "forecast_log"
+    LOG = LOG_DIR / "forecast_log.csv"
     frames = git_snapshots() if args.from_git else []
     cur = current_snapshot()
     frames.append(cur)

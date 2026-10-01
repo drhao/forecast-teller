@@ -42,7 +42,7 @@ scripts/refresh_data.sh                              # 下載開放資料（含 
 ../.venv/bin/python scripts/build_site.py
 ```
 
-或一次跑完每週流程：`scripts/weekly_update.sh [--push]`。
+或一次跑完每週流程：`scripts/weekly_update.sh [--push]`（含 `../scripts/log_forecast.py --project ev_forecast` 預測存檔與 `evaluate_forecasts.py --project ev_forecast` 評估，結果在 `outputs/forecast_log/`）。
 
 ## 資料來源
 

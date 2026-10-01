@@ -212,7 +212,8 @@ forecast-teller/
 
 - 流程：`scripts/refresh_data.sh` → `build_panel.py`（需要主專案 `data_processed/national_weekly.parquet` 提供 `rods_total`）→ `run_backtest.py --suite ...` → `forecast_now.py --joint ev_oe ev_out ev_rods --covariates school holiday` 與 `--targets ev_rods_pct` → `build_site.py`；一鍵 `scripts/weekly_update.sh [--push]`（會自己下載開放資料）。
 - 回測（COVID 後，門急診合計）：最佳為三變量聯合（合計 + 門診 + RODS）+ 學校行事曆 + 假日，WIS 1,105、相對 naive 0.81（h1–4：0.79 / 0.80 / 0.82 / 0.83）、MAPE 15.3%、方向命中 0.71、11,000 閾值命中 0.84 / 誤報 0.08；80% 涵蓋 0.75（偏窄）。零樣本無共變數 0.85；AutoETS 0.95；MA3 1.18；季節性 naive 3.96。
-- 最新預測（起點 202636）：門急診合計 11,113 → 11,643 → 12,390 → 12,866，達 2026 閾值 12,000 的機率約 0.1 → 0.3 → 0.6 → 0.6。
+- 最新預測（起點 202638，2026-10-01 更新）：門急診合計 9,761 → 9,699 → 10,087 → 10,647，達 2026 閾值 12,000 的機率約 0.05 → 0.05 → 0.2 → 0.3。前一次（起點 202636）預測上升到 12,866，實際 202637–202638 為 10,502、9,945，2 週前預測高估 17%（見 `ev_forecast/outputs/forecast_log/evaluation.csv`）。
+- 預測紀錄與評估同主線：`scripts/log_forecast.py --project ev_forecast`、`scripts/evaluate_forecasts.py --project ev_forecast`，檔案在 `ev_forecast/outputs/forecast_log/`（已回填 2026-09-19 的起點 202636 快照）。
 - 未做（PLAN §12.4）：取得健保急診檔後替換 RODS；加入重症、型別、停課共變數；區間校正（涵蓋率拉回 0.80）；年齡層與縣市聯合回測；每週保存開放資料快照估回補係數。
 
 ---
@@ -262,7 +263,7 @@ forecast-teller/
 4. 預測評估：`python scripts/evaluate_forecasts.py`（或 `--since 202636`）看歷次即時預測的 MAPE、涵蓋率、WIS。注意 forecast_log 裡起點 202603–202607 的列來自 2026-09-17 初始 commit 用舊資料擷取跑的預測（不是當週即時做的），而且 202607 是春節週，解讀時要分開看；真正的即時預測從起點 202636 起。
 5. 若要同步更新投影片：`python scripts/make_slide_charts.py && python scripts/build_deck.py`。
 
-**腸病毒（開放資料）**：`ev_forecast/scripts/weekly_update.sh --push`（自行下載、面板、預測、站台、commit `docs/ev` 與 `ev_forecast/{data_processed/coverage.json, data_processed/national_weekly.csv, outputs/latest}`）。每年初確認 `thresholds.csv` 是否要加新年度的閾值。
+**腸病毒（開放資料）**：先跑完流感的更新（面板提供 `rods_total`），再 `ev_forecast/scripts/weekly_update.sh --push`（自行下載、面板、預測、`log_forecast.py --project ev_forecast`、`evaluate_forecasts.py --project ev_forecast`、站台、commit `docs/ev` 與 `ev_forecast/{data_processed/coverage.json, data_processed/national_weekly.csv, outputs/latest, outputs/forecast_log}`）。每年初確認 `thresholds.csv` 是否要加新年度的閾值。
 
 **登革熱**：無每週流程。
 
@@ -299,7 +300,7 @@ forecast-teller/
 
 - `git status` 乾淨；2026-10-01 已完成每週更新（commit `a8df283`）並新增 RESP_LAB 抓取、預測紀錄與評估腳本；remote `origin` = https://github.com/drhao/forecast-teller.git ；GitHub Pages 狀態 `built`。
 - 線上七個頁面全部 HTTP 200：`/`、`/backtest.html`、`/report.html`、`/dengue/`、`/ev/`、`/ev/backtest.html`、`/ev/report.html`；`docs/data/latest.json` 起點 202638、含 `combined`。
-- 資料：流感各來源完整至 202638（NIDDS 202635、RESP 202636）；腸病毒至 202636（**尚未更新，`ev_forecast/scripts/weekly_update.sh --push` 可跑**）；登革熱至 2025-07-23。
+- 資料：流感各來源完整至 202638（NIDDS 202635、RESP 202636）；腸病毒至 202638（2026-10-01 更新）；登革熱至 2025-07-23。
 - `outputs/forecast_log/forecast_log.csv` 有 7 個起點（202603–202638）共 96 列；`data/resp_lab_history.csv` 有 2026-09-17 與 2026-10-01 兩次抓取。
 - 虛擬環境可用，模型快取在本機。
 - 本機還有 Claude session 紀錄（§附錄 B），換帳號後舊 session 看不到，但檔案仍在。
