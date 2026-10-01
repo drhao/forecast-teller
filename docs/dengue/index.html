@@ -13,13 +13,13 @@
   <nav class="masthead-right"><a href="../index.html">流感每週預測</a><a href="../backtest.html">流感回測</a><a href="../report.html">流感報告</a><a href="index.html" class="active">登革熱預警</a></nav>
 </div></header>
 <main>
-  <div class="hero-kicker">Validation report · 2026-10-01</div>
+  <div class="hero-kicker">Validation report · 2026-10-02</div>
   <h1 class="page-title">登革熱鄉鎮層級預測式預警：<em>TimesFM 3.0 在承平期資料上的驗證</em></h1>
   <p class="lead">對應 CHG 情境一（複合災難下收容所自報的離線早期警示）第一至二年的驗證工作：以疾管署登革熱每日確定病例，模擬「小區域、每日、低計數」的症候群序列，檢驗時序基礎模型能否在 WHO EWARN 靜態閾值被突破之前數天、帶著不確定區間發出預警。本頁說明資料、方法、模型輸出的讀法、驗證結果與應用情境。</p>
   <div class="meta-strip"><span>資料：疾管署登革熱每日確定病例（本土，居住鄉鎮），<b>全台 22 縣市 274 個鄉鎮（含台南 + 高雄 74 區）</b></span><span>回測年份：<b>2010、2011、2012、2013、2014、2015、2016、2018、2019、2020、2023、2024</b> 年 6–12 月，每 2 天一個起點（每年 107 個）</span><span>模型：TimesFM 3.0（零樣本，未微調）</span></div>
 
   <div class="kpi-strip">
-    <div class="kpi"><div class="label">突破閾值的預警能力（AUC）</div><div class="value">0.89</div><div class="sub">只用當日已通報資料 + 完整度校正；naive 0.77、無校正 0.86（第二輪台南高雄回測）</div></div>
+    <div class="kpi"><div class="label">突破閾值的預警能力（AUC）</div><div class="value">0.89</div><div class="sub">只用當日已通報資料 + 已通報 ÷ 完整度；naive 0.77、無校正 0.86（第二輪台南高雄回測）</div></div>
     <div class="kpi"><div class="label">前置時間中位數（p* = 0.5）</div><div class="value">4<small>天</small></div><div class="sub">EWARN 靜態規則 0 天、CUSUM 0 天、EWMA 2 天</div></div>
     <div class="kpi"><div class="label">假警報（p* = 0.5）</div><div class="value">0.6<small>/100 鄉鎮週</small></div><div class="sub">敏感度 0.34；EWMA 0.21、CUSUM 0.67</div></div>
     <div class="kpi"><div class="label">7 日累計 WIS vs naive（流行年，h = 7）</div><div class="value">−19%</div><div class="sub">無通報延遲時 −22%；季節性 naive 對登革熱無用</div></div>
@@ -44,7 +44,7 @@
     <div class="tbl-wrap"><table class="tbl compact"><tbody>
       <tr><td><b>資料</b></td><td>疾管署「登革熱 1998 年起每日確定病例統計」個案檔（發病日、通報日、居住鄉鎮、本土/境外）。公開平台已於 2026 年 3 月下架，使用 Internet Archive 保存的官方檔案（發病日至 2025-07-23）。</td></tr>
       <tr><td><b>面板</b></td><td>全台 22 縣市 274 個鄉鎮（含台南 + 高雄 74 區）（2008 年起有本土病例者）× 日（2008-01-01 至 2025-07-23）；同時建立「發病日 × 通報延遲」直方圖，通報延遲中位數 2 天、第 95 百分位 7 天，起點當日最近 7 天平均約 73% 已通報。</td></tr>
-      <tr><td><b>兩種 context 模式</b></td><td><b>final</b>：用最終資料（無延遲，樂觀上限）；<b>asof_adj</b>：as-of 除以歷史通報完整度（下限 0.2），是實務可行的版本。asof（只用已通報、不校正）在第二輪台南高雄回測已證明不可用，本輪未跑。</td></tr>
+      <tr><td><b>兩種 context 模式</b></td><td><b>final</b>：用最終資料（無延遲，樂觀上限）；<b>asof_adj</b>：as-of 除以歷史通報完整度（下限 0.2），第二、三版的主要模式。asof（只用已通報、不校正）在第二輪台南高雄回測已證明不可用，本輪未跑。</td></tr>
       <tr><td><b>模型</b></td><td>TimesFM 3.0 零樣本，單變量批次，context 2 年，horizon 1–14 天，輸出 9 個分位數；基準 last-value naive、季節性 naive（364 天）；偵測器 EWARN 靜態規則、EWMA、CUSUM。</td></tr>
       <tr><td><b>評估</b></td><td>分布：WIS（近似 CRPS）、80% 涵蓋率。警示：事件 vs 機率的 AUC；p* 掃描下的敏感度、每 100 鄉鎮週假警報、PPV（鄉鎮週層級）；前置時間 = 事件前 14 天內最早警示到突破日的天數；配對比較 = 在不高於偵測器假警報率的 p* 下比較。</td></tr>
     </tbody></table></div>
@@ -65,7 +65,7 @@
       <div class="card"><h3>三種資料狀態的意義</h3><ul class="findings readme">
         <li><b>final</b> 是理論上限：假設所有病例當天就通報。實務上不存在。</li>
         <li><b>asof</b> 是災難現場真正看到的樣子：最近幾天永遠偏低。直接餵給模型，它會把「通報未齊」誤讀成「疫情下降」，前置時間幾乎歸零（見第 4 節）。</li>
-        <li><b>asof_adj</b> 用歷史完整度把最近幾天放大回估計值，是一種簡單的 nowcast。這一步讓 AUC 從 0.86（第二輪台南高雄回測） 回到 0.89、前置時間回到 4 天，是部署時的必要元件；文件裡的「分布位移偵測 → 降級」也應以完整度異常為第一個觸發條件。</li>
+        <li><b>asof_adj</b>（已通報 ÷ 完整度）把最近幾天的已通報數補回估計值，是一種 nowcast。這一步讓 AUC 從 0.86（第二輪台南高雄回測） 回到 0.89、前置時間回到 4 天，是部署時的必要元件；文件裡的「分布位移偵測 → 降級」也應以完整度異常為第一個觸發條件。</li>
         <li>閾值本身是反應式的：疫情爆發後閾值隨之升高、遠在病例之上，因此事件集中在流行「起始」與「加速」時刻，這正是 EWARN 想抓的時點。</li></ul></div>
     </div>
   </section>
@@ -141,26 +141,26 @@
     </div>
   </section>
 </main>
-<footer class="site-footer">資料：疾病管制署登革熱每日確定病例（Internet Archive 保存之官方檔案）。模型：google/timesfm-3.0-pytorch（非商業授權）。子專案 dengue_ewarn；圖表依《疫情資料視覺化指引》v1.1。產生時間 2026-10-01T22:52+08:00。</footer>
+<footer class="site-footer">資料：疾病管制署登革熱每日確定病例（Internet Archive 保存之官方檔案）。模型：google/timesfm-3.0-pytorch（非商業授權）。子專案 dengue_ewarn；圖表依《疫情資料視覺化指引》v1.1。產生時間 2026-10-02T00:14+08:00。</footer>
 <script>
 document.addEventListener('DOMContentLoaded', async () => {
-  const D = await (await fetch('data.json?v=2026-10-01T2252')).json();   // cache-buster: regenerated with every build
+  const D = await (await fetch('data.json?v=2026-10-02T0014')).json();   // cache-buster: regenerated with every build
   const H = D.hs.map(String);
   EPI.linesChart(document.getElementById('c-wis'), [
-    {label: 'TimesFM（asof_adj）', data: D.wis_by_h.asof_adj.tfm, kind: 'model'},
+    {label: 'TimesFM（' + D.main_mode + '）', data: D.wis_by_h[D.main_mode].tfm, kind: 'model'},
     {label: 'TimesFM（final）', data: D.wis_by_h.final.tfm, kind: 'model'},
-    {label: 'naive（asof_adj）', data: D.wis_by_h.asof_adj.naive, kind: 'baseline'},
+    {label: 'naive（' + D.main_mode + '）', data: D.wis_by_h[D.main_mode].naive, kind: 'baseline'},
     {label: 'naive（final）', data: D.wis_by_h.final.naive, kind: 'baseline'}], {labels: H, xLabel: '預測天數 h', yLabel: 'WIS（越低越好）', fmt: v => Number(v).toFixed(1)});
   const cb = D.calibration.bins;
   EPI.linesChart(document.getElementById('c-cal'), [
     {label: '原始機率：實際發生比例', data: cb.map(c => c.obs_raw), kind: 'model'},
     {label: '等張回歸重校準：實際發生比例', data: cb.map(c => c.obs_cal), kind: 'baseline'},
     {label: '完美校準（區間平均預測值）', data: cb.map(c => c.pred_raw), kind: 'baseline'}], {labels: cb.map(c => c.bin), xLabel: '預測機率區間', yLabel: '區間內實際突破比例', yMin: 0, yMax: 1, fmt: v => Number(v).toFixed(2)});
-  const sw = D.sweep; const P = sw.asof_adj.p.map(String);
+  const sw = D.sweep; const P = sw[D.main_mode].p.map(String);
   EPI.linesChart(document.getElementById('c-sens'), D.modes.map(m => ({label: D.mode_label[m].split('（')[0], data: sw[m].sens, kind: m === 'asof' ? 'baseline' : 'model'})), {labels: P, xLabel: 'p*', yLabel: '敏感度', yMin: 0, yMax: 1, fmt: v => Number(v).toFixed(2)});
   const det = Object.fromEntries(D.detectors.map(d => [d['方法'], d['每 100 鄉鎮週假警報']]));
   EPI.linesChart(document.getElementById('c-far'), D.modes.map(m => ({label: D.mode_label[m].split('（')[0], data: sw[m].far, kind: m === 'asof' ? 'baseline' : 'model'})), {labels: P, xLabel: 'p*', yLabel: '假警報 / 100 鄉鎮週', fmt: v => Number(v).toFixed(1), refLines: {horizontal: [{at: det.CUSUM, label: 'CUSUM ' + det.CUSUM}, {at: det.EWMA, label: 'EWMA ' + det.EWMA}]}});
-  const order = ['EWARN 靜態規則', 'EWMA', 'CUSUM', 'TimesFM asof_adj p*=0.3', 'TimesFM asof_adj p*=0.5', 'TimesFM asof_adj p*=0.7', 'TimesFM final p*=0.5'];
+  const order = ['EWARN 靜態規則', 'EWMA', 'CUSUM', 'TimesFM ' + D.main_mode + ' p*=0.3', 'TimesFM ' + D.main_mode + ' p*=0.5', 'TimesFM ' + D.main_mode + ' p*=0.7', 'TimesFM final p*=0.5'];
   const lt = Object.fromEntries(D.lead_table.map(x => [x['方法'], x]));
   const rows = order.filter(k => lt[k]);
   EPI.hbarChart(document.getElementById('c-lead-det'), rows, rows.map(k => lt[k]['偵測到的事件比例']), {label: '偵測比例', fmt: v => Number(v).toFixed(2), xMax: 1.15});

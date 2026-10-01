@@ -5,12 +5,15 @@ Modes: final   = context built from final onset-date counts (oracle, no reportin
        asof    = context rebuilt from cases reported by the origin day (honest)
        asof_adj= as-of counts divided by historical reporting completeness (simple nowcast correction)
 
+Modes asof_nc{beta}[x2] (version 4): Gamma–Poisson nowcast with prior strength beta (e.g. asof_nc7, asof_nc2) and optional
+two-pass level update (asof_nc7x2); see data.nowcast_gamma_poisson.
+
 Thresholds (2026-10-01): the alert probability uses the EWARN threshold computed from the data known at the
 origin in that mode (`thr`, what a deployed system would see); the event (truth) is the final 7-day sum >= the
 EWARN threshold computed from the final data (`thr_final`), identical across modes so AUC / sweeps compare on
 the same set of events.
 """
-import argparse, sys, time
+import argparse, re, sys, time
 from pathlib import Path
 
 import numpy as np
@@ -20,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from dengue_ewarn import OUTPUT_DIR  # noqa: E402
 from dengue_ewarn.alerts import prob_ge  # noqa: E402
 from dengue_ewarn.baselines import naive_last, seasonal_naive  # noqa: E402
-from dengue_ewarn.data import completeness, ewarn_threshold, load_panel, rolling7  # noqa: E402
+from dengue_ewarn.data import completeness, ewarn_threshold, load_panel, nowcast_gamma_poisson, rolling7  # noqa: E402
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--years", nargs="+", type=int, default=list(range(2013, 2025)))
@@ -53,6 +56,9 @@ def wis_vec(y, q):  # y (N,), q (N, 9)
         l, u = q[:, lo], q[:, hi]; tot += (a / 2) * ((u - l) + (2 / a) * (l - y) * (y < l) + (2 / a) * (y - u) * (y > u))
     return tot / 4.5
 
+_NC = re.compile(r"^asof_nc(r?)(\d+(?:\.\d+)?)(x2)?$")
+
+
 def known_daily(d, mode):
     if mode == "final":
         return C[:, : d + 1].astype(np.float64)
@@ -62,6 +68,10 @@ def known_daily(d, mode):
         c = np.maximum(completeness(hist, d), 0.2)             # (K,) floor 0.2 → at most ×5 inflation of the newest days
         adj = 1.0 / c[k[-K:]] if d + 1 >= K else 1.0 / c[k]
         known[:, -len(adj):] = known[:, -len(adj):] * adj
+    elif (m := _NC.match(mode)):
+        known = nowcast_gamma_poisson(known, completeness(hist, d), beta=float(m.group(2)), passes=2 if m.group(3) else 1, report_triggered=bool(m.group(1)))
+    elif mode != "asof":
+        raise ValueError(f"unknown mode {mode}")
     return known
 
 model = None; mx = None

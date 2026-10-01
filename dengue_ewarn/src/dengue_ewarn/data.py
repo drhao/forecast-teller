@@ -9,6 +9,7 @@ Panel files are data_processed/{tag}_township_daily.parquet and {tag}_delay_hist
 """
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import numpy as np
@@ -114,6 +115,85 @@ def load_panel(tag: str = "dengue") -> tuple[pd.DataFrame, np.ndarray]:
     counts = pd.read_parquet(cp)
     hist = np.load(hp, allow_pickle=True)["hist"]
     return counts, hist
+
+
+def nowcast_gamma_poisson(known: np.ndarray, c: np.ndarray, beta: float = 7.0, prior_lags: tuple[int, int] = (8, 35),
+                          lam_floor: float = 0.0, passes: int = 1, report_triggered: bool = False) -> np.ndarray:
+    """Bayesian nowcast of final onset-day counts from the counts known at the origin (2026-10-01, version 4).
+
+    known: (S, n) raw counts by onset day reported by the origin (last column = origin day); c: completeness by delay k.
+    Model per onset day: N ~ Poisson(λ_s), reported R ~ Binomial(N, c_k), λ_s ~ Gamma(α_s, β) with α_s = β · λ̂_s where
+    λ̂_s is the township's mean daily count over onset days origin-prior_lags[1] … origin-prior_lags[0] (delays ≥ 8 d
+    are ≈ 95 % complete, ratio-adjusted). E[N | R = r] = r + (α_s + r)(1 − c_k) / (β + c_k).
+    Unlike the ratio nowcast (r / c_k, i.e. β → 0) a single freshly reported case in a quiet township stays ≈ 1 case,
+    while in an epidemic township the expected not-yet-reported cases are added from the local level.
+    passes = 2 re-estimates λ̂_s from the first-pass nowcast at lags 2 … prior_lags[1] so that a rising epidemic is followed.
+    report_triggered = True adds the expected not-yet-reported cases only on onset days with r ≥ 1 (days with nothing reported stay 0),
+    which removes the "prior leak" that made the plain version alert without any new report (versions 4a vs 4b, 2026-10-01).
+    lam_floor 0.02 (first experiment) made quiet series never exactly 0 and broke interval coverage; default is now 0.
+    """
+    known = np.asarray(known, dtype=float); S, n = known.shape; K = len(c); out = known.copy()
+    k = np.minimum(n - 1 - np.arange(n), K - 1)                       # delay of each onset day at the origin
+    recent = np.arange(max(0, n - K), n); ck = c[k[recent]]           # onset days still subject to reporting delay
+
+    def level(src: np.ndarray, lag_lo: int) -> np.ndarray:
+        lo, hi = max(0, n - 1 - prior_lags[1]), max(1, n - lag_lo)   # onset days origin-prior_lags[1] … origin-lag_lo
+        if hi <= lo:
+            return np.full(S, lam_floor)
+        return np.maximum((src[:, lo:hi] / c[k[lo:hi]][None, :]).mean(axis=1), lam_floor)
+
+    lam = level(known, prior_lags[0])
+    for _ in range(passes):
+        alpha = beta * lam
+        add = (alpha[:, None] + known[:, recent]) * ((1 - ck) / (beta + ck))[None, :]
+        if report_triggered:
+            add = add * (known[:, recent] >= 1)
+        out[:, recent] = known[:, recent] + add
+        lam = np.maximum(out[:, max(0, n - prior_lags[1]): max(1, n - 2)].mean(axis=1), lam_floor)   # for pass 2: level from the nowcast itself
+    return out
+
+
+NC_MODE = re.compile(r"^asof_nc(r?)(\d+(?:\.\d+)?)(x2)?$")   # asof_nc7, asof_nc7x2, asof_ncr1 (r = report-triggered)
+MODE_LABELS = {"final": "final（最終資料，無通報延遲）", "asof": "asof（僅起點當日已通報）", "asof_adj": "asof_adj（已通報 ÷ 通報完整度）"}
+MODE_FILE = re.compile(r"^(?P<tag>.+)_(?P<mode>final|asof|asof_adj|asof_ncr?\d+(?:\.\d+)?(?:x2)?)_forecasts\.parquet$")
+
+
+def forecast_files(bt_dir: Path, tag: str) -> list[Path]:
+    """outputs/backtest/{tag}_{mode}_forecasts.parquet for every known mode; never matches another tag such as {tag}_all_*."""
+    out = []
+    for f in sorted(bt_dir.glob(f"{tag}_*_forecasts.parquet")):
+        m = MODE_FILE.match(f.name)
+        if m and m.group("tag") == tag:
+            out.append(f)
+    return out
+
+
+def mode_label(mode: str) -> str:
+    if mode in MODE_LABELS:
+        return MODE_LABELS[mode]
+    m = NC_MODE.match(mode)
+    return f"{mode}（貝氏 nowcast，β = {m.group(2)}{'，僅有通報日' if m.group(1) else ''}{'，兩段式' if m.group(3) else ''}）" if m else mode
+
+
+def context_counts(cum: np.ndarray, hist: np.ndarray, d: int, mode: str, final: np.ndarray | None = None) -> np.ndarray:
+    """Daily counts (S, d+1) the system would see at origin day d under a context mode.
+
+    cum = np.cumsum(hist, axis=2) (cases reported within k days), final = (S, T) final counts (needed for mode "final").
+    """
+    if mode == "final":
+        return final[:, : d + 1].astype(np.float64)
+    K = hist.shape[2]; k = np.minimum(d - np.arange(d + 1), K - 1)
+    known = cum[:, np.arange(d + 1), k].astype(np.float64)
+    if mode == "asof":
+        return known
+    if mode == "asof_adj":
+        c = np.maximum(completeness(hist, d), 0.2); adj = 1.0 / c[k[-K:]] if d + 1 >= K else 1.0 / c[k]
+        known[:, -len(adj):] *= adj
+        return known
+    m = NC_MODE.match(mode)
+    if not m:
+        raise ValueError(f"unknown mode {mode}")
+    return nowcast_gamma_poisson(known, completeness(hist, d), beta=float(m.group(2)), passes=2 if m.group(3) else 1, report_triggered=bool(m.group(1)))
 
 
 def rolling7(x: np.ndarray) -> np.ndarray:

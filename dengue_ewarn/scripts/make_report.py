@@ -17,7 +17,7 @@ from matplotlib import font_manager
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from dengue_ewarn import OUTPUT_DIR  # noqa: E402
 from dengue_ewarn.alerts import alert_metrics, auc, cusum_alarm, episodes, ewma_alarm  # noqa: E402
-from dengue_ewarn.data import epidemic_years, ewarn_threshold, load_panel, region_of, rolling7  # noqa: E402
+from dengue_ewarn.data import epidemic_years, ewarn_threshold, forecast_files, load_panel, region_of, rolling7  # noqa: E402
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--tag", default="dengue")
@@ -34,10 +34,10 @@ plt.rcParams.update({"font.family": [f for f in ["Noto Sans TC", "PingFang TC", 
                      "axes.unicode_minus": False, "axes.spines.top": False, "axes.spines.right": False, "axes.grid": True, "grid.color": N["200"], "grid.linewidth": 0.6})
 
 bt = OUTPUT_DIR / "backtest"; figs = OUTPUT_DIR / "figures"; figs.mkdir(exist_ok=True)
-files = [bt / f"{args.tag}_{m}_forecasts.parquet" for m in ("final", "asof", "asof_adj") if (bt / f"{args.tag}_{m}_forecasts.parquet").exists()]
+files = forecast_files(bt, args.tag)
 res = pd.concat([pd.read_parquet(f) for f in files], ignore_index=True).drop_duplicates(subset=["model", "mode", "series", "origin", "h"])
 res["origin"] = pd.to_datetime(res["origin"])
-modes = [m for m in ["final", "asof", "asof_adj"] if m in set(res["mode"])]
+modes = [m for m in ["final", "asof", "asof_adj"] if m in set(res["mode"])] + sorted(m for m in set(res["mode"]) if m not in ("final", "asof", "asof_adj"))
 models = [m for m in ["tfm", "naive", "snaive"] if m in set(res["model"])]
 years = sorted(res.year.unique())
 print(f"loaded {len(res):,} rows | modes {modes} | models {models} | years {years}")

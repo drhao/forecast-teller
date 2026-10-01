@@ -19,6 +19,7 @@
 source ../.venv/bin/activate          # 與主專案共用虛擬環境（timesfm[mlx]）
 python scripts/build_panel.py        # 面板自 2008-01-01 起（2026-10-01 由 2012 拉回）
 python scripts/run_backtest.py --years 2010 2011 2012 2014 2015 2016 2019 2023 2024 --step 2 --modes final asof_adj asof --batch 32 --chunk 1024 --context 730
+# 實驗模式（PLAN §14，負面結果）：--modes asof_nc7 asof_nc2 asof_nc7x2 asof_ncr1 asof_ncr7（Gamma–Poisson nowcast；r = 僅有通報日）
 python scripts/make_report.py --tag dengue
 python scripts/calibrate.py          # 機率校準（留一年交叉驗證）＋兩級門檻工作量表
 python scripts/build_site.py         # → ../docs/dengue/index.html
