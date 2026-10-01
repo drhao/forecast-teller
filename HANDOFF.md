@@ -15,15 +15,16 @@
 
 ```bash
 cd /Users/drhao/Documents/GitHub/forecast-teller
-git status && git log --oneline | head -5          # 應為 clean、HEAD eab07ee（或之後的 commit）
+git status && git log --oneline | head -5          # 應為 clean、HEAD ddf9cda（或之後的 commit）
 source .venv/bin/activate && python tests/test_basics.py   # 無輸出即通過
 ls data/*.csv | wc -l                               # 11 個原始檔（不在 git 內，必須在本機）
-python3 -c "import json;print(json.load(open('data_processed/coverage.json'))['nhi']['last_complete'])"  # 目前 202636
+python3 -c "import json;print(json.load(open('data_processed/coverage.json'))['nhi']['last_complete'])"  # 目前 202638
+python scripts/evaluate_forecasts.py --quiet && head -3 outputs/forecast_log/evaluation_summary.csv  # 預測紀錄與評估可跑
 ```
 
 **閱讀順序**：本文件 → `CLAUDE.md`（工作規則）→ `README.md` → `PLAN_timesfm3_flu.md` §11–§12 → `ev_forecast/PLAN.md` §10–§12 → `dengue_ewarn/PLAN.md` §7–§11。
 
-**目前沒有進行中的半成品。** 三條工作線都已實作、回測、上線。最可能的下一件事是每週資料更新（§9）或 §10 的待辦。
+**目前沒有進行中的半成品。** 三條工作線都已實作、回測、上線；2026-10-01 已完成流感與腸病毒的每週更新，並加入 RESP_LAB 網站抓取、預測存檔與評估。最可能的下一件事是下一次每週更新（§9）或 §10 的待辦。
 
 ---
 
@@ -101,13 +102,13 @@ forecast-teller/
 
 ### 4.1 流感主線的原始資料
 
-| 來源鍵 | 檔案 | 編碼 | 原始範圍 → 判定完整（2026-09-17 更新） | 注意 |
+| 來源鍵 | 檔案 | 編碼 | 原始範圍 → 判定完整（2026-10-01 更新） | 注意 |
 |---|---|---|---|---|
-| `nhi` | NHI_PROCESSED_48X.csv（類流感）、NHI_PROCESSED_487.csv（流感） | cp950 | 200501–202637 → 200502–202636 | 門診 + 住院；`nhi_out_ili`、`nhi_out_total` 等 |
-| `nhi_er` | NHI_PROCESSED_48X_ER.csv、NHI_PROCESSED_487_ER.csv | cp950 | 201552–202637 → 201601–202636 | 急診 |
-| `rods` | RODS_RS.csv | cp950 | 200901–202637 → 200901–202636 | 醫院層級，`rods_ili`、`rods_total`；`rods_ili_pct` = ili / total × 100 |
-| `nidds` | NIDDS_487A.csv | cp950 | 200302–202637 → 200302–202633 | 個案清單、發病週；沒有列的週是真實 0（zero-fill）；回補延遲 → `DEFAULT_LAG["nidds"] = 3`，尾端多刪 3 週 |
-| `lab` | INFLUENZA_TYPE_YW.csv（A/B/未分型）、INFLUENZA_MON_TYPE_YW.csv（檢驗件數） | cp950 | 201453–202637 → 201502–202636 | **來源名稱是「實驗室自動通報系統（LARS）」，不是合約實驗室**；合約實驗室資料日後再加 |
+| `nhi` | NHI_PROCESSED_48X.csv（類流感）、NHI_PROCESSED_487.csv（流感） | cp950 | 200501–202639 → 200502–202638 | 門診 + 住院；`nhi_out_ili`、`nhi_out_total` 等 |
+| `nhi_er` | NHI_PROCESSED_48X_ER.csv、NHI_PROCESSED_487_ER.csv | cp950 | 201552–202639 → 201601–202638 | 急診 |
+| `rods` | RODS_RS.csv | cp950 | 200901–202639 → 200901–202638 | 醫院層級，`rods_ili`、`rods_total`；`rods_ili_pct` = ili / total × 100 |
+| `nidds` | NIDDS_487A.csv | cp950 | 200302–202639 → 200302–202635 | 個案清單、發病週；沒有列的週是真實 0（zero-fill）；回補延遲 → `DEFAULT_LAG["nidds"] = 3`，尾端多刪 3 週 |
+| `lab` | INFLUENZA_TYPE_YW.csv（A/B/未分型）、INFLUENZA_MON_TYPE_YW.csv（檢驗件數） | cp950 | 201453–202639 → 201502–202638 | **來源名稱是「實驗室自動通報系統（LARS）」，不是合約實驗室**；合約實驗室資料日後再加 |
 | `resp` | RESP_LAB.csv | UTF-8-sig | 202501–202637 → 202502–202636 | 社區合約實驗室多重 PCR，每週約 250 件檢體；**由 `scripts/fetch_resp_lab.py` 從 NIDSS 網站抓**（`hcJson.push` 內嵌資料，未來週是 `undefined` 要換成 `null`）；網站會回補修正過去週，所以整份重抓並以長格式記錄在 `data/resp_lab_history.csv`（`fetched_on` × `yw`）；檔內有預填的空白未來列要丟掉；`resp_*` 欄；`DEFAULT_LAG["resp"] = 1` |
 | — | tw_holiday.csv | UTF-8 | 到 2026-12-27 | 2021 與 2023–2025 的節日名稱放在 `holidayCategory` 而非 `name`，春節判斷要同時比對兩欄；2027 以後只有春節日期外推（`covariates.LNY_DATES`，假日天數假設 5 天），**2027 官方行事曆公布後要延伸此檔並重跑** |
 | — | date_week_mapping.csv | UTF-8 | — | 日期 ↔ 疫情週對應 |
@@ -175,17 +176,19 @@ forecast-teller/
 
 層結論：零樣本單變量已比 naive 低 16%、比 AutoETS 低 12%；假日天數是最有用的共變數；季節相位、log1p、對稱平均、滑動視窗無幫助；MA3 比 naive 差 6–13%；季節性 naive 失效（MASE > 1）；RESP_LAB 當共變數反而 +6–9% WIS，所以只用在敘事；LARS 當共變數中性。
 
-### 5.3 最新預測（起點 202636，資料 2026-09-17 更新）
+### 5.3 最新預測（起點 202638，資料 2026-10-01 更新）
 
-| 指標 | 202637 | 202638 | 202639 | 202640 |
+| 指標 | 202639 | 202640 | 202641 | 202642 |
 |---|---:|---:|---:|---:|
-| 門診人次（聯合） | 129,534 | 140,864 | 139,316 | 132,976 |
-| 急診人次（聯合） | 11,896 | 13,052 | 13,879 | 12,729 |
-| 門急診合計（兩者相加） | 141,430 | 153,916 | 153,195 | 145,705 |
-| RODS 急診類流感%（單變量） | 12.4 | 12.9 | 12.7 | 12.4 |
-| 重症（起點 202633） | 65 | 61 | 57 | 54 |
+| 門診人次（聯合） | 121,209 | 114,586 | 113,944 | 105,090 |
+| 急診人次（聯合） | 13,051 | 12,522 | 11,412 | 10,675 |
+| 門急診合計（兩者相加） | 134,260 | 127,108 | 125,356 | 115,765 |
+| RODS 急診類流感%（單變量） | 12.2 | 12.2 | 11.8 | 11.6 |
+| 重症（起點 202635，目標週 202636–202639） | 103 | 99 | 93 | 87 |
 
-202636 實際：門診 122,247（就診率 2.15%）、急診 11,256、RODS 12.0%（連續 6 週 ≥ 10%、高於 11% 閾值）。這些數字已經過時，下次更新會被覆蓋。
+202638 實際：門診 122,060（就診率 2.37%）、急診 12,772、RODS 12.2%（連續 4 週高於 11% 閾值）、重症 202635 為 106 例。模型判讀為高原期、未來 4 週緩降。**202638 的健保門診總就診人次比前週少 12%（5.15M 對 5.84M），疑似申報未齊，就診率偏高，下次更新可能上修。** 這些數字會被下次更新覆蓋；歷次預測都在 `outputs/forecast_log/forecast_log.csv`，與實際值的比對在 `evaluation.csv`。
+
+前一次（起點 202636）的即時預測對 202637 的 1 週前誤差：門診 1.7%、急診 1.5%、RODS% 4.4%，皆在 80% 區間內；2 週前對 202638 的門診高估 15%（受上述分母問題影響）。
 
 ### 5.4 網站
 
@@ -298,10 +301,11 @@ forecast-teller/
 
 ## 12. 交接時的狀態快照（2026-10-01）
 
-- `git status` 乾淨；2026-10-01 已完成每週更新（commit `a8df283`）並新增 RESP_LAB 抓取、預測紀錄與評估腳本；remote `origin` = https://github.com/drhao/forecast-teller.git ；GitHub Pages 狀態 `built`。
-- 線上七個頁面全部 HTTP 200：`/`、`/backtest.html`、`/report.html`、`/dengue/`、`/ev/`、`/ev/backtest.html`、`/ev/report.html`；`docs/data/latest.json` 起點 202638、含 `combined`。
+- `git status` 乾淨；HEAD `ddf9cda`（2026-10-01）。當天的 commit 依序：`ac77d74` NIDSS 抓取腳本、`a8df283` 流感每週更新、`a7932df` 預測存檔與評估 + RESP_LAB 留存 + 文件、`ddf9cda` 腸病毒每週更新。remote `origin` = https://github.com/drhao/forecast-teller.git ；GitHub Pages 已部署（`/` 與 `/ev/` 的 latest.json 起點皆 202638）。
+- 線上七個頁面：`/`、`/backtest.html`、`/report.html`、`/dengue/`、`/ev/`、`/ev/backtest.html`、`/ev/report.html`；`docs/data/latest.json` 起點 202638、含 `combined`；`docs/ev/data/latest.json` 起點 202638。
 - 資料：流感各來源完整至 202638（NIDDS 202635、RESP 202636）；腸病毒至 202638（2026-10-01 更新）；登革熱至 2025-07-23。
-- `outputs/forecast_log/forecast_log.csv` 有 7 個起點（202603–202638）共 96 列；`data/resp_lab_history.csv` 有 2026-09-17 與 2026-10-01 兩次抓取。
+- `outputs/forecast_log/forecast_log.csv` 有 7 個起點（202603–202638）共 96 列，`ev_forecast/outputs/forecast_log/forecast_log.csv` 有 2 個起點（202636、202638）共 44 列；`data/resp_lab_history.csv` 有 2026-09-17 與 2026-10-01 兩次抓取。
+- 未追蹤 / 未納入流程：根目錄 `nidss_cdcwnh.py`（已進 git，只是參考程式）；流感版 `scripts/refresh_data.sh` 仍未套 TWCA 憑證修法（內部檔由使用者手動更新，所以暫時不需要）。
 - 虛擬環境可用，模型快取在本機。
 - 本機還有 Claude session 紀錄（§附錄 B），換帳號後舊 session 看不到，但檔案仍在。
 
