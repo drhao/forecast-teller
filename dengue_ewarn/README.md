@@ -9,7 +9,7 @@
 | `data/Dengue_Daily.csv` | 疾管署登革熱每日確定病例（Internet Archive 2025-07-29 快照的官方檔案；不入版控） |
 | `data_processed/` | 鄉鎮 × 日面板、通報延遲直方圖（`build_panel.py` 產生） |
 | `src/dengue_ewarn/` | `data.py` 面板與 as-of 重建、`alerts.py` 機率/偵測器/前置時間、`baselines.py`、`model.py`（TimesFM 3.0 MLX 包裝，與流感模組相同）、`calibration.py` 機率校準（等張回歸、Platt、留一年交叉驗證）與兩級門檻工作量、`site.py` 報告頁 |
-| `scripts/` | `build_panel.py` → `run_backtest.py` → `make_report.py` → `calibrate.py` → `build_site.py` |
+| `scripts/` | `build_panel.py` → `run_backtest.py` → `make_report.py` → `calibrate.py` → `make_practical.py`（白話解讀用：每季警示數、簡單規則對照、真實案例）→ `build_site.py` |
 | `outputs/backtest/` | 逐起點預測（parquet）、`dengue_REPORT.md`、p* 掃描、前置時間、配對比較 CSV；`dengue_CALIBRATION_REPORT.md` 與校準指標、細掃描、兩級門檻（`dengue_two_tier.csv`）、成本損失表 |
 | `outputs/figures/` | 案例圖與示意圖 |
 
@@ -38,6 +38,7 @@ python scripts/build_panel.py --scope all --tag dengue_all
 python scripts/run_backtest.py --tag dengue_all --panel dengue_all --years 2010 2011 2012 2013 2014 2015 2016 2018 2019 2020 2023 2024 --step 2 --modes final asof_adj --batch 32 --chunk 1024 --context 730
 python scripts/make_report.py --tag dengue_all --panel dengue_all
 python scripts/calibrate.py --tag dengue_all --panel dengue_all
+python scripts/make_practical.py --tag dengue_all --panel dengue_all   # {tag}_practical.csv、{tag}_rule_vs_model.csv、{tag}_examples.json
 python scripts/build_site.py --tag dengue_all --panel dengue_all     # 站台改以全台結果為主；asof 消融引用 tag dengue 的數字
 ```
 

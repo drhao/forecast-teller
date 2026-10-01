@@ -135,6 +135,8 @@ def build(tag: str = "dengue", panel: str | None = None, n_sites: int = 20, site
     keep_methods = {"EWMA", "CUSUM", f"TimesFM {main_mode} p*=0.3", f"TimesFM {main_mode} p*=0.5"}
     strata_leads = [x for x in (records(pd.read_csv(BT / f"{tag}_strata_leads.csv")) if (BT / f"{tag}_strata_leads.csv").exists() else []) if x["方法"] in keep_methods]
     strata_sweep = [x for x in (records(pd.read_csv(BT / f"{tag}_strata_sweep.csv")) if (BT / f"{tag}_strata_sweep.csv").exists() else []) if x["mode"] == main_mode]
+    exj = json.loads((BT / f"{tag}_examples.json").read_text(encoding="utf-8")) if (BT / f"{tag}_examples.json").exists() else {}
+    examples, practical = exj.get("examples", {}), exj.get("summary", {})
     dh = hist.sum(axis=(0, 1)).astype(float); cdf = np.cumsum(dh) / dh.sum()
     delay = {"median": int(np.searchsorted(cdf, 0.5)), "p95": int(np.searchsorted(cdf, 0.95)),
              "recent7_complete": r(float(np.mean(completeness(hist, hist.shape[1] - 1)[:7])), 3)}   # mean reported share of the last 7 days at an origin
@@ -192,10 +194,74 @@ def build(tag: str = "dengue", panel: str | None = None, n_sites: int = 20, site
             "n_events_epidemic": int(pd.to_datetime(leads_long[leads_long.method == "CUSUM"].crossing).dt.year.isin(big).sum()),
             "epidemic_years": ep_yrs, "quiet_years": quiet_yrs, "panel_start": str(counts.index[0].date()), "panel_end": str(counts.index[-1].date()), "delay": delay,
             "tag": tag, "scope_text": scope_text, "counties": counties, "n_tnkh": int(n_tnkh), "asof_ref": asof_ref, "main_mode": main_mode,
-            "strata_leads": strata_leads, "strata_sweep": strata_sweep}
+            "strata_leads": strata_leads, "strata_sweep": strata_sweep, "examples": examples, "practical": practical}
     (site_dir / "data.json").write_text(json.dumps(data, ensure_ascii=False, allow_nan=False, default=str), encoding="utf-8")
     (site_dir / "index.html").write_text(render_html(data), encoding="utf-8")
     return data
+
+
+def _timeline_table(tl: dict, label_known: str = "警示當天已知") -> str:
+    """Compact daily table: dates / final onset counts / counts known at the origin; alert & crossing days marked."""
+    marks = set(tl.get("marks", []))
+    head = "".join(f"<th class='num{' mark' if d in marks else ''}'>{d}</th>" for d in tl["dates"])
+    row = lambda name, vals: f"<tr><td>{name}</td>" + "".join(f"<td class='num{' mark' if d in marks else ''}'>{'' if v is None else (int(v) if float(v).is_integer() else v)}</td>" for d, v in zip(tl["dates"], vals)) + "</tr>"
+    return (f"<div class='tbl-wrap'><table class='tbl compact mini'><thead><tr><th>日期</th>{head}</tr></thead><tbody>{row('實際發病數（事後）', tl['final'])}"
+            f"{row(label_known, tl['known'])}{row('完整度校正後', tl['adjusted'])}</tbody></table></div>")
+
+
+def plain_language_section(D: dict) -> str:
+    """05 白話解讀：三個實務問題 + 真實案例（數字全部來自 {tag}_examples.json / strata CSV）。"""
+    P = D["practical"]; EX = D["examples"]; fmt = lambda v, nd=2: "—" if v is None else f"{v:,.{nd}f}"
+    ST = P["season_table"]; RV = P["rule_vs_model"]; SL = D.get("strata_leads", [])
+    def srow(p, region, etype):
+        return next((r for r in ST if float(r["p_star"]) == p and r["區域"] == region and r["事件型態"] == etype), None)
+    def rrow(region, key):
+        return next((r for r in RV if r["區域"] == region and key in r["方法"]), None)
+    def lrow(region, etype, key):
+        return next((r for r in SL if r["區域"] == region and r["事件型態"] == etype and key in str(r["方法"])), None)
+    o3, o5 = srow(0.3, "其他縣市", "下限群聚"), srow(0.5, "其他縣市", "下限群聚")
+    e3, e5 = srow(0.3, "台南高雄", "流行中加速"), srow(0.5, "台南高雄", "流行中加速")
+    r1, r2, m3, m5 = rrow("其他縣市", "≥ 1 例"), rrow("其他縣市", "≥ 2 例"), rrow("其他縣市", "p*=0.3"), rrow("其他縣市", "p*=0.5")
+    AQ = P.get("auc_quiet", {}).get("其他縣市", {}); FAM = [x for x in P.get("rule_family", []) if x["區域"] == "其他縣市"]
+    fam_rows = "".join(f"<tr class='{'baseline' if str(x['方法']).startswith('規則') else ''}'><td>{x['方法']}</td><td class='num'>{x['敏感度']:.2f}</td><td class='num'>{x['假警報/100']:.2f}</td><td class='num'>{x['PPV']:.2f}</td><td class='num'>{x['每季真警示']:.0f}</td><td class='num'>{x['每季假警報']:.0f}</td></tr>" for x in FAM)
+    fam_html = (f"""<div class="tbl-wrap" style="margin-top:14px"><table class="tbl compact"><thead><tr><th>平靜區（其他縣市 {AQ.get('townships', '—')} 鄉鎮）第一個群聚層：同一條取捨曲線</th><th class="num">敏感度（週）</th><th class="num">假警報 / 100 鄉鎮週</th><th class="num">PPV</th><th class="num">每季真警示</th><th class="num">每季假警報</th></tr></thead><tbody>{fam_rows}</tbody></table>
+    <p class="source">以「已通報數」排序的 AUC {AQ.get('raw7', float('nan')):.2f}（校正後 {AQ.get('adj7', float('nan')):.2f}），模型機率 {AQ.get('model', float('nan')):.2f}：在這一層模型的排序能力沒有超過「剛通報幾例」。事件週只占 {100 * AQ.get('event_weeks', 0) / max(AQ.get('weeks', 1), 1):.1f}%，所以不論哪種方法 PPV 都低，這是基準率的效果；敏感度與假警報率本身不受不平衡影響，可以直接比。</p></div>""" if FAM else "")
+    le3, le5, lc = lrow("台南高雄", "流行中加速", "p*=0.3"), lrow("台南高雄", "流行中加速", "p*=0.5"), lrow("台南高雄", "流行中加速", "CUSUM")
+    lo3, loc = lrow("其他縣市", "下限群聚", "p*=0.3"), lrow("其他縣市", "下限群聚", "CUSUM")
+    pct = lambda v: f"{100 * v:.0f}%"
+    ep_hit = EX.get("epidemic_hits", [{}])[0] if EX.get("epidemic_hits") else None
+    ep_txt = (f"例如{ep_hit['series'].replace('|', ' ')}：{ep_hit['alert_date']} 當天已通報 {ep_hit['known7']} 例（事後補齊是 {ep_hit['final7_at_alert']:.0f} 例），模型給 {ep_hit['prob']:.2f} 的機率；"
+              f"{ep_hit['cross']} 突破閾值 {ep_hit['thr']:.0f}，之後兩週 7 日累計最高到 {ep_hit['s7_max14']:.0f} 例。" if ep_hit else "")
+    def card(title, items):
+        return f"<div class='card'><h3>{title}</h3><ul class='findings readme'>{''.join(f'<li>{x}</li>' for x in items)}</ul></div>"
+    q1 = card("1. 這個模型實務上真的有幫助嗎？幫到的是什麼？", [
+        f"<b>流行已經開始的地區：有幫助。</b>在「下一波升級」前，模型 p* = 0.3 抓到 {pct(le3['偵測到的事件比例'])} 的升級事件、提前中位數 {le3['前置時間中位數（天）']:.0f} 天；p* = 0.5 抓到 {pct(le5['偵測到的事件比例'])}、提前 {le5['前置時間中位數（天）']:.0f} 天。CUSUM 抓到 {pct(lc['偵測到的事件比例'])} 但只提前 {lc['前置時間中位數（天）']:.0f} 天。{ep_txt}這幾天可以用來排噴藥、孳清、增開篩檢站的優先順序。",
+        f"<b>平靜區的第一個群聚：幫助有限。</b>模型抓到 {pct(lo3['偵測到的事件比例'])}、提前 {lo3['前置時間中位數（天）']:.0f} 天，但它的訊號幾乎就是「剛通報了 1 例」被通報完整度校正放大（發病 1–2 天內通報的 1 例會被估成 4–5 例）。一條「最近 7 天通報 ≥ 1 例就注意」的簡單規則抓到 {pct(r1['偵測到的事件比例'])}、提前 {r1['前置中位數（天）']:.0f} 天，代價是假警報為模型 p* = 0.3 的 {r1['假警報/100'] / m3['假警報/100']:.0f} 倍；把假警報率拉到一樣時，模型和「已通報 ≥ k 例」的規則幾乎落在同一條取捨曲線上（下表），模型在這一層沒有加到「剛通報幾例」以外的資訊。台灣現行每一例本土病例都會疫調與孳清，這個情境下模型沒有超越現行做法。",
+        f"<b>完全幫不上的：整批出現的群聚。</b>其他縣市的第一個群聚有 {pct(P['share_batch_other'])} 在突破前兩週的已通報數是 0，病例是疫調後一次補進資料的（例如 {'、'.join(m['series'].replace('|', ' ') + ' ' + m['cross'][:4] for m in EX.get('misses', [])[:3])}）。沒有任何模型能從 0 預測，EWARN 規則與模型同一天才知道。另外 {pct(P['share_small_other'])} 的第一個群聚兩週內不超過 5 例，本來就會自己結束。",
+        "<b>所以它的角色</b>是「流行期的優先順序工具」加上「把不確定性量化成可以排班的機率」，不是「平靜區的群聚偵測器」。"])
+    q2 = card("2. 敏感度、特異度、PPV 這樣算好嗎？會有多少假警報、漏掉多少？", [
+        f"<b>特異度看起來很高（{100 * (1 - m5['假警報/100'] / 100):.1f}%，p* = 0.5）</b>，因為鄉鎮週絕大多數沒事；真正要看的是 PPV 與每季的警示數。",
+        f"<b>平靜區（其他縣市 {o5['鄉鎮數']} 個鄉鎮，一個流行季 6–12 月）</b>p* = 0.5：平均 {o5['每季警示週']:.0f} 次警示，{o5['每季真警示']:.0f} 次對應真事件、{o5['每季假警示']:.0f} 次假；事件週 {o5['每季事件週']:.0f} 個、漏掉 {o5['每季漏掉']:.0f} 個（約一半是整批出現、看不到的）。p* = 0.3：{o3['每季警示週']:.0f} 次警示、{o3['每季真警示']:.0f} 真、{o3['每季假警示']:.0f} 假。PPV {m5['PPV']:.2f}：每 {1 / max(m5['PPV'], 0.01):.0f} 張查證單約 1 張真。",
+        f"<b>流行區流行中（台南高雄 {e5['鄉鎮數']} 區，{e5['季數']} 個流行季）</b>p* = 0.5：每季 {e5['每季警示週']:.0f} 次警示，{e5['每季真警示']:.0f} 真、{e5['每季假警示']:.0f} 假（PPV {e5['每季真警示'] / max(e5['每季警示週'], 1):.2f}）；事件週 {e5['每季事件週']:.0f} 個、漏 {e5['每季漏掉']:.0f} 個。p* = 0.3：{e3['每季警示週']:.0f} 次、{e3['每季真警示']:.0f} 真、{e3['每季假警示']:.0f} 假。",
+        f"<b>好不好：</b>流行期可以接受（PPV 近八成，平均每區每季約 1 次警示）；平靜區不好（PPV 不到兩成），但假警報的絕對量不大：{o5['鄉鎮數']} 個鄉鎮一季 {o5['每季假警示']:.0f} 次，平均一個鄉鎮十年才 1 次。平靜區的主要問題是<b>漏報</b>：每 5 個事件漏 4 個，而且漏掉的包括最大的幾次。",
+        "<b>建議用法：</b>平靜區用「有新個案就注意」的規則；模型只在流行區或最近已有病例的鄉鎮啟用兩級門檻。"])
+    def ex_hit(e):
+        return (f"<div class='card'><h3>偵測到：{e['series'].replace('|', ' ')} {e['cross'][:4]}</h3><div class='sub'>{e['alert_date']} 警示（機率 {e['prob']:.2f}，當天已通報 {e['known7']} 例）→ {e['cross']} 突破閾值 {e['thr']:.0f} 例，提前 {e['lead']} 天；之後兩週 7 日累計最高 {e['s7_max14']:.0f} 例、共 {e['cases_next14']:.0f} 例</div>{_timeline_table(e['timeline'])}</div>")
+    def ex_epi(e):
+        return (f"<div class='card'><h3>流行中偵測到：{e['series'].replace('|', ' ')} {e['cross'][:4]}</h3><div class='sub'>{e['alert_date']} 警示（機率 {e['prob']:.2f}，當天已通報 {e['known7']} 例、事後補齊 {e['final7_at_alert']:.0f} 例）→ {e['cross']} 7 日累計 {e['s7_cross']:.0f} 例突破閾值 {e['thr']:.0f}，提前 {e['lead']} 天；之後兩週最高 {e['s7_max14']:.0f} 例</div>{_timeline_table(e['timeline'])}</div>")
+    def ex_miss(e):
+        return (f"<div class='card'><h3>漏掉：{e['series'].replace('|', ' ')} {e['cross'][:4]}</h3><div class='sub'>突破前最後一個起點 {e['last_origin']} 已通報 {e['known14']} 例（前兩週事後共 {e['cases_prev14']:.0f} 例），模型機率 {e['prob']:.2f}；{e['cross']} 一天內 7 日累計跳到 {e['s7_max14']:.0f} 例、之後兩週共 {e['cases_next14']:.0f} 例。整批出現，事前看不到。</div>{_timeline_table(e['timeline'], '最後起點已知')}</div>")
+    def ex_fa(e):
+        return (f"<div class='card'><h3>假警報：{e['series'].replace('|', ' ')} {e['origin'][:4]}</h3><div class='sub'>{e['origin']} 已通報 {e['known7']} 例，完整度校正後估成 {e['adj7']:.1f} 例，模型機率 {e['prob']:.2f}；事後那 7 天其實只有 {e['final7']:.0f} 例，之後兩週 {e['cases_next14']:.0f} 例，最高 7 日累計 {e['max_s7_next14']:.0f}。</div>{_timeline_table(e['timeline'])}</div>")
+    ex_html = "".join(ex_hit(e) for e in EX.get("hits", [])[:3]) + "".join(ex_epi(e) for e in EX.get("epidemic_hits", [])[:1]) + "".join(ex_miss(e) for e in EX.get("misses", [])[:2]) + "".join(ex_fa(e) for e in EX.get("false_alarms", [])[:2])
+    return f"""
+  <section>
+    <div class="section-head"><span class="section-num">05</span><h2>白話解讀：這個模型實務上有什麼用</h2><span class="en">Plain-language reading</span></div>
+    <div class="grid-2">{q1}{q2}</div>{fam_html}
+    <h3 style="margin-top:22px">3. 實際的例子</h3>
+    <div class="sub">每張卡片：模型警示當天看到什麼（已通報數、校正後的估計）、模型說了什麼（機率）、後來發生什麼（事後的實際發病數）。表格中標色的欄位是警示日與突破日。</div>
+    <div class="grid-2" style="margin-top:10px">{ex_html}</div>
+  </section>"""
 
 
 def render_html(D: dict) -> str:
@@ -236,6 +302,7 @@ def render_html(D: dict) -> str:
     <div class="sub">下限群聚 = 閾值在 3 例下限（非流行區的第一個群聚，情境一最在意的狀況）；流行中加速 = 閾值高於下限（流行已在進行）。上表依事件（前置時間），下表依鄉鎮週（{D['main_mode']}，TimesFM）。</div>
     <div class="tbl-wrap"><table class="tbl compact"><thead><tr><th>區域</th><th>事件型態</th><th class="num">事件數</th><th class="num">其中平靜年</th><th>方法</th><th class="num">偵測到的事件比例</th><th class="num">前置中位數（天）</th><th class="num">前置 ≥ 3 天</th></tr></thead><tbody>{strata_rows}</tbody></table></div>
     <div class="tbl-wrap" style="margin-top:10px"><table class="tbl compact"><thead><tr><th>區域</th><th>事件型態</th><th class="num">鄉鎮週</th><th class="num">事件週</th><th class="num">AUC</th><th class="num">p*</th><th class="num">敏感度</th><th class="num">假警報 / 100 週</th><th class="num">PPV</th></tr></thead><tbody>{strata_sweep_rows}</tbody></table></div>""" if D.get('strata_leads') else "")
+    plain_html = plain_language_section(D) if D.get("practical") else ""
     cases_html = "".join(f"<div class='card'><h3>{c['series'].replace('|', ' ')} {c['year']}：該年 7 日累計最高的鄉鎮</h3><div class='sub'>上：最終資料的 7 日累計與 EWARN 閾值（虛線）；下：模型每個起點給的「14 天內突破閾值」機率（{c['mode']}）；紅色虛線 = 實際突破日</div><img src='figures/{c['figure']}' alt='{c['figure']}' style='width:100%'></div>" for c in D["cases"])
     return f"""<!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -244,7 +311,7 @@ def render_html(D: dict) -> str:
 <link rel="stylesheet" href="../assets/epi.css?v=dengue1">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="../assets/charts.js?v=dengue1" defer></script>
-<style>.readme li{{margin-bottom:6px}} .callout{{background:var(--p-50);border-left:3px solid var(--p-400);padding:12px 16px;margin:14px 0;font-size:14px}} .steps{{counter-reset:s;list-style:none;padding:0}} .steps li{{position:relative;padding-left:38px;margin-bottom:10px}} .steps li::before{{counter-increment:s;content:counter(s);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:50%;background:var(--p-500);color:#fff;font-weight:700;font-size:13px;display:grid;place-items:center}} img.fig{{width:100%;border:1px solid var(--n-200);border-radius:4px;background:#fff}}    .grid-2 > *, .card {{ min-width: 0; }} .tbl-wrap {{ overflow-x: auto; max-width: 100%; }}
+<style>.readme li{{margin-bottom:6px}} .callout{{background:var(--p-50);border-left:3px solid var(--p-400);padding:12px 16px;margin:14px 0;font-size:14px}} .steps{{counter-reset:s;list-style:none;padding:0}} .steps li{{position:relative;padding-left:38px;margin-bottom:10px}} .steps li::before{{counter-increment:s;content:counter(s);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:50%;background:var(--p-500);color:#fff;font-weight:700;font-size:13px;display:grid;place-items:center}} img.fig{{width:100%;border:1px solid var(--n-200);border-radius:4px;background:#fff}} .tbl.mini th,.tbl.mini td{{padding:2px 4px;font-size:11px;white-space:nowrap}} .tbl.mini .mark{{background:var(--p-50);font-weight:700}}    .grid-2 > *, .card {{ min-width: 0; }} .tbl-wrap {{ overflow-x: auto; max-width: 100%; }}
   </style>
 </head><body>
 <header class="masthead"><div class="masthead-inner">
@@ -328,14 +395,15 @@ def render_html(D: dict) -> str:
     <p class="note"><b>配對比較。</b>在不高於 CUSUM 假警報率（{fmt(cus['每 100 鄉鎮週假警報'])}/100 鄉鎮週）的 p* 下，TimesFM（asof_adj，p* = {m_cus['模型 p*'] if m_cus else '—'}）偵測 {fmt(m_cus['模型偵測事件比例']) if m_cus else '—'} 的事件、前置中位數 {fmt(m_cus['模型前置中位數（天）'], 0) if m_cus else '—'} 天；CUSUM 偵測 {fmt(next(x for x in D['lead_table'] if x['方法']=='CUSUM')['偵測到的事件比例'])}、前置 {fmt(next(x for x in D['lead_table'] if x['方法']=='CUSUM')['前置時間中位數（天）'], 0)} 天。在不高於 EWMA 假警報率（{fmt(ewm['每 100 鄉鎮週假警報'])}）下，模型 p* = {m_ewm['模型 p*'] if m_ewm else '—'}：偵測 {fmt(m_ewm['模型偵測事件比例']) if m_ewm else '—'}、前置 {fmt(m_ewm['模型前置中位數（天）'], 0) if m_ewm else '—'} 天；EWMA 偵測 {fmt(ewm and next(x for x in D['lead_table'] if x['方法']=='EWMA')['偵測到的事件比例'])}、前置 {fmt(next(x for x in D['lead_table'] if x['方法']=='EWMA')['前置時間中位數（天）'], 0)} 天。模型的價值主要在「提前幾天」，偵測比例與 CUSUM 相近。</p>{strata_html}
   </section>
 
+{plain_html}
   <section>
-    <div class="section-head"><span class="section-num">05</span><h2>案例</h2><span class="en">Case studies</span></div>
+    <div class="section-head"><span class="section-num">{'06' if plain_html else '05'}</span><h2>案例：流行年 7 日累計最高的鄉鎮</h2><span class="en">Case studies</span></div>
     <div class="grid-2">{cases_html}</div>
     <p class="source">兩個案例都顯示：流行起始前的兩次突破，模型機率在突破前數天已拉高；疫情高峰後閾值遠高於病例數（反應式規則的特性），不再有事件，模型機率也回落。</p>
   </section>
 
   <section>
-    <div class="section-head"><span class="section-num">06</span><h2>應用情境與工作量</h2><span class="en">Operational use</span></div>
+    <div class="section-head"><span class="section-num">{'07' if plain_html else '06'}</span><h2>應用情境與工作量</h2><span class="en">Operational use</span></div>
     <div class="grid-2">
       <div class="card"><h3>從機率到行動</h3><ol class="steps">
         <li>邊緘節點每日更新各收容所（此處為鄉鎮）的 7 日累計序列，先做通報完整度校正，再由模型輸出 14 天的分位數。</li>
@@ -352,7 +420,7 @@ def render_html(D: dict) -> str:
   </section>
 
   <section>
-    <div class="section-head"><span class="section-num">07</span><h2>限制與下一步</h2><span class="en">Limits &amp; next</span></div>
+    <div class="section-head"><span class="section-num">{'08' if plain_html else '07'}</span><h2>限制與下一步</h2><span class="en">Limits &amp; next</span></div>
     <div class="grid-2">
       <div class="card"><h3>限制</h3><ul class="findings readme">
         <li>用的是確定病例，不是情境一的自報症候群；病例數量級與雜訊都不同。</li>
