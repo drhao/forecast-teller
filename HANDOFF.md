@@ -15,16 +15,17 @@
 
 ```bash
 cd /Users/drhao/Documents/GitHub/forecast-teller
-git status && git log --oneline | head -5          # 應為 clean、HEAD ddf9cda（或之後的 commit）
+git fetch && git status -sb && git log --oneline | head -5   # 應為 clean 且不落後 origin（有兩個 clone 在用，先 pull）
 source .venv/bin/activate && python tests/test_basics.py   # 無輸出即通過
 ls data/*.csv | wc -l                               # 11 個原始檔（不在 git 內，必須在本機）
-python3 -c "import json;print(json.load(open('data_processed/coverage.json'))['nhi']['last_complete'])"  # 目前 202638
+python3 -c "import json;print(json.load(open('data_processed/coverage.json'))['nhi']['last_complete'])"  # 目前 202639
+ls -lT data/RODS_RS.csv data/NHI_PROCESSED_48X.csv   # 內部檔日期要比 coverage 新，否則不要重建流感面板（會倒退）
 python scripts/evaluate_forecasts.py --quiet && head -3 outputs/forecast_log/evaluation_summary.csv  # 預測紀錄與評估可跑
 ```
 
 **閱讀順序**：本文件 → `CLAUDE.md`（工作規則）→ `README.md` → `PLAN_timesfm3_flu.md` §11–§12 → `ev_forecast/PLAN.md` §10–§12 → `dengue_ewarn/PLAN.md` §7–§11。
 
-**目前沒有進行中的半成品。** 三條工作線都已實作、回測、上線；2026-10-01 已完成流感與腸病毒的每週更新，並加入 RESP_LAB 網站抓取、預測存檔與評估。最可能的下一件事是下一次每週更新（§9）或 §10 的待辦。
+**目前沒有進行中的半成品。** 三條工作線都已實作、回測、上線；每週更新已跑到 2026-10-09（流感、腸病毒資料至 202639）。**有兩個 clone 在輪流工作**（兩個 Claude 帳號 / 機器），內部資料檔不在 git，只在使用者放檔的那台上；接手時先 `git pull`，再確認本機 `data/` 的檔案日期比 `coverage.json` 新，否則流感面板不要重建（見 §9）。最可能的下一件事是下一次每週更新（§9）或 §10 的待辦。
 
 ---
 
@@ -102,19 +103,19 @@ forecast-teller/
 
 ### 4.1 流感主線的原始資料
 
-| 來源鍵 | 檔案 | 編碼 | 原始範圍 → 判定完整（2026-10-01 更新） | 注意 |
+| 來源鍵 | 檔案 | 編碼 | 原始範圍 → 判定完整（2026-10-09 更新） | 注意 |
 |---|---|---|---|---|
-| `nhi` | NHI_PROCESSED_48X.csv（類流感）、NHI_PROCESSED_487.csv（流感） | cp950 | 200501–202639 → 200502–202638 | 門診 + 住院；`nhi_out_ili`、`nhi_out_total` 等 |
-| `nhi_er` | NHI_PROCESSED_48X_ER.csv、NHI_PROCESSED_487_ER.csv | cp950 | 201552–202639 → 201601–202638 | 急診 |
-| `rods` | RODS_RS.csv | cp950 | 200901–202639 → 200901–202638 | 醫院層級，`rods_ili`、`rods_total`；`rods_ili_pct` = ili / total × 100 |
-| `nidds` | NIDDS_487A.csv | cp950 | 200302–202639 → 200302–202635 | 個案清單、發病週；沒有列的週是真實 0（zero-fill）；回補延遲 → `DEFAULT_LAG["nidds"] = 3`，尾端多刪 3 週 |
-| `lab` | INFLUENZA_TYPE_YW.csv（A/B/未分型）、INFLUENZA_MON_TYPE_YW.csv（檢驗件數） | cp950 | 201453–202639 → 201502–202638 | **來源名稱是「實驗室自動通報系統（LARS）」，不是合約實驗室**；合約實驗室資料日後再加 |
-| `resp` | RESP_LAB.csv | UTF-8-sig | 202501–202637 → 202502–202636 | 社區合約實驗室多重 PCR，每週約 250 件檢體；**由 `scripts/fetch_resp_lab.py` 從 NIDSS 網站抓**（`hcJson.push` 內嵌資料，未來週是 `undefined` 要換成 `null`）；網站會回補修正過去週，所以整份重抓並以長格式記錄在 `data/resp_lab_history.csv`（`fetched_on` × `yw`）；檔內有預填的空白未來列要丟掉；`resp_*` 欄；`DEFAULT_LAG["resp"] = 1` |
+| `nhi` | NHI_PROCESSED_48X.csv（類流感）、NHI_PROCESSED_487.csv（流感） | cp950 | 200501–202640 → 200502–202639 | 門診 + 住院；`nhi_out_ili`、`nhi_out_total` 等 |
+| `nhi_er` | NHI_PROCESSED_48X_ER.csv、NHI_PROCESSED_487_ER.csv | cp950 | 201552–202640 → 201601–202639 | 急診 |
+| `rods` | RODS_RS.csv | cp950 | 200901–202640 → 200901–202639 | 醫院層級，`rods_ili`、`rods_total`；`rods_ili_pct` = ili / total × 100 |
+| `nidds` | NIDDS_487A.csv | cp950 | 200302–202640 → 200302–202636 | 個案清單、發病週；沒有列的週是真實 0（zero-fill）；回補延遲 → `DEFAULT_LAG["nidds"] = 3`，尾端多刪 3 週 |
+| `lab` | INFLUENZA_TYPE_YW.csv（A/B/未分型）、INFLUENZA_MON_TYPE_YW.csv（檢驗件數） | cp950 | 201453–202640 → 201502–202639 | **來源名稱是「實驗室自動通報系統（LARS）」，不是合約實驗室**；合約實驗室資料日後再加 |
+| `resp` | RESP_LAB.csv | UTF-8-sig | 202501–202638 → 202502–202637 | 社區合約實驗室多重 PCR，每週約 250 件檢體；**由 `scripts/fetch_resp_lab.py` 從 NIDSS 網站抓**（`hcJson.push` 內嵌資料，未來週是 `undefined` 要換成 `null`）；網站會回補修正過去週，所以整份重抓並以長格式記錄在 `data/resp_lab_history.csv`（`fetched_on` × `yw`）；檔內有預填的空白未來列要丟掉；`resp_*` 欄；`DEFAULT_LAG["resp"] = 1` |
 | — | tw_holiday.csv | UTF-8 | 到 2026-12-27 | 2021 與 2023–2025 的節日名稱放在 `holidayCategory` 而非 `name`，春節判斷要同時比對兩欄；2027 以後只有春節日期外推（`covariates.LNY_DATES`，假日天數假設 5 天），**2027 官方行事曆公布後要延伸此檔並重跑** |
 | — | date_week_mapping.csv | UTF-8 | — | 日期 ↔ 疫情週對應 |
 
 - 疫情週：台灣疾管署定義，週日起算，部分年份有第 53 週；2009 以前以日曆錨定。工具在 `weeks.py`（`yw_range`、`next_weeks`、`week_start`、`yw_of_date`、`seasonal_phase`）。
-- 頭尾不完整週自動偵測：`panel.detect_edges`，邊緣週總量低於鄰近 8 週中位數的 0.6 倍即視為不完整（NIDDS 用 0.5）。結果寫在 `data_processed/coverage.json`，每次更新後先看這個檔。
+- 頭尾不完整週自動偵測：`panel.detect_edges`，邊緣週總量低於鄰近 8 週中位數的 0.6 倍即視為不完整（NIDDS 用 0.5）。2026-10-09 起 `coverage_from_national` 先以日期判斷（`asof` 參數，預設今天）：尚未結束的週一律不算完整，再做比值偵測，因為 LARS 的當週只申報一半就達 0.62 倍而被誤判完整。結果寫在 `data_processed/coverage.json`，每次更新後先看這個檔。
 - COVID 期 2020–2022 流感幾乎消失，是結構斷點；2024–2025 為歷史高點季。
 - RODS 急診類流感就診百分比的**流行閾值是 11%**（使用者指定；2026-09-17 由 10% 修正），設定在 `backtest.DEFAULT_THRESHOLDS`，網頁用紅色虛線標示。其他目標的閾值預設為回測窗內實際值第 75 百分位。
 - 共變數：春節週旗標、每週平日假日天數（最有用）、季節 sin/cos（無幫助）；過去共變數依延遲平移後 bfill/ffill。
@@ -180,19 +181,19 @@ forecast-teller/
 
 層結論：零樣本單變量已比 naive 低 16%、比 AutoETS 低 12%；假日天數是最有用的共變數；季節相位、log1p、對稱平均、滑動視窗無幫助；MA3 比 naive 差 6–13%；季節性 naive 失效（MASE > 1）；RESP_LAB 當共變數反而 +6–9% WIS，所以只用在敘事；LARS 當共變數中性。
 
-### 5.3 最新預測（起點 202638，資料 2026-10-01 更新）
+### 5.3 最新預測（起點 202639，資料 2026-10-09 更新，另一個 clone 跑的）
 
-| 指標 | 202639 | 202640 | 202641 | 202642 |
+| 指標 | 202640 | 202641 | 202642 | 202643 |
 |---|---:|---:|---:|---:|
-| 門診人次（聯合） | 121,209 | 114,586 | 113,944 | 105,090 |
-| 急診人次（聯合） | 13,051 | 12,522 | 11,412 | 10,675 |
-| 門急診合計（兩者相加） | 134,260 | 127,108 | 125,356 | 115,765 |
-| RODS 急診類流感%（單變量） | 12.2 | 12.2 | 11.8 | 11.6 |
-| 重症（起點 202635，目標週 202636–202639） | 103 | 99 | 93 | 87 |
+| 門診人次（聯合） | 117,810 | 122,440 | 114,748 | 104,382 |
+| 急診人次（聯合） | 12,752 | 12,000 | 11,307 | 10,926 |
+| 門急診合計（兩者相加） | 130,562 | 134,440 | 126,055 | 115,308 |
+| RODS 急診類流感%（單變量） | 12.1 | 11.6 | 11.4 | 11.5 |
+| 重症（起點 202636，目標週 202637–202640） | 140 | 126 | 110 | 98 |
 
-202638 實際：門診 122,060（就診率 2.37%）、急診 12,772、RODS 12.2%（連續 4 週高於 11% 閾值）、重症 202635 為 106 例。模型判讀為高原期、未來 4 週緩降。**202638 的健保門診總就診人次比前週少 12%（5.15M 對 5.84M），疑似申報未齊，就診率偏高，下次更新可能上修。** 這些數字會被下次更新覆蓋；歷次預測都在 `outputs/forecast_log/forecast_log.csv`，與實際值的比對在 `evaluation.csv`。
+202639 實際：門診 123,245（就診率 2.24%）、急診 13,089、RODS 12.1%（連續 5 週高於 11% 閾值）、重症 202636 為 135 例。模型判讀為高原期、第 2 週前後觸頂後緩降。10/1 擔心的 202638 分母未齊已如預期上修（門診 122,060 → 123,2xx 量級，就診率 2.37% → 2.24%）。這些數字會被下次更新覆蓋；歷次預測都在 `outputs/forecast_log/forecast_log.csv`，與實際值的比對在 `evaluation.csv`。
 
-前一次（起點 202636）的即時預測對 202637 的 1 週前誤差：門診 1.7%、急診 1.5%、RODS% 4.4%，皆在 80% 區間內；2 週前對 202638 的門診高估 15%（受上述分母問題影響）。
+即時評估：起點 202638 對 202639 的 1 週前誤差門診 1.7%、急診 0.3%、RODS% 0.9%、門急診合計 1.5%，全部在 80% 區間內；起點 202636 的 2 週前門診高估 15%（分母問題）。
 
 ### 5.4 網站
 
@@ -224,7 +225,7 @@ forecast-teller/
 
 - 流程：`scripts/refresh_data.sh` → `build_panel.py`（需要主專案 `data_processed/national_weekly.parquet` 提供 `rods_total`）→ `run_backtest.py --suite ...` → `forecast_now.py --joint ev_oe ev_out ev_rods --covariates school holiday` 與 `--targets ev_rods_pct` → `build_site.py`；一鍵 `scripts/weekly_update.sh [--push]`（會自己下載開放資料）。
 - 回測（COVID 後，門急診合計）：最佳為三變量聯合（合計 + 門診 + RODS）+ 學校行事曆 + 假日，WIS 1,105、相對 naive 0.81（h1–4：0.79 / 0.80 / 0.82 / 0.83）、MAPE 15.3%、方向命中 0.71、11,000 閾值命中 0.84 / 誤報 0.08；80% 涵蓋 0.75（偏窄）。零樣本無共變數 0.85；AutoETS 0.95；MA3 1.18；季節性 naive 3.96。
-- 最新預測（起點 202638，2026-10-01 更新）：門急診合計 9,761 → 9,699 → 10,087 → 10,647，達 2026 閾值 12,000 的機率約 0.05 → 0.05 → 0.2 → 0.3。前一次（起點 202636）預測上升到 12,866，實際 202637–202638 為 10,502、9,945，2 週前預測高估 17%（見 `ev_forecast/outputs/forecast_log/evaluation.csv`）。
+- 最新預測（起點 202639，2026-10-09 更新）：門急診合計 10,077 → 10,216 → 10,394 → 10,514，達 2026 閾值 12,000 的機率約 0.05 → 0.1 → 0.2 → 0.25。202639 實際 10,073（-0.4%）；202638 回補後由 9,945 上修為 10,112。即時評估：起點 202638 的 1 週前誤差 3.1%（區間內）；起點 202636 預測升到 12,866，實際 3 週後 10,073，高估 23%（區間外），模型對轉折反應慢。`ev_rods_pct` 的起點仍 202638，因為本機流感面板的 RODS 分母只到 202638（見 §9 兩個 clone 的說明）。
 - 預測紀錄與評估同主線：`scripts/log_forecast.py --project ev_forecast`、`scripts/evaluate_forecasts.py --project ev_forecast`，檔案在 `ev_forecast/outputs/forecast_log/`（已回填 2026-09-19 的起點 202636 快照）。
 - 未做（PLAN §12.4）：取得健保急診檔後替換 RODS；加入重症、型別、停課共變數；區間校正（涵蓋率拉回 0.80）；年齡層與縣市聯合回測；每週保存開放資料快照估回補係數。
 
@@ -277,6 +278,8 @@ forecast-teller/
 4. 預測評估：`python scripts/evaluate_forecasts.py`（或 `--since 202636`）看歷次即時預測的 MAPE、涵蓋率、WIS。注意 forecast_log 裡起點 202603–202607 的列來自 2026-09-17 初始 commit 用舊資料擷取跑的預測（不是當週即時做的），而且 202607 是春節週，解讀時要分開看；真正的即時預測從起點 202636 起。
 5. 若要同步更新投影片：`python scripts/make_slide_charts.py && python scripts/build_deck.py`。
 
+**兩個 clone 的注意事項（2026-10-09）**：內部檔不在 git，哪台放了新檔就在哪台跑流感更新；另一台 `git pull` 後 `data_processed/coverage.json`、`national_weekly.csv` 會是新的，但本機 `data/*.csv` 與 `data_processed/*.parquet` 仍是舊的，**不要在那台重建流感面板**（會把 coverage 倒退）。腸病毒可以在任一台跑（開放資料自動下載），但 `ev_rods_pct` 的分母來自本機流感 parquet，會停在本機面板的最後完整週。
+
 **腸病毒（開放資料）**：先跑完流感的更新（面板提供 `rods_total`），再 `ev_forecast/scripts/weekly_update.sh --push`（自行下載、面板、預測、`log_forecast.py --project ev_forecast`、`evaluate_forecasts.py --project ev_forecast`、站台、commit `docs/ev` 與 `ev_forecast/{data_processed/coverage.json, data_processed/national_weekly.csv, outputs/latest, outputs/forecast_log}`）。每年初確認 `thresholds.csv` 是否要加新年度的閾值。
 
 **登革熱**：無每週流程。
@@ -306,17 +309,20 @@ forecast-teller/
 - 正規表示式批次改 HTML 時掉了 `historyWeeks: weeks` → 改完要在瀏覽器驗證按鈕。
 - PowerPoint AppleScript：`tell application "Keynote"` 會打到別的 app；PowerPoint 需用 bundle id、HFS 路徑、先關閉所有簡報，否則匯出舊內容；表格框線在 `a:tcPr` 要先放 `a:lnL/R/T/B` 再放填色。
 - 瀏覽器快取舊 CSS/HTML → 資產連結加 `?v=`。
+- LARS 當週只申報一半就通過 0.6 倍門檻被當成完整週（202640，2026-10-09）→ `coverage_from_national` 先用日期排除尚未結束的週。
+- 新 clone 沒有 `outputs/backtest/*.parquet`，`build_site.py` 原本會中斷 → 改為沿用 `docs/data/backtest.json` 並印提示。
+- 兩個 clone 各自有舊版內部檔；在資料較舊的那台重建流感面板會把 coverage 倒退 → 先比對 `data/` 檔案日期與 `coverage.json`。
 - 一次 push 因 DNS 失敗 → 重試即可。
 
 ---
 
 ## 12. 交接時的狀態快照（2026-10-01）
 
-- `git status` 乾淨；HEAD `ddf9cda`（2026-10-01）。當天的 commit 依序：`ac77d74` NIDSS 抓取腳本、`a8df283` 流感每週更新、`a7932df` 預測存檔與評估 + RESP_LAB 留存 + 文件、`ddf9cda` 腸病毒每週更新。remote `origin` = https://github.com/drhao/forecast-teller.git ；GitHub Pages 已部署（`/` 與 `/ev/` 的 latest.json 起點皆 202638）。
-- 線上七個頁面：`/`、`/backtest.html`、`/report.html`、`/dengue/`、`/ev/`、`/ev/backtest.html`、`/ev/report.html`；`docs/data/latest.json` 起點 202638、含 `combined`；`docs/ev/data/latest.json` 起點 202638。
-- 資料：流感各來源完整至 202638（NIDDS 202635、RESP 202636）；腸病毒至 202638（2026-10-01 更新）；登革熱至 2025-07-23。
+- 快照日期 2026-10-09。10/1 之後的 commit：登革熱第二、三版與白話解讀（`8be45a8`、`ca21d5a`、`4d9e7ff`）、第四版 nowcast 負面結果（`2c91e9e`）、流感 + 腸病毒 9 頁投影片（`308b5c4`，`scripts/build_deck_flu_ev.py`）、另一個 clone 的流感每週更新 10/9（`a1d3753`，資料至 202639，加 `asof` 日期判斷與 build_site 缺 parquet 的 fallback）、本機的腸病毒每週更新 10/9。remote `origin` = https://github.com/drhao/forecast-teller.git 。
+- 線上七個頁面：`/`、`/backtest.html`、`/report.html`、`/dengue/`、`/ev/`、`/ev/backtest.html`、`/ev/report.html`；`docs/data/latest.json` 起點 202639、含 `combined`；`docs/ev/data/latest.json` 起點 202639（`ev_rods_pct` 202638）。
+- 資料：流感各來源完整至 202639（NIDDS 202636、RESP 202637）；腸病毒至 202639；登革熱至 2025-07-23。本機（find.ebilink 帳號那台）的 `data/` 內部檔是 9/30 版（原始到 202639），10/9 的流感更新是在另一個 clone 用更新的檔跑的。
 - 登革熱第二、三版（2026-10-01）在 `dengue` 分支完成後合併回 `main`，見 `dengue_ewarn/PLAN.md` §12–13；站台 `docs/dengue/` 以第三版（全台 274 鄉鎮，tag `dengue_all`）為主；第一版的 outputs 備份在該 session 的 scratchpad，不在 repo。
-- `outputs/forecast_log/forecast_log.csv` 有 7 個起點（202603–202638）共 96 列，`ev_forecast/outputs/forecast_log/forecast_log.csv` 有 2 個起點（202636、202638）共 44 列；`data/resp_lab_history.csv` 有 2026-09-17 與 2026-10-01 兩次抓取。
+- `outputs/forecast_log/forecast_log.csv` 有 8 個起點（202603–202639）共 128 列，`ev_forecast/outputs/forecast_log/forecast_log.csv` 有 3 個起點（202636–202639）共 56 列；`data/resp_lab_history.csv` 有 2026-09-17、10-01、10-09 三次抓取（網站至 202638）。
 - 未追蹤 / 未納入流程：根目錄 `nidss_cdcwnh.py`（已進 git，只是參考程式）；流感版 `scripts/refresh_data.sh` 仍未套 TWCA 憑證修法（內部檔由使用者手動更新，所以暫時不需要）。
 - 虛擬環境可用，模型快取在本機。
 - 本機還有 Claude session 紀錄（§附錄 B），換帳號後舊 session 看不到，但檔案仍在。
