@@ -1,24 +1,24 @@
 {
- "generated_at": "2026-10-01T16:13+08:00",
+ "generated_at": "2026-10-09T16:37+08:00",
  "coverage": {
   "nhi": {
    "raw_first": "201601",
-   "raw_last": "202638",
+   "raw_last": "202639",
    "first_complete": "201601",
-   "last_complete": "202638"
+   "last_complete": "202639"
   },
   "rods": {
    "raw_first": "200701",
-   "raw_last": "202638",
+   "raw_last": "202639",
    "first_complete": "200701",
-   "last_complete": "202638"
+   "last_complete": "202639"
   },
   "rods_total": {
    "first": "200901",
    "last": "202638",
    "source": "influenza panel data_processed/national_weekly.parquet (RODS_RS.csv)"
   },
-  "n_weeks": 1031,
+  "n_weeks": 1032,
   "age_groups_nhi": [
    "0~2",
    "13~15",
@@ -170,20 +170,20 @@
    {
     "yw": "202635",
     "official": 8641,
-    "out": 8303,
+    "out": 8319,
     "rods": 374,
-    "composite": 8677,
-    "diff_pct": 0.4,
-    "implied_er": 338
+    "composite": 8693,
+    "diff_pct": 0.6,
+    "implied_er": 322
    },
    {
     "yw": "202636",
     "official": 10203,
-    "out": 9959,
+    "out": 10010,
     "rods": 467,
-    "composite": 10426,
-    "diff_pct": 2.2,
-    "implied_er": 244
+    "composite": 10477,
+    "diff_pct": 2.7,
+    "implied_er": 193
    }
   ],
   "mean_diff_pct": -1.4,
