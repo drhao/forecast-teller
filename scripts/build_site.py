@@ -469,7 +469,13 @@ def main():
     now = dt.datetime.now().astimezone().isoformat(timespec="minutes")
     latest = build_latest(nat); latest["generated_at"] = now
     latest["narrative"] = build_narrative(nat, latest)
-    bt = build_backtest(); bt["generated_at"] = now
+    try:
+        bt = build_backtest(); bt["generated_at"] = now
+    except FileNotFoundError as e:
+        # Backtest parquet files are not in git and only change when a backtest is re-run;
+        # a weekly update on a fresh clone keeps the published backtest.json as is.
+        bt = json.loads((DATA / "backtest.json").read_text(encoding="utf-8"))
+        print(f"backtest parquet missing ({Path(e.filename).name}); reusing docs/data/backtest.json from {bt.get('generated_at')}")
     meta = {"generated_at": now, "coverage": {k: {"first_complete": v["first_complete"], "last_complete": v["last_complete"],
                                                   "first_date": ds(v["first_complete"]), "last_date": ds(v["last_complete"])} for k, v in cov.items()},
             "backtest_window": {"start": "201601", "end": "202553", "weeks": 522, "warmup": 104, "origins": bt["targets"]["nhi_out_ili"]["n_origins"]},

@@ -17,7 +17,7 @@ import pandas as pd
 
 from . import PROCESSED_DIR
 from .io import AGE_ORDER, COUNTIES, load_all
-from .weeks import week_table, yw_range
+from .weeks import week_table, yw_of_date, yw_range
 
 # Extra weeks trimmed from the tail beyond automatic partial-week detection
 # (reporting lag: NIDDS is by onset week and keeps being back-filled for weeks).
@@ -91,15 +91,23 @@ def _national_parts(raw: dict[str, pd.DataFrame]) -> pd.DataFrame:
     return df.reindex(yw_range(min(df.index), max(df.index)))
 
 
-def coverage_from_national(nat: pd.DataFrame, lag: dict[str, int] | None = None) -> dict[str, dict]:
+def coverage_from_national(nat: pd.DataFrame, lag: dict[str, int] | None = None,
+                           asof=None) -> dict[str, dict]:
     lag = {**DEFAULT_LAG, **(lag or {})}
     cov = {}
     yws = list(nat.index)
+    # A week that has not ended as of `asof` (default: today) can never be complete,
+    # even when its partial total happens to pass the ratio test (e.g. lab counts
+    # arriving fast). Calendar check first, then the ratio-based edge detection.
+    current_yw = yw_of_date(pd.Timestamp(asof) if asof is not None else pd.Timestamp.today().normalize())
     for src, denom in SOURCE_DENOM.items():
         if denom not in nat.columns or nat[denom].dropna().empty:
             continue
         s = nat[denom].dropna()
         raw_first, raw_last = str(s.index[0]), str(s.index[-1])
+        s = s[s.index < current_yw]
+        if s.empty:
+            continue
         first, last = detect_edges(s, ratio=0.5 if src == "nidds" else 0.6)
         last_i = yws.index(last) - lag[src]
         cov[src] = {
