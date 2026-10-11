@@ -15,12 +15,13 @@
 
 ```bash
 cd /Users/drhao/Documents/GitHub/forecast-teller
-git fetch && git status -sb && git log --oneline | head -5   # 應為 clean 且不落後 origin（有兩個 clone 在用，先 pull）
+git fetch && git status -sb && git log --oneline | head -5   # 應為 clean 且不落後 origin（有兩個 clone 在用，先 pull；HEAD c1de6cd 或之後）
 source .venv/bin/activate && python tests/test_basics.py   # 無輸出即通過
 ls data/*.csv | wc -l                               # 11 個原始檔（不在 git 內，必須在本機）
 python3 -c "import json;print(json.load(open('data_processed/coverage.json'))['nhi']['last_complete'])"  # 目前 202639
 ls -lT data/RODS_RS.csv data/NHI_PROCESSED_48X.csv   # 內部檔日期要比 coverage 新，否則不要重建流感面板（會倒退）
 python scripts/evaluate_forecasts.py --quiet && head -3 outputs/forecast_log/evaluation_summary.csv  # 預測紀錄與評估可跑
+launchctl list | grep forecast-teller; tail -3 ~/Library/Logs/forecast-teller-dengue-daily.log  # 登革熱每日排程（只在裝了的那台）
 ```
 
 **閱讀順序**：本文件 → `CLAUDE.md`（工作規則）→ `README.md` → `PLAN_timesfm3_flu.md` §11–§12 → `ev_forecast/PLAN.md` §10–§12 → `dengue_ewarn/PLAN.md` §7–§11。
@@ -318,13 +319,14 @@ forecast-teller/
 
 ---
 
-## 12. 交接時的狀態快照（2026-10-01）
+## 12. 交接時的狀態快照（2026-10-11）
 
-- 快照日期 2026-10-09。10/1 之後的 commit：登革熱第二、三版與白話解讀（`8be45a8`、`ca21d5a`、`4d9e7ff`）、第四版 nowcast 負面結果（`2c91e9e`）、流感 + 腸病毒 9 頁投影片（`308b5c4`，`scripts/build_deck_flu_ev.py`）、另一個 clone 的流感每週更新 10/9（`a1d3753`，資料至 202639，加 `asof` 日期判斷與 build_site 缺 parquet 的 fallback）、本機的腸病毒每週更新 10/9。remote `origin` = https://github.com/drhao/forecast-teller.git 。
-- 線上七個頁面：`/`、`/backtest.html`、`/report.html`、`/dengue/`、`/ev/`、`/ev/backtest.html`、`/ev/report.html`；`docs/data/latest.json` 起點 202639、含 `combined`；`docs/ev/data/latest.json` 起點 202639（`ev_rods_pct` 202638）。
+- 快照日期 2026-10-11，HEAD `c1de6cd`。10/1 之後的 commit：登革熱第二、三版與白話解讀（`8be45a8`、`ca21d5a`、`4d9e7ff`）、第四版 nowcast 負面結果（`2c91e9e`）、流感 + 腸病毒 9 頁投影片（`308b5c4`，`scripts/build_deck_flu_ev.py`）、另一個 clone 的流感每週更新 10/9（`a1d3753`，資料至 202639，加 `asof` 日期判斷與 build_site 缺 parquet 的 fallback）、本機的腸病毒每週更新 10/9（`cdbd25e`）、登革熱即時預警上線 10/11（`c1de6cd`）。remote `origin` = https://github.com/drhao/forecast-teller.git 。
+- **登革熱每日預警正在本機自動跑**：launchd `com.drhao.forecast-teller.dengue-daily`（每天 08:30，`git pull --ff-only` 後 `dengue_ewarn/scripts/daily_update.sh --push`，log 在 `~/Library/Logs/forecast-teller-dengue-daily.log`）。只裝在 find.ebilink 帳號那台；另一個 clone 不要同時排程，避免同日兩次 commit。第一次執行 2026-10-11：75 區 p 全 0.02、無標示（平靜年）。
+- 線上七個頁面：`/`、`/backtest.html`、`/report.html`、`/dengue/`（頂部「00 最新預警」讀 `docs/dengue/latest.json`，起點 2026-10-11）、`/ev/`、`/ev/backtest.html`、`/ev/report.html`；`docs/data/latest.json` 起點 202639、含 `combined`；`docs/ev/data/latest.json` 起點 202639（`ev_rods_pct` 202638）。
 - 資料：流感各來源完整至 202639（NIDDS 202636、RESP 202637）；腸病毒至 202639；登革熱至 2025-07-23。本機（find.ebilink 帳號那台）的 `data/` 內部檔是 9/30 版（原始到 202639），10/9 的流感更新是在另一個 clone 用更新的檔跑的。
 - 登革熱第二、三版（2026-10-01）在 `dengue` 分支完成後合併回 `main`，見 `dengue_ewarn/PLAN.md` §12–13；站台 `docs/dengue/` 以第三版（全台 274 鄉鎮，tag `dengue_all`）為主；第一版的 outputs 備份在該 session 的 scratchpad，不在 repo。
-- `outputs/forecast_log/forecast_log.csv` 有 8 個起點（202603–202639）共 128 列，`ev_forecast/outputs/forecast_log/forecast_log.csv` 有 3 個起點（202636–202639）共 56 列；`data/resp_lab_history.csv` 有 2026-09-17、10-01、10-09 三次抓取（網站至 202638）。
+- `outputs/forecast_log/forecast_log.csv` 有 8 個起點（202603–202639）共 128 列，`ev_forecast/outputs/forecast_log/forecast_log.csv` 有 3 個起點（202636–202639）共 56 列，`dengue_ewarn/outputs/forecast_log/dengue_forecast_log.csv` 有 1 個起點（2026-10-11）共 375 列；`data/resp_lab_history.csv` 有 2026-09-17、10-01、10-09 三次抓取（網站至 202638）；`dengue_ewarn/data/nidss_history.csv` 有 2026-10-11 一次（153 列）。
 - 未追蹤 / 未納入流程：根目錄 `nidss_cdcwnh.py`（已進 git，只是參考程式）；流感版 `scripts/refresh_data.sh` 仍未套 TWCA 憑證修法（內部檔由使用者手動更新，所以暫時不需要）。
 - 虛擬環境可用，模型快取在本機。
 - 本機還有 Claude session 紀錄（§附錄 B），換帳號後舊 session 看不到，但檔案仍在。
