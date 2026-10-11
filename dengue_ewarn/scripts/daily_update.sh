@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 登革熱每日預警：抓 NIDSS 快照 → 即時預測（TimesFM 3.0，asof_adj）→ 重建 docs/dengue/ → [--push]
 # 用法：dengue_ewarn/scripts/daily_update.sh [--push]
-# 可在任一 clone 跑（資料來自網站）；重建站台需要本機有 outputs/backtest/*.parquet，沒有就只更新 latest.json。
+# 台南 + 高雄 + 屏東共 108 鄉鎮，抓取約 13 分鐘。可在任一 clone 跑（資料來自網站）；重建站台需要本機有 outputs/backtest/*.parquet，沒有就只更新 latest.json。
 set -euo pipefail
 cd "$(dirname "$0")/.."
 PY=../.venv/bin/python

@@ -334,7 +334,7 @@ def render_html(D: dict) -> str:
   </div>
 
   <section id="latest-alerts" hidden>
-    <div class="section-head"><span class="section-num">00</span><h2>最新預警：台南 + 高雄各區，今天起 14 天</h2><span class="en">Live early warning (daily)</span></div>
+    <div class="section-head"><span class="section-num">00</span><h2>最新預警：台南、高雄、屏東各鄉鎮，今天起 14 天</h2><span class="en">Live early warning (daily)</span></div>
     <div class="kpi-strip" id="la-kpis"></div>
     <div class="grid-2">
       <div class="card"><h3>有標示的鄉鎮</h3><div class="sub" id="la-sub"></div><div class="tbl-wrap"><table class="tbl compact"><thead><tr><th>縣市</th><th>鄉鎮</th><th class="num">已知 7 日累計</th><th class="num">校正後</th><th class="num">閾值</th><th class="num">檢驗中（14 天）</th><th class="num">p（7 天）</th><th class="num">p（14 天內）</th><th class="num">14 天後 7 日累計中位數（q90）</th><th>標示</th></tr></thead><tbody id="la-rows"></tbody></table></div>
@@ -343,7 +343,7 @@ def render_html(D: dict) -> str:
         <li><b>資料</b>：每天從疾管署 NIDSS 查詢系統抓「本土確定病例，依居住地鄉鎮」，以發病日序列作為今天可得的快照（衛生局收到日 = 通報日），再除以歷史通報完整度（回測的 asof_adj 模式）。</li>
         <li><b>閾值</b>：EWARN 規則，前 3 週週均值 × 2，下限 3 例；<b>p</b> 為模型 9 個分位數內插的「7 日累計達閾值」機率，14 天內取最大。</li>
         <li><b>標示</b>：p ≥ 警示門檻 → 警示（建議開查證單）；p ≥ 注意門檻 → 注意（focal point 預先關注）。門檻與工作量見第 07 節兩級門檻表。</li>
-        <li><b>平靜期</b>：沒有本土病例時各區機率接近 0，表格只列有標示或近 14 天有病例的區；完整 75 區在 <a href="latest.json">latest.json</a>。</li>
+        <li><b>平靜期</b>：沒有本土病例時各區機率接近 0，表格只列有標示或近 14 天有病例的區；完整鄉鎮清單在 <a href="latest.json">latest.json</a>。</li>
         <li>每次預測都存檔（<code>dengue_ewarn/outputs/forecast_log/</code>），日後與最終資料比對評估。</li></ul></div>
     </div>
   </section>
@@ -486,7 +486,7 @@ document.addEventListener('DOMContentLoaded', async () => {{
     const T = L.totals, P = L.params;
     document.getElementById('la-kpis').innerHTML = [
       ['起點（資料日）', L.origin, '抓取 ' + (L.fetched_at||'').slice(0,16).replace('T',' ')],
-      ['近 14 天本土確定 / 檢驗中', T.confirmed14 + ' / ' + T.pending14, '台南 + 高雄 ' + L.n_series + ' 區，依發病日'],
+      ['近 14 天本土確定 / 檢驗中', T.confirmed14 + ' / ' + T.pending14, '台南 + 高雄 + 屏東 ' + L.n_series + ' 鄉鎮，依發病日'],
       ['注意 / 警示', T.n_watch + ' / ' + T.n_alert, '門檻 p ≥ ' + P.watch_p + ' / ' + P.alert_p + '；已達閾值 ' + T.n_rule_now + ' 區'],
       ['最高突破機率（14 天內）', f(T.max_p_any14), '閾值 ' + P.threshold]
     ].map(([a,b,c]) => `<div class="kpi"><div class="label">${{a}}</div><div class="value">${{b}}</div><div class="sub">${{c}}</div></div>`).join('');

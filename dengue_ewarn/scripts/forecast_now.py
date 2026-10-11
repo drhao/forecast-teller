@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-forecast_now.py — 登革熱鄉鎮即時預警：以今天為起點，對台南 + 高雄各區的 7 日累計本土確定病例做
+forecast_now.py — 登革熱鄉鎮即時預警：以今天為起點，對台南 + 高雄 + 屏東各鄉鎮的 7 日累計本土確定病例做
 14 天分布預測，換算「14 天內突破 EWARN 閾值」的機率，輸出兩級標示（注意 / 警示）。
 
 流程（與回測 asof_adj 模式一致，PLAN §12–13）：
@@ -76,7 +76,8 @@ def main() -> int:
     H, L = args.horizon, args.context
 
     # 完整度校正（asof_adj）：最近 K 天依「距今天數 k」除以 c[k]
-    hz = np.load(PROCESSED_DIR / "dengue_delay_hist.npz")
+    hp = PROCESSED_DIR / "dengue_all_delay_hist.npz"   # 全台面板的延遲分布（含屏東）；沒有就用台南高雄的
+    hz = np.load(hp if hp.exists() else PROCESSED_DIR / "dengue_delay_hist.npz")
     hist = hz["hist"]; hist_days = pd.to_datetime(hz["days"])
     c = np.maximum(completeness(hist, hist.shape[1] - 1), 0.2)                 # (K,)
     K = len(c); kk = np.minimum(d - np.arange(d + 1), K - 1)

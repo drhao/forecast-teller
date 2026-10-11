@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
 fetch_nidss.py — 從疾管署「傳染病統計資料查詢系統」法定傳染病頁抓登革熱本土確定病例（鄉鎮 × 日），
-作為每日即時預警的 as-of 快照。
+作為每日即時預警的 as-of 快照（2026-10-11 起含屏東縣）。
 
 來源：https://nidss.cdc.gov.tw/nndss/disease?id=061 的進階查詢（ASP.NET 表單 POST，需先 GET 取得
 __RequestVerificationToken 與 cookie；鄉鎮代碼由 /NidssQuery/GetTowns?city= 取得）。查詢結果的 Highcharts
@@ -43,7 +43,7 @@ from dengue_ewarn import DATA_DIR  # noqa: E402
 
 BASE = "https://nidss.cdc.gov.tw"
 PAGE = f"{BASE}/nndss/disease?id=061"
-CITIES = {"台南市": ("4", "05"), "高雄市": ("5", "07")}   # 名稱 → (區域代碼, 縣市代碼)
+CITIES = {"台南市": ("4", "05"), "高雄市": ("5", "07"), "屏東縣": ("5", "43")}   # 名稱 → (區域代碼, 縣市代碼)；屏東 2026-10-11 加入
 DATE_TYPES = {"onset": "3", "report": "1"}               # 發病日、衛生局收到日（= 通報日）
 SERIES = {"確定病例數": "confirmed", "檢驗中病例數": "pending", "已排除病例數": "excluded"}
 LATEST, META, HISTORY = DATA_DIR / "nidss_latest.csv", DATA_DIR / "nidss_latest_meta.json", DATA_DIR / "nidss_history.csv"
