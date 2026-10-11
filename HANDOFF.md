@@ -36,7 +36,7 @@ python scripts/evaluate_forecasts.py --quiet && head -3 outputs/forecast_log/eva
 | 工作線 | 目錄 | 內容 | 狀態 | 線上頁面 |
 |---|---|---|---|---|
 | 流感主線 | 根目錄（`src/`、`scripts/`、`docs/`） | 以 TimesFM 3.0 零樣本預測全國類流感門診、急診、RODS 急診類流感%、重症；2016–2025 回測；每週預測 dashboard、回測 dashboard、一頁報告、投影片 | 完成並上線（2026-09-17 起） | https://drhao.github.io/forecast-teller/ 、`/backtest.html`、`/report.html` |
-| 登革熱預警 | `dengue_ewarn/` | CHG 情境一驗證：台南、高雄 74 鄉鎮每日病例的 7 日累計分布預測 → 14 天內突破 EWARN 閾值的機率、前置時間、假警報、機率校準、兩級門檻工作量 | 第一版 2026-09-17 上線；第二版（事件定義統一、面板 2008 起、74 區 × 9 年）與第三版（全台 274 鄉鎮 × 12 年、區域 × 事件型態分層）2026-10-01 完成並合併回 `main`，站台以第三版為主；一次性驗證，無每週流程 | https://drhao.github.io/forecast-teller/dengue/ |
+| 登革熱預警 | `dengue_ewarn/` | CHG 情境一驗證：台南、高雄 74 鄉鎮每日病例的 7 日累計分布預測 → 14 天內突破 EWARN 閾值的機率、前置時間、假警報、機率校準、兩級門檻工作量 | 第一版 2026-09-17 上線；第二版（事件定義統一、面板 2008 起、74 區 × 9 年）與第三版（全台 274 鄉鎮 × 12 年、區域 × 事件型態分層）2026-10-01 完成並合併回 `main`，站台以第三版為主；**2026-10-11 起每日即時預警**（NIDSS 網站快照 → asof_adj → 14 天突破機率，`daily_update.sh`） | https://drhao.github.io/forecast-teller/dengue/ |
 | 腸病毒預測 | `ev_forecast/` | 開放資料（健保門診 + RODS 急診）的腸病毒每週預測與回測，流行閾值依年設定 | 完成並上線（2026-09-19） | https://drhao.github.io/forecast-teller/ev/ 、`/ev/backtest.html`、`/ev/report.html` |
 
 - GitHub：公開 repo `drhao/forecast-teller`，GitHub Pages 來源 `main` 分支的 `/docs`，push 後約 1–2 分鐘自動部署。
@@ -217,7 +217,8 @@ forecast-teller/
 - 第四版實驗（2026-10-02，PLAN §14）：用 Gamma–Poisson 貝氏 nowcast（`data.nowcast_gamma_poisson`，模式 `asof_nc{β}[x2]`、`asof_ncr{β}`）取代比例法，五個變體在 74 區上**全部輸給 `asof_adj`**（同假警報率下兩個分層的敏感度與事件偵測都較低）；原因是先驗外漏到沒通報的日子，以及「剛通報 1 例」本身就是訊號、不該被平滑。主模式維持 `asof_adj`，nowcast 線結案。注意 `make_report.py` / `site.py` 改用 `data.forecast_files` 比對檔名（`dengue_*` 曾誤抓 `dengue_all_*`）。
 - 白話解讀（2026-10-01，PLAN §13.2、站台第 05 節、`scripts/make_practical.py`）的兩個關鍵發現：(1) 平靜區的「偵測」幾乎都是完整度校正把剛通報的 1 例放大成 4–5 例，模型與「最近 7 天通報 ≥ k 例」的規則家族落在同一條取捨曲線上（規則 ≥ 1 抓 56% / 提前 5 天 / 假警報 1.6 per 100；模型 p* = 0.3 抓 33% / 3 天 / 0.5；以已通報數排序的 AUC 0.81 對模型 0.78），模型沒有加到「剛通報幾例」以外的資訊，也沒有超越現行每例疫調的做法；(2) 其他縣市 48% 的第一個群聚在突破前兩週已通報數為 0（整批補登），任何模型都看不到。模型的價值在流行期（升級前 6–9 天、PPV 近八成）。下一版要把點估計的完整度校正換成帶不確定性的 nowcast。
 - 第一版、第二版、第三版的輸出並存：`outputs/backtest/dengue_*`（第二版，74 區，三種模式）與 `dengue_all_*`（第三版）；站台 `build_site.py --tag dengue_all --panel dengue_all`，asof 消融的數字引用 `dengue_alert_sweep.csv`。
-- 未做（PLAN §10 末尾）：多變量聯合 + 鄰區共變數、Farrington flexible 基準、每日起點、週層級腹瀉 / 腸病毒 / 類流感症候群套用同流程、「群聚起始」事件定義。只在使用者要求時再做。
+- 即時預警（2026-10-11，PLAN §15）：`fetch_nidss.py` 從 NIDSS 法定傳染病查詢頁（表單 POST + `hcJson`）抓台南 37 + 高雄 38 區的本土確定病例，發病日序列當 as-of 快照、通報日序列作紀錄；`forecast_now.py` 沿用 asof_adj（完整度取個案檔延遲分布最後 730 天，下限 0.2）、閾值 max(2 × 前 3 週週均值, 3)、TimesFM 14 天、p 以分位數內插；標示 0.3 注意 / 0.4 警示。第一次執行：近 14 天本土確定 0、檢驗中 118，75 區 p 全為 0.02。歷史快照只存最近 180 天確定 / 檢驗中的列（`nidss_history.csv`）。
+- 未做（PLAN §10 末尾、§15.4）：多變量聯合 + 鄰區共變數、Farrington flexible 基準、週層級腹瀉 / 腸病毒 / 類流感症候群套用同流程、「群聚起始」事件定義；用每日快照重估完整度、即時預測的事後評估腳本。只在使用者要求時再做。
 
 ---
 
@@ -252,6 +253,7 @@ forecast-teller/
 | 2026-09-19 | 新聞稿數字需向使用者確認 |
 | 2026-10-01 | RESP_LAB 改由 `fetch_resp_lab.py` 從 NIDSS 網站抓；每次抓到的值留存於 `data/resp_lab_history.csv`（網站只顯示近兩年，舊時點的值日後找不到） |
 | 2026-10-01 | 每週預測值累積到 `outputs/forecast_log/forecast_log.csv`，供日後評估實際預測表現（`evaluate_forecasts.py`） |
+| 2026-10-11 | 登革熱即時預警：衛生局收到日 = 通報日；鄉鎮依感染地、缺則居住地（網站只有居住地，差異可忽略，已記錄）；先做 74（實際 75）區；每日跑 |
 | 2026-10-01 | 登革熱第二版在 `dengue` 分支做（主線每週更新在 `main`），完成後再合併 |
 | 2026-10-01 | 登革熱：事件定義統一為最終資料閾值；面板起點拉到 2008；驗證只用固定的歷史快照，不處理資料來源斷線 |
 
@@ -282,7 +284,7 @@ forecast-teller/
 
 **腸病毒（開放資料）**：先跑完流感的更新（面板提供 `rods_total`），再 `ev_forecast/scripts/weekly_update.sh --push`（自行下載、面板、預測、`log_forecast.py --project ev_forecast`、`evaluate_forecasts.py --project ev_forecast`、站台、commit `docs/ev` 與 `ev_forecast/{data_processed/coverage.json, data_processed/national_weekly.csv, outputs/latest, outputs/forecast_log}`）。每年初確認 `thresholds.csv` 是否要加新年度的閾值。
 
-**登革熱**：無每週流程。
+**登革熱（每日）**：`dengue_ewarn/scripts/daily_update.sh --push`（抓 NIDSS 75 區快照約 9 分鐘 → `forecast_now.py` → `build_site.py` → commit `docs/dengue/{latest.json,index.html}`、`dengue_ewarn/data/nidss_*`、`outputs/latest/dengue_alerts.csv`、`outputs/forecast_log/dengue_forecast_log.csv`）。資料來自網站，任一 clone 可跑；launchd 排程 `dengue_ewarn/launchd/com.drhao.forecast-teller.dengue-daily.plist`（本機每天 08:30）。資料定義（衛生局收到日 = 通報日、依居住地、發病日序列作 as-of 快照、感染地規則無法套用的原因）見 `dengue_ewarn/PLAN.md` §15.1。
 
 ---
 

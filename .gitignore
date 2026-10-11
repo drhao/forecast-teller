@@ -14,6 +14,9 @@ outputs/slides/*.pdf
 
 # dengue_ewarn sub-project: raw data and large derived files stay out of git
 dengue_ewarn/data/*
+!dengue_ewarn/data/nidss_latest.csv
+!dengue_ewarn/data/nidss_latest_meta.json
+!dengue_ewarn/data/nidss_history.csv
 dengue_ewarn/data_processed/*.parquet
 dengue_ewarn/data_processed/*.npz
 dengue_ewarn/outputs/backtest/*.parquet

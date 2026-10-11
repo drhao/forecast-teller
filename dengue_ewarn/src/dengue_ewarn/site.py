@@ -333,6 +333,20 @@ def render_html(D: dict) -> str:
     <div class="kpi"><div class="label">7 日累計 WIS vs naive（流行年，h = 7）</div><div class="value">−{impr:.0f}%</div><div class="sub">無通報延遲時 −{impr_f:.0f}%；季節性 naive 對登革熱無用</div></div>
   </div>
 
+  <section id="latest-alerts" hidden>
+    <div class="section-head"><span class="section-num">00</span><h2>最新預警：台南 + 高雄各區，今天起 14 天</h2><span class="en">Live early warning (daily)</span></div>
+    <div class="kpi-strip" id="la-kpis"></div>
+    <div class="grid-2">
+      <div class="card"><h3>有標示的鄉鎮</h3><div class="sub" id="la-sub"></div><div class="tbl-wrap"><table class="tbl compact"><thead><tr><th>縣市</th><th>鄉鎮</th><th class="num">已知 7 日累計</th><th class="num">校正後</th><th class="num">閾值</th><th class="num">檢驗中（14 天）</th><th class="num">p（7 天）</th><th class="num">p（14 天內）</th><th class="num">14 天後 7 日累計中位數（q90）</th><th>標示</th></tr></thead><tbody id="la-rows"></tbody></table></div>
+        <p class="source" id="la-notes"></p></div>
+      <div class="card"><h3>怎麼讀</h3><ul class="findings readme">
+        <li><b>資料</b>：每天從疾管署 NIDSS 查詢系統抓「本土確定病例，依居住地鄉鎮」，以發病日序列作為今天可得的快照（衛生局收到日 = 通報日），再除以歷史通報完整度（回測的 asof_adj 模式）。</li>
+        <li><b>閾值</b>：EWARN 規則，前 3 週週均值 × 2，下限 3 例；<b>p</b> 為模型 9 個分位數內插的「7 日累計達閾值」機率，14 天內取最大。</li>
+        <li><b>標示</b>：p ≥ 警示門檻 → 警示（建議開查證單）；p ≥ 注意門檻 → 注意（focal point 預先關注）。門檻與工作量見第 07 節兩級門檻表。</li>
+        <li><b>平靜期</b>：沒有本土病例時各區機率接近 0，表格只列有標示或近 14 天有病例的區；完整 75 區在 <a href="latest.json">latest.json</a>。</li>
+        <li>每次預測都存檔（<code>dengue_ewarn/outputs/forecast_log/</code>），日後與最終資料比對評估。</li></ul></div>
+    </div>
+  </section>
   <section>
     <div class="section-head"><span class="section-num">01</span><h2>要回答的問題</h2><span class="en">From scenario to testable question</span></div>
     <div class="grid-2">
@@ -462,5 +476,25 @@ document.addEventListener('DOMContentLoaded', async () => {{
   EPI.hbarChart(document.getElementById('c-lead-det'), rows, rows.map(k => lt[k]['偵測到的事件比例']), {{label: '偵測比例', fmt: v => Number(v).toFixed(2), xMax: 1.15}});
   EPI.hbarChart(document.getElementById('c-lead-med'), rows, rows.map(k => lt[k]['前置時間中位數（天）'] ?? 0), {{label: '前置中位數（天）', fmt: v => Number(v).toFixed(1), xMax: 8}});
 }});
+</script>
+<script>
+(async function(){{
+  try{{
+    const r = await fetch('latest.json?v=' + Date.now()); if(!r.ok) return;
+    const L = await r.json(); const sec = document.getElementById('latest-alerts'); sec.hidden = false;
+    const f = (v, nd=2) => (v==null||Number.isNaN(v)) ? '—' : Number(v).toLocaleString('zh-Hant-TW', {{minimumFractionDigits: nd, maximumFractionDigits: nd}});
+    const T = L.totals, P = L.params;
+    document.getElementById('la-kpis').innerHTML = [
+      ['起點（資料日）', L.origin, '抓取 ' + (L.fetched_at||'').slice(0,16).replace('T',' ')],
+      ['近 14 天本土確定 / 檢驗中', T.confirmed14 + ' / ' + T.pending14, '台南 + 高雄 ' + L.n_series + ' 區，依發病日'],
+      ['注意 / 警示', T.n_watch + ' / ' + T.n_alert, '門檻 p ≥ ' + P.watch_p + ' / ' + P.alert_p + '；已達閾值 ' + T.n_rule_now + ' 區'],
+      ['最高突破機率（14 天內）', f(T.max_p_any14), '閾值 ' + P.threshold]
+    ].map(([a,b,c]) => `<div class="kpi"><div class="label">${{a}}</div><div class="value">${{b}}</div><div class="sub">${{c}}</div></div>`).join('');
+    const rows = L.table.filter(x => x.tier || x.confirmed14 > 0 || x.pending14 > 0 || x.rule_now);
+    document.getElementById('la-sub').textContent = rows.length ? `列出有標示、已達閾值或近 14 天有病例 / 檢驗中的區（${{rows.length}} 區），依 14 天內突破機率排序` : '目前沒有任何區有標示或近 14 天有本土病例。';
+    document.getElementById('la-rows').innerHTML = rows.map(x => `<tr class="${{x.tier==='警示'?'best':''}}"><td>${{x.county}}</td><td>${{x.town}}</td><td class="num">${{x.known7}}</td><td class="num">${{f(x.adj7,1)}}</td><td class="num">${{f(x.thr,1)}}</td><td class="num">${{x.pending14}}</td><td class="num">${{f(x.p_h7)}}</td><td class="num"><b>${{f(x.p_any14)}}</b></td><td class="num">${{f(x.median_h14,1)}}（${{f(x.q90_h14,1)}}）</td><td>${{x.tier||(x.rule_now?'已達閾值':'')}}</td></tr>`).join('');
+    document.getElementById('la-notes').textContent = (L.notes||[]).join(' ') + ' 產生時間 ' + L.generated_at + '。';
+  }}catch(e){{ console.warn('latest.json 載入失敗', e); }}
+}})();
 </script>
 </body></html>"""

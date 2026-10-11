@@ -10,6 +10,7 @@
 | `data_processed/` | 鄉鎮 × 日面板、通報延遲直方圖（`build_panel.py` 產生） |
 | `src/dengue_ewarn/` | `data.py` 面板與 as-of 重建、`alerts.py` 機率/偵測器/前置時間、`baselines.py`、`model.py`（TimesFM 3.0 MLX 包裝，與流感模組相同）、`calibration.py` 機率校準（等張回歸、Platt、留一年交叉驗證）與兩級門檻工作量、`site.py` 報告頁 |
 | `scripts/` | `build_panel.py` → `run_backtest.py` → `make_report.py` → `calibrate.py` → `make_practical.py`（白話解讀用：每季警示數、簡單規則對照、真實案例）→ `build_site.py` |
+| `scripts/fetch_nidss.py`、`forecast_now.py`、`daily_update.sh` | 即時預警（2026-10-11 起每日）：從 NIDSS 網站抓 75 區本土確定病例快照 → asof_adj → TimesFM 14 天 → 突破機率與兩級標示；紀錄在 `data/nidss_history.csv` 與 `outputs/forecast_log/`；見 PLAN §15 |
 | `outputs/backtest/` | 逐起點預測（parquet）、`dengue_REPORT.md`、p* 掃描、前置時間、配對比較 CSV；`dengue_CALIBRATION_REPORT.md` 與校準指標、細掃描、兩級門檻（`dengue_two_tier.csv`）、成本損失表 |
 | `outputs/figures/` | 案例圖與示意圖 |
 
@@ -46,3 +47,11 @@ python scripts/build_site.py --tag dengue_all --panel dengue_all     # 站台改
 報告與站台的分層：區域（台南高雄 / 其他縣市）× 事件型態（下限群聚 = 閾值在 3 例下限，即非流行區的第一個群聚；流行中加速 = 閾值高於下限），
 輸出 `{tag}_strata_leads.csv`（依事件的前置時間）與 `{tag}_strata_sweep.csv`（依鄉鎮週的 AUC / 敏感度 / 假警報）。
 加入 2013（屏東）、2018（台中、新北）、2020（新北三峽）三個其他縣市有局部爆發的年份；asof 模式在第二輪已證明不校正不可用，第三輪不跑。
+
+## 每日即時預警
+
+```bash
+dengue_ewarn/scripts/daily_update.sh --push   # 抓 NIDSS → forecast_now → build_site → commit 明確路徑 → push（約 10 分鐘）
+```
+
+資料定義（衛生局收到日 = 通報日、依居住地、發病日序列作 as-of 快照）與產出說明見 [PLAN.md §15](PLAN.md)。launchd 每日排程：`launchd/com.drhao.forecast-teller.dengue-daily.plist`。

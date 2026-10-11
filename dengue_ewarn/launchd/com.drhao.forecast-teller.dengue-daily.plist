@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.drhao.forecast-teller.dengue-daily</string>
+
+    <!-- 登革熱每日預警：抓 NIDSS 快照 → forecast_now → build_site → commit + push（約 10 分鐘）。
+         安裝：cp dengue_ewarn/launchd/com.drhao.forecast-teller.dengue-daily.plist ~/Library/LaunchAgents/ &&
+               launchctl load ~/Library/LaunchAgents/com.drhao.forecast-teller.dengue-daily.plist
+         移除：launchctl unload ~/Library/LaunchAgents/com.drhao.forecast-teller.dengue-daily.plist
+         手動試跑：launchctl start com.drhao.forecast-teller.dengue-daily；log 在 ~/Library/Logs/forecast-teller-dengue-daily.log
+         機器睡眠時不會執行，醒來後 launchd 會補跑一次。 -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/zsh</string>
+        <string>-lc</string>
+        <string>git pull --ff-only -q origin main; dengue_ewarn/scripts/daily_update.sh --push</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/drhao/Documents/GitHub/forecast-teller</string>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>8</integer>
+        <key>Minute</key>
+        <integer>30</integer>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/drhao/Library/Logs/forecast-teller-dengue-daily.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/drhao/Library/Logs/forecast-teller-dengue-daily.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>PYTHONWARNINGS</key>
+        <string>ignore</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+</dict>
+</plist>

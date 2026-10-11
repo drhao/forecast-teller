@@ -11,7 +11,7 @@
 - `source .venv/bin/activate`（Python 3.11、`timesfm[mlx]` 3.0.2、MLX 後端，Apple M1 16 GB）。
 - 檢查：`python tests/test_basics.py`（無輸出即通過）。
 - 流感流程：`scripts/fetch_resp_lab.py` → `scripts/build_panel.py` → `scripts/forecast_now.py --joint nhi_out_ili nhi_er_ili rods_ili --covariates cny holiday` → `scripts/log_forecast.py` → `scripts/evaluate_forecasts.py` → `scripts/build_site.py`；一鍵 `scripts/weekly_update.sh [--push]`。
-- 腸病毒：`ev_forecast/scripts/weekly_update.sh [--push]`。登革熱：見 `dengue_ewarn/README.md`。
+- 腸病毒：`ev_forecast/scripts/weekly_update.sh [--push]`。登革熱：回測見 `dengue_ewarn/README.md`；即時預警每日 `dengue_ewarn/scripts/daily_update.sh [--push]`（資料來自 NIDSS 網站，任一 clone 可跑；定義見 `dengue_ewarn/PLAN.md` §15）。
 - 本機預覽站台：`python3 -m http.server 8765 --directory docs`（或 `.claude/launch.json` 的 `docs-site`）。頁面用 fetch，必須走 HTTP。
 - 改了網頁要在瀏覽器實際驗證（本機或線上加 `?v=時間戳` 避免快取）。內建瀏覽器對 Chart.js 頁面固定會報 `Cannot convert object to primitive value`，不是頁面錯誤。
 
