@@ -28,3 +28,12 @@ ev_forecast/data/*
 !ev_forecast/data/twca_intermediate.pem
 ev_forecast/data_processed/*.parquet
 ev_forecast/outputs/backtest/*.parquet
+# covid_forecast sub-project: open data, NIDSS pulls and large derived files stay out of git
+covid_forecast/data/*
+!covid_forecast/data/thresholds.csv
+!covid_forecast/data/twca_intermediate.pem
+!covid_forecast/data/variants.csv
+!covid_forecast/data/nidss_visits_history.csv
+!covid_forecast/data/severe_history.csv
+covid_forecast/data_processed/*.parquet
+covid_forecast/outputs/backtest/*.parquet

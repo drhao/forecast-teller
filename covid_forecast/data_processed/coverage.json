@@ -1,0 +1,72 @@
+{
+  "nhi": {
+    "raw_first": "202127",
+    "raw_last": "202640",
+    "first_complete": "202127",
+    "last_complete": "202640",
+    "source": "開放資料 NHI_COVID-19.csv（門診、住院）"
+  },
+  "rods": {
+    "raw_first": "202220",
+    "raw_last": "202640",
+    "first_complete": "202235",
+    "last_complete": "202639",
+    "gate": "rods_total",
+    "source": "開放資料 RODS_COVID-19.csv"
+  },
+  "nidss": {
+    "raw_first": "202127",
+    "raw_last": "202640",
+    "first_complete": "202128",
+    "last_complete": "202640",
+    "gate": "nhi",
+    "source": "NIDSS 傳染病統計資料查詢系統 健保門急診（disease=11）"
+  },
+  "severe": {
+    "raw_first": "202434",
+    "raw_last": "202641",
+    "first_complete": "202435",
+    "last_complete": "202635",
+    "lag_weeks": 3,
+    "source": "NIDSS 新冠併發重症（發病週；2024/9/1 新病例定義）"
+  },
+  "rods_total": {
+    "first": "202101",
+    "last": "202639",
+    "source": "influenza panel data_processed/national_weekly.parquet (RODS_RS.csv)"
+  },
+  "resp": {
+    "first": "202502",
+    "last": "202637",
+    "source": "influenza panel (RESP_LAB.csv, SARS-CoV-2 positives)"
+  },
+  "primary": "covid_oe",
+  "regions": [
+    "台北區",
+    "北區",
+    "中區",
+    "南區",
+    "高屏區",
+    "東區"
+  ],
+  "n_weeks": 302,
+  "age_groups_nhi": [
+    "0~2",
+    "13~15",
+    "16~18",
+    "19~24",
+    "25~64",
+    "3~6",
+    "65+",
+    "7~12",
+    "不詳"
+  ],
+  "age_groups_rods": [
+    "0~6",
+    "13~18",
+    "19~64",
+    "65+",
+    "7~12"
+  ],
+  "counties": 22
+}

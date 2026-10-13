@@ -7,7 +7,7 @@ name = "forecast-teller"
 version = "0.1.0"
 description = "Taiwan influenza forecasting with Google TimesFM 3.0"
 requires-python = ">=3.10"
-dependencies = ["numpy>=1.26", "pandas>=2.0", "pyarrow", "matplotlib", "timesfm[mlx]>=3.0.2"]
+dependencies = ["numpy>=1.26", "pandas>=2.0", "pyarrow", "matplotlib", "timesfm[mlx]>=3.0.2", "requests"]
 
 [project.optional-dependencies]
 baselines = ["statsforecast"]

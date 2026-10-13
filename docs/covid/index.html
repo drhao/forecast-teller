@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>每週預測 · 台灣新冠 TimesFM 3.0</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&family=Noto+Serif+TC:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/epi.css?v=covid1">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="../assets/charts.js?v=covid2" defer></script>
+</head><body>
+<header class="masthead"><div class="masthead-inner">
+  <div class="masthead-left"><div class="crest">FT</div><div class="masthead-title">台灣新冠疫情預測 · TimesFM 3.0<small>FORECAST-TELLER · COVID-19 · WEEKLY FORECAST</small></div></div>
+  <nav class="masthead-right"><a href="../index.html">流感</a><a href="../ev/">腸病毒</a><a href="index.html" class="active">每週預測</a><a href="backtest.html">回測</a><a href="report.html">報告</a><a href="../dengue/">登革熱預警</a></nav>
+</div></header>
+<main>
+  <div class="hero-kicker">Weekly forecast</div>
+  <h1 class="page-title">未來 4 週新冠疫情預測 <em id="origin-title"></em></h1>
+  <p class="lead">以 Google TimesFM 3.0 零樣本時間序列基礎模型，對全國新冠門急診就診人次（健保門診 + 急診，疾管署新聞稿使用的指標）與相關指標做每週滾動預測。實線為觀測值，虛線為預測中位數，淺綠帶為 60% 與 80% 預測區間；預測起點為各指標最新的完整申報週。疾管署的流行閾值數值尚未取得，本頁不畫閾值線，改以暫行規則標示流行期並報告「續升機率」。</p>
+  <div class="meta-strip" id="meta-strip"></div>
+
+  <section class="brief" id="brief">
+    <div class="brief-headline" id="brief-headline"></div>
+    <div class="grid-2">
+      <div class="card"><h3>目前疫情趨勢</h3><div class="sub" id="brief-current-sub"></div><ul class="findings brief-list" id="brief-current"></ul></div>
+      <div class="card"><h3>模型對未來 4 週的判讀</h3><div class="sub">依預測中位數與 9 個分位數推得；機率為 80% 區間內插的近似值</div><ul class="findings brief-list" id="brief-outlook"></ul><ul class="brief-caveats" id="brief-caveats"></ul></div>
+    </div>
+  </section>
+
+  <div class="kpi-strip" id="kpi-strip"></div>
+
+  <section>
+    <div class="section-head"><span class="section-num">01</span><h2>門急診就診人次與相關指標的 4 週預測</h2><span class="en">Fan charts · 60% / 80% prediction intervals</span></div>
+    <div id="fan-primary"></div>
+    <div class="controls"><div><label>歷史範圍</label><span class="seg-group" id="hist-group"><button class="seg-btn active" data-weeks="40">最近 40 週</button><button class="seg-btn" data-weeks="78">最近 1.5 年</button><button class="seg-btn" data-weeks="130">最近 2.5 年</button></span></div><div style="font-size:12px;color:var(--n-500)">實線 = 觀測值；虛線 = 預測中位數；淺綠帶 = 60%（深）與 80%（淺）預測區間；灰色虛直線 = 預測起點</div></div>
+    <div class="grid-2" id="fan-grid"></div>
+    <p class="note" id="cny-note" hidden></p>
+  </section>
+
+  <section>
+    <div class="section-head"><span class="section-num">02</span><h2>預測數值表</h2><span class="en">Median and quantiles</span></div>
+    <div class="tbl-wrap"><table class="tbl forecast-table" id="forecast-table"></table></div>
+    <p class="source">q10–q90 為分位數；80% 預測區間 = q10–q90，60% = q20–q80。「實際」欄只在該週申報已完整時顯示，可用來事後驗證。</p>
+  </section>
+
+  <section>
+    <div class="section-head"><span class="section-num">03</span><h2>方法與注意事項</h2><span class="en">Method &amp; caveats</span></div>
+    <div class="grid-2">
+      <div class="card"><h3>模型設定</h3><p class="sub" id="method-text"></p>
+        <ul class="findings" style="font-size:13.5px">
+          <li id="method-li-1"></li><li id="method-li-2"></li>
+        </ul></div>
+      <div class="card"><h3>解讀時請注意</h3><ul class="findings" style="font-size:13.5px" id="caveat-list"></ul></div>
+    </div>
+  </section>
+</main>
+<footer class="site-footer" id="footer"></footer>
+<script>
+const fmt = (v, d = 0) => (v == null) ? '—' : Number(v).toLocaleString('zh-TW', {minimumFractionDigits: d, maximumFractionDigits: d});
+document.addEventListener('DOMContentLoaded', async () => {
+  const [latest, meta] = await Promise.all([fetch('data/latest.json').then(r => r.json()), fetch('data/meta.json').then(r => r.json())]);
+  const inds = latest.indicators;
+  const main = inds.find(i => i.key === 'covid_oe');
+  const st = latest.status; const cov = meta.coverage;
+  document.getElementById('origin-title').textContent = `（起點 ${main.origin_yw}，${main.origin_date} 當週）`;
+  document.getElementById('meta-strip').innerHTML =
+    `<span>資料截止（完整週）：<b>NIDSS 門急診 ${cov.nidss.last_complete}</b> · 健保門診 ${cov.nhi.last_complete} · RODS 急診 ${cov.rods.last_complete}${cov.severe ? ' · 重症 ' + cov.severe.last_complete : ''}</span>` +
+    `<span>流行期（暫行規則）：<b>${st.in_period ? '目前處於流行期' : '目前不在流行期'}</b>；${st.in_period ? '脫離水準（本波峰值一半）' : '進入水準（本波低點 2 倍）'} ${fmt(st.level)} 人次</span>` +
+    `<span>模型：<b>${meta.model.name}</b>（${meta.model.checkpoint}）</span><span>產生時間：<b>${meta.generated_at.replace('T', ' ').slice(0, 16)}</b></span>`;
+
+  // narrative brief (rule-generated in covid_forecast/src/covid_forecast/site.py)
+  const n = latest.narrative;
+  if (n) {
+    document.getElementById('brief-headline').textContent = n.headline;
+    document.getElementById('brief-current-sub').textContent = `資料至 ${n.origin_yw}（${n.origin_date} 起的一週）`;
+    const fill = (id, items) => { const ul = document.getElementById(id); items.forEach(t => { const li = document.createElement('li'); li.textContent = t; ul.appendChild(li); }); };
+    fill('brief-current', n.current); fill('brief-outlook', n.outlook); fill('brief-caveats', n.caveats);
+  } else { document.getElementById('brief').hidden = true; }
+
+  // KPI tiles
+  const kpi = document.getElementById('kpi-strip');
+  inds.filter(i => i.key !== 'covid_oe_alt').forEach(ind => {
+    const f1 = ind.forecast[0]; const d = ind.decimals; const last = ind.last_observed;
+    const ch = (f1.median - last) / last * 100; const arrow = ch > 1 ? '↑' : (ch < -1 ? '↓' : '→');
+    const verified = f1.observed != null;
+    kpi.insertAdjacentHTML('beforeend', `<div class="kpi"><div class="label">${ind.short} · ${f1.yw}</div>
+      <div class="value">${fmt(f1.median, d)}<small>${ind.unit}</small>${f1.cny ? '<span class="badge cny">春節週</span>' : ''}${verified ? '<span class="badge verified">已驗證</span>' : ''}${ind.key === 'covid_oe' && st.in_period ? '<span class="badge alert">流行期（暫行）</span>' : ''}</div>
+      <div class="sub">80% 區間 ${fmt(f1.q10, d)} – ${fmt(f1.q90, d)}</div>
+      <div class="delta"><span class="arrow">${arrow}</span> 相對起點週 ${fmt(last, d)}：${ch >= 0 ? '+' : ''}${ch.toFixed(1)}%${verified ? `，實際 ${fmt(f1.observed, d)}` : ''}</div></div>`);
+  });
+
+  // fan charts (history window switchable; one control row above the grid)
+  const grid = document.getElementById('fan-grid'); const fans = {};
+  const prim = inds[0]; const rest = inds.slice(1);
+  document.getElementById('fan-primary').innerHTML = `<div class="card wide"><h3>${prim.label}</h3><div class="sub">${prim.config}　·　起點 ${prim.origin_yw}（${prim.origin_date}）　·　${prim.level_label}（灰色虛線，暫行規則）</div>
+      <div class="chart-box tall"><canvas id="fan-${prim.key}" role="img" aria-label="${prim.label}：未來 4 週預測中位數 ${prim.forecast.map(f => fmt(f.median, 0)).join('、')}"></canvas></div>
+      <p class="source">資料來源：${prim.source}。${st.rule}</p></div>`;
+  rest.forEach(ind => {
+    const id = 'fan-' + ind.key;
+    grid.insertAdjacentHTML('beforeend', `<div class="card"><h3>${ind.label}</h3><div class="sub">${ind.config}　·　起點 ${ind.origin_yw}（${ind.origin_date}）</div>
+      <div class="chart-box"><canvas id="${id}" role="img" aria-label="${ind.label}：未來 4 週預測中位數 ${ind.forecast.map(f => fmt(f.median, ind.decimals)).join('、')}"></canvas></div>
+      <p class="source">資料來源：${ind.source}。觀測段不畫區間；預測段虛線為中位數。</p></div>`);
+  });
+  const drawFans = weeks => inds.forEach(ind => { const id = 'fan-' + ind.key; if (fans[id]) fans[id].destroy(); fans[id] = EPI.fanChart(document.getElementById(id), ind, {unit: ind.unit, decimals: ind.decimals, historyWeeks: weeks, threshold: ind.key === 'covid_oe' ? ind.level : null, thresholdLabel: ind.key === 'covid_oe' ? ind.level_label : null, thresholdColor: '#9AA3A8'}); });
+  drawFans(40);
+  const hg = document.getElementById('hist-group');
+  hg.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { hg.querySelectorAll('button').forEach(x => x.classList.toggle('active', x === b)); drawFans(Number(b.dataset.weeks)); }));
+  const calWeeks = prim.forecast.filter(f => f.cny || f.holiday_days).map(f => `${f.yw}（${[f.cny ? '春節' : '', f.holiday_days ? '平日假日 ' + f.holiday_days + ' 天' : ''].filter(Boolean).join('、')}）`);
+  if (calWeeks.length) { const n = document.getElementById('cny-note'); n.hidden = false; n.textContent = `預測範圍內的假日：${calWeeks.join('；')}。模型以春節旗標與假日天數共變數納入這些效果。`; }
+
+  // table
+  const tbl = document.getElementById('forecast-table');
+  tbl.innerHTML = `<thead><tr><th>指標</th><th>起點週</th><th>目標週</th><th>週起始日</th><th class="num">h</th><th class="num">中位數</th><th class="num">q10</th><th class="num">q20</th><th class="num">q80</th><th class="num">q90</th><th class="num">實際</th></tr></thead><tbody>` +
+    inds.flatMap(ind => ind.forecast.map(f => `<tr>${ind.key === 'covid_oe' ? '<td><b>' + ind.short + '</b></td>' : '<td>' + ind.short + '</td>'}<td>${ind.origin_yw}</td><td>${f.yw}${f.cny ? ' <span class="badge cny">春節</span>' : ''}</td><td>${f.date}</td><td class="num">${f.h}</td><td class="num"><b>${fmt(f.median, ind.decimals)}</b></td><td class="num">${fmt(f.q10, ind.decimals)}</td><td class="num">${fmt(f.q20, ind.decimals)}</td><td class="num">${fmt(f.q80, ind.decimals)}</td><td class="num">${fmt(f.q90, ind.decimals)}</td><td class="num">${f.observed != null ? fmt(f.observed, ind.decimals) : '—'}</td></tr>`)).join('') + '</tbody>';
+  document.getElementById('method-text').textContent = `最佳回測設定：${meta.best_label}。門急診與門診從 2021w27（健保新冠門診申報起）、RODS 從 2022w20 起以擴張視窗餵入模型，horizon 4 週，輸出 9 個分位數。`;
+  document.getElementById('method-li-1').textContent = '門急診（主指標）為單變量預測，context 自 2021w27（回測最佳：多變量聯合因 RODS 只能自 2022w35 起算、context 較短而無增益）；門診與 RODS 急診以二變量聯合預測（TimesFM 3.0 變數注意力）；急診新冠%、住院與「門診 + RODS」合成指標為單變量。共變數皆為春節旗標與每週平日假日天數。';
+  document.getElementById('method-li-2').innerHTML = `回測（起點 ${meta.backtest_window.origin_start} 起共 ${meta.backtest_window.origins} 個，資料至 ${meta.backtest_window.end}）結果見<a href="backtest.html">回測</a>與<a href="report.html">報告</a>。`;
+  document.getElementById('caveat-list').innerHTML = latest.narrative.caveats.map(c => `<li>${c}</li>`).join('') + '<li>TimesFM 3.0 權重為非商業、非生產用途授權。</li>';
+  document.getElementById('footer').textContent = `資料：NIDSS 傳染病統計資料查詢系統（健保門急診）、疾病管制署資料開放平台（健保門診新冠、RODS 急診新冠）、RODS_RS.csv（急診總人次）、NIDSS 新冠併發重症。模型：${meta.model.checkpoint}，授權 ${meta.model.license}。圖表依《疫情資料視覺化指引》v1.1。產生時間 ${meta.generated_at}。`;
+});
+</script>
+</body></html>

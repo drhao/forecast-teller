@@ -87,7 +87,7 @@
     const vertical = [{at: originIdx, label: '預測起點 ' + d.origin_date, color: N[500]}];
     cnyIdx.forEach(i => vertical.push({at: i, label: '春節週', color: '#A8821F', dash: [2, 3], row: 1}));
     // 警戒/流行閾值線：1.5px 紅色虛線（指引 02-line-chart），只在有閾值的指標出現
-    const horizontal = opt.threshold != null ? [{at: opt.threshold, label: opt.thresholdLabel || `流行閾值 ${opt.threshold}%`, color: ACCENT.alert, dash: [6, 4], width: 1.5}] : [];
+    const horizontal = opt.threshold != null ? [{at: opt.threshold, label: opt.thresholdLabel || `流行閾值 ${opt.threshold}%`, color: opt.thresholdColor || ACCENT.alert, dash: [6, 4], width: 1.5}] : [];
     return new Chart(canvas, {
       type: 'line', data: {labels, datasets},
       options: {

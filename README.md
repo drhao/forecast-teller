@@ -2,7 +2,7 @@
 
 以 Google **TimesFM 3.0** 對台灣流感監測資料做零樣本（zero-shot）預測。規劃文件見 [PLAN_timesfm3_flu.md](PLAN_timesfm3_flu.md)；接手或交接請先讀 [HANDOFF.md](HANDOFF.md)（狀態快照、決定事項、每週 SOP）與 [CLAUDE.md](CLAUDE.md)（工作規則）。
 
-**線上 dashboard（GitHub Pages）**：[每週預測](https://drhao.github.io/forecast-teller/) · [回測](https://drhao.github.io/forecast-teller/backtest.html) · [解讀與評估報告](https://drhao.github.io/forecast-teller/report.html)
+**線上 dashboard（GitHub Pages）**：[每週預測](https://drhao.github.io/forecast-teller/) · [回測](https://drhao.github.io/forecast-teller/backtest.html) · [解讀與評估報告](https://drhao.github.io/forecast-teller/report.html) · [腸病毒](https://drhao.github.io/forecast-teller/ev/) · [新冠](https://drhao.github.io/forecast-teller/covid/) · [登革熱預警](https://drhao.github.io/forecast-teller/dengue/)
 
 ## 環境
 
@@ -31,6 +31,7 @@ python scripts/make_report.py --tags nhi_out_ili_layer1 nhi_out_ili_layer2 nhi_o
 python scripts/forecast_now.py --joint nhi_out_ili nhi_er_ili rods_ili --covariates cny holiday   # 即時預測（最佳設定；outputs/latest/）
 # 登革熱鄉鎮預警（CHG 情境一）是獨立子專案：見 dengue_ewarn/README.md
 # 腸病毒疫情預測是獨立子專案：見 ev_forecast/README.md（網站 docs/ev/）
+# 新冠疫情預測是獨立子專案：見 covid_forecast/README.md（網站 docs/covid/）
 ```
 
 ## 目錄
@@ -65,6 +66,7 @@ python scripts/forecast_now.py --joint nhi_out_ili nhi_er_ili rods_ili --covaria
 | `docs/report.html` | 一頁式解讀與評估報告（可列印） |
 | `docs/dengue/index.html` | 登革熱鄉鎮預測式預警的視覺化報告（子專案 `dengue_ewarn/` 產生） |
 | `docs/ev/` | 腸病毒每週預測、回測、報告（子專案 `ev_forecast/` 產生；門急診合計 = 健保門診 + RODS 急診，流行閾值依年設定） |
+| `docs/covid/` | 新冠每週預測、回測、報告（子專案 `covid_forecast/` 產生；門急診 = NIDSS 健保門診 + 急診，流行閾值待確認、以暫行規則標示流行期） |
 | `docs/data/*.json` | 由 `scripts/build_site.py` 從 `outputs/` 產生 |
 
 本機預覽（頁面用 fetch 讀 JSON，需走 HTTP）：

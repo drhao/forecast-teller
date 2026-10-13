@@ -342,7 +342,7 @@ def build_report(bt: dict, latest: dict, meta: dict, calib: dict) -> str:
 <script src="../assets/charts.js?v=ev1" defer></script></head>
 <body>
 <header class="masthead"><div class="masthead-inner"><div class="masthead-left"><div class="crest">FT</div><div class="masthead-title">台灣腸病毒疫情預測 · TimesFM 3.0<small>FORECAST-TELLER · EV · 解讀與評估報告</small></div></div>
-<nav class="masthead-right"><a href="../index.html">流感</a><a href="index.html">每週預測</a><a href="backtest.html">回測</a><a href="report.html" class="active">報告</a><a href="../dengue/">登革熱預警</a></nav></div></header>
+<nav class="masthead-right"><a href="../index.html">流感</a><a href="../covid/">新冠</a><a href="index.html">每週預測</a><a href="backtest.html">回測</a><a href="report.html" class="active">報告</a><a href="../dengue/">登革熱預警</a></nav></div></header>
 <main class="report">
 """
     body = f"""<div class="hero-kicker">EVALUATION REPORT · {gen}</div>

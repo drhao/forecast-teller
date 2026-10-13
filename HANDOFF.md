@@ -39,6 +39,7 @@ launchctl list | grep forecast-teller; tail -3 ~/Library/Logs/forecast-teller-de
 | 流感主線 | 根目錄（`src/`、`scripts/`、`docs/`） | 以 TimesFM 3.0 零樣本預測全國類流感門診、急診、RODS 急診類流感%、重症；2016–2025 回測；每週預測 dashboard、回測 dashboard、一頁報告、投影片 | 完成並上線（2026-09-17 起） | https://drhao.github.io/forecast-teller/ 、`/backtest.html`、`/report.html` |
 | 登革熱預警 | `dengue_ewarn/` | CHG 情境一驗證：台南、高雄 74 鄉鎮每日病例的 7 日累計分布預測 → 14 天內突破 EWARN 閾值的機率、前置時間、假警報、機率校準、兩級門檻工作量 | 第一版 2026-09-17 上線；第二版（事件定義統一、面板 2008 起、74 區 × 9 年）與第三版（全台 274 鄉鎮 × 12 年、區域 × 事件型態分層）2026-10-01 完成並合併回 `main`，站台以第三版為主；**2026-10-11 起每日即時預警**（NIDSS 網站快照 → asof_adj → 14 天突破機率，`daily_update.sh`） | https://drhao.github.io/forecast-teller/dengue/ |
 | 腸病毒預測 | `ev_forecast/` | 開放資料（健保門診 + RODS 急診）的腸病毒每週預測與回測，流行閾值依年設定 | 完成並上線（2026-09-19） | https://drhao.github.io/forecast-teller/ev/ 、`/ev/backtest.html`、`/ev/report.html` |
+| 新冠預測 | `covid_forecast/` | NIDSS 健保門急診（疾管署新聞稿指標）+ 開放資料門診/住院/RODS + NIDSS 重症的新冠每週預測與 2024–2026 回測；流行閾值待確認，暫行規則標示流行期 | 2026-10-13 建立並上線 | https://drhao.github.io/forecast-teller/covid/ 、`/covid/backtest.html`、`/covid/report.html` |
 
 - GitHub：公開 repo `drhao/forecast-teller`，GitHub Pages 來源 `main` 分支的 `/docs`，push 後約 1–2 分鐘自動部署。
 - 模型：`timesfm` 3.0.2，checkpoint `google/timesfm-3.0-pytorch`（330M 參數，9 個分位數 0.1–0.9），MLX 後端。**權重授權為非商業、非生產用途**；若要正式部署需改 TimesFM 2.5（Apache-2.0）或另談授權。
@@ -161,7 +162,7 @@ forecast-teller/
 | `scripts/run_group_backtest.py` | `--by county|age`，逐序列單變量 vs 聯合多變量 |
 | `scripts/make_report.py`、`add_hit_rates.py` | `*_REPORT.md`；對既有結果補算命中率 |
 | `scripts/fetch_resp_lab.py` | 從 NIDSS 網站抓 RESP_LAB（累積合併 + `data/resp_lab_history.csv`）；`--dry-run` 只比對、`--import 舊檔 日期` 匯入舊匯出檔到 history |
-| `nidss_cdcwnh.py`（根目錄） | 使用者提供的 NIDSS 健保門急診查詢（CDCWNH01/02/03/09 表單 POST）參考程式，尚未接進流程 |
+| `src/forecast_teller/nidss.py`（原根目錄 `nidss_cdcwnh.py`，2026-10-13 移入） | NIDSS 健保門急診查詢客戶端（CDCWNH01/02/03/09 表單 POST）；新冠子專案的 `fetch_nidss_visits.py` 用它抓 disease=11 |
 | `scripts/forecast_now.py` | 即時預測：`--joint nhi_out_ili nhi_er_ili rods_ili --covariates cny holiday`；單變量 `--targets ...` |
 | `scripts/log_forecast.py` | 把 `outputs/latest/latest_forecast*.csv` 累積到 `outputs/forecast_log/forecast_log.csv`（含 `run_at`，同 mode/target/origin/target_yw 以最新取代；另加門急診合計 `nhi_oe_ili`、mode `joint_sum`）；`--from-git` 回填 git 歷史的快照 |
 | `scripts/evaluate_forecasts.py` | 把 forecast_log 與 `national_weekly.csv` 實際值對上 → `outputs/forecast_log/evaluation.csv`（逐列 abs_err / ape / in60 / in80 / wis）與 `evaluation_summary.csv`（mode × target × h）；`--since 起點週` 篩選 |
@@ -291,6 +292,8 @@ forecast-teller/
 
 ## 10. 待辦與候選下一步（都尚未開始，依使用者指示）
 
+- 新冠（`covid_forecast/PLAN.md` §13）：向疾管署確認流行閾值數值與流行期規則；每週首報快照累積後估回補係數；6 區與年齡層聯合回測；RESP SARS-CoV-2 與重症作過去共變數（資料自 2025 / 2024w34 起，context 太短尚未測）；舊定義重症（2023/3/20–2024/8/31）回溯；變異株資料結構化。
+
 - 流感：集成（TimesFM + ETS）、微調（3.0 無官方腳本且授權受限）、健保申報回補 nowcast、合約實驗室資料加入、把「門診 + 急診合計」直接當一個序列預測以取代分位數相加、2027 假日檔延伸、流感版 `refresh_data.sh` 套用 TWCA 憑證修法。
 - 腸病毒：§7 的未做清單。
 - 登革熱：§6 的未做清單。
@@ -327,7 +330,8 @@ forecast-teller/
 - 資料：流感各來源完整至 202639（NIDDS 202636、RESP 202637）；腸病毒至 202639；登革熱至 2025-07-23。本機（find.ebilink 帳號那台）的 `data/` 內部檔是 9/30 版（原始到 202639），10/9 的流感更新是在另一個 clone 用更新的檔跑的。
 - 登革熱第二、三版（2026-10-01）在 `dengue` 分支完成後合併回 `main`，見 `dengue_ewarn/PLAN.md` §12–13；站台 `docs/dengue/` 以第三版（全台 274 鄉鎮，tag `dengue_all`）為主；第一版的 outputs 備份在該 session 的 scratchpad，不在 repo。
 - `outputs/forecast_log/forecast_log.csv` 有 8 個起點（202603–202639）共 128 列，`ev_forecast/outputs/forecast_log/forecast_log.csv` 有 3 個起點（202636–202639）共 56 列，`dengue_ewarn/outputs/forecast_log/dengue_forecast_log.csv` 有 1 個起點（2026-10-11）共 375 列；`data/resp_lab_history.csv` 有 2026-09-17、10-01、10-09 三次抓取（網站至 202638）；`dengue_ewarn/data/nidss_history.csv` 有 2026-10-11 一次（153 列）。
-- 未追蹤 / 未納入流程：根目錄 `nidss_cdcwnh.py`（已進 git，只是參考程式）；流感版 `scripts/refresh_data.sh` 仍未套 TWCA 憑證修法（內部檔由使用者手動更新，所以暫時不需要）。
+- 未追蹤 / 未納入流程：流感版 `scripts/refresh_data.sh` 仍未套 TWCA 憑證修法（內部檔由使用者手動更新，所以暫時不需要）。
+- 新冠子專案（2026-10-13 建立）：`covid_forecast/outputs/forecast_log/forecast_log.csv` 有起點 202639（門診、RODS 聯合）與 202640（門急診等單變量）共 24 列；`covid_forecast/data/nidss_visits_history.csv`、`severe_history.csv` 各有 2026-10-13 一次抓取。
 - 虛擬環境可用，模型快取在本機。
 - 本機還有 Claude session 紀錄（§附錄 B），換帳號後舊 session 看不到，但檔案仍在。
 

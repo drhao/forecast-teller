@@ -1,0 +1,170 @@
+{
+ "generated_at": "2026-10-13T11:11+08:00",
+ "coverage": {
+  "nhi": {
+   "raw_first": "202127",
+   "raw_last": "202640",
+   "first_complete": "202127",
+   "last_complete": "202640",
+   "source": "開放資料 NHI_COVID-19.csv（門診、住院）"
+  },
+  "rods": {
+   "raw_first": "202220",
+   "raw_last": "202640",
+   "first_complete": "202235",
+   "last_complete": "202639",
+   "gate": "rods_total",
+   "source": "開放資料 RODS_COVID-19.csv"
+  },
+  "nidss": {
+   "raw_first": "202127",
+   "raw_last": "202640",
+   "first_complete": "202128",
+   "last_complete": "202640",
+   "gate": "nhi",
+   "source": "NIDSS 傳染病統計資料查詢系統 健保門急診（disease=11）"
+  },
+  "severe": {
+   "raw_first": "202434",
+   "raw_last": "202641",
+   "first_complete": "202435",
+   "last_complete": "202635",
+   "lag_weeks": 3,
+   "source": "NIDSS 新冠併發重症（發病週；2024/9/1 新病例定義）"
+  },
+  "rods_total": {
+   "first": "202101",
+   "last": "202639",
+   "source": "influenza panel data_processed/national_weekly.parquet (RODS_RS.csv)"
+  },
+  "resp": {
+   "first": "202502",
+   "last": "202637",
+   "source": "influenza panel (RESP_LAB.csv, SARS-CoV-2 positives)"
+  },
+  "primary": "covid_oe",
+  "regions": [
+   "台北區",
+   "北區",
+   "中區",
+   "南區",
+   "高屏區",
+   "東區"
+  ],
+  "n_weeks": 302,
+  "age_groups_nhi": [
+   "0~2",
+   "13~15",
+   "16~18",
+   "19~24",
+   "25~64",
+   "3~6",
+   "65+",
+   "7~12",
+   "不詳"
+  ],
+  "age_groups_rods": [
+   "0~6",
+   "13~18",
+   "19~64",
+   "65+",
+   "7~12"
+  ],
+  "counties": 22
+ },
+ "calibration": {
+  "rows": [
+   {
+    "yw": "202622",
+    "official": 1000,
+    "nidss_oe": 1149,
+    "out": 1099,
+    "rods": 28,
+    "alt": 1127,
+    "diff_nidss_pct": 14.9,
+    "diff_alt_pct": 12.7
+   },
+   {
+    "yw": "202628",
+    "official": 4766,
+    "nidss_oe": 5224,
+    "out": 4393,
+    "rods": 520,
+    "alt": 4913,
+    "diff_nidss_pct": 9.6,
+    "diff_alt_pct": 3.1
+   },
+   {
+    "yw": "202629",
+    "official": 10605,
+    "nidss_oe": 11340,
+    "out": 9662,
+    "rods": 1029,
+    "alt": 10691,
+    "diff_nidss_pct": 6.9,
+    "diff_alt_pct": 0.8
+   },
+   {
+    "yw": "202630",
+    "official": 18990,
+    "nidss_oe": 19971,
+    "out": 17237,
+    "rods": 1669,
+    "alt": 18906,
+    "diff_nidss_pct": 5.2,
+    "diff_alt_pct": -0.4
+   },
+   {
+    "yw": "202631",
+    "official": 24645,
+    "nidss_oe": 26086,
+    "out": 22600,
+    "rods": 2105,
+    "alt": 24705,
+    "diff_nidss_pct": 5.8,
+    "diff_alt_pct": 0.2
+   },
+   {
+    "yw": "202633",
+    "official": 24995,
+    "nidss_oe": 26225,
+    "out": 23129,
+    "rods": 1881,
+    "alt": 25010,
+    "diff_nidss_pct": 4.9,
+    "diff_alt_pct": 0.1
+   },
+   {
+    "yw": "202635",
+    "official": 20199,
+    "nidss_oe": 21126,
+    "out": 18525,
+    "rods": 1495,
+    "alt": 20020,
+    "diff_nidss_pct": 4.6,
+    "diff_alt_pct": -0.9
+   }
+  ],
+  "mean_diff_nidss_pct": 7.4,
+  "mean_diff_alt_pct": 2.2,
+  "min_diff_alt_pct": -0.9,
+  "max_diff_alt_pct": 12.7
+ },
+ "backtest_window": {
+  "start": "202127",
+  "end": "202640",
+  "origin_start": "202401",
+  "origins": 141
+ },
+ "model": {
+  "name": "TimesFM 3.0",
+  "checkpoint": "google/timesfm-3.0-pytorch",
+  "license": "timesfm-non-commercial-license-v1.0（非商業、非生產用途）"
+ },
+ "best_config": "tfm_cov_hol",
+ "best_label": "TimesFM + 假日天數",
+ "rule": "暫行規則（待確認）：門急診就診人次連續 3 週上升且達本波低點的 2 倍即進入流行期；進入後連續 2 週下降且低於本波峰值的一半即脫離。疾管署宣布流行期的「流行閾值」數值尚未取得，確認後改依官方閾值，網頁在此之前不畫閾值線。",
+ "thresholds_by_year": {
+  "2026": null
+ }
+}
