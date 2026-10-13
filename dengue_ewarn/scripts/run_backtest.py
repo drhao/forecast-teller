@@ -28,7 +28,7 @@ from dengue_ewarn.data import completeness, ewarn_threshold, load_panel, nowcast
 ap = argparse.ArgumentParser()
 ap.add_argument("--years", nargs="+", type=int, default=list(range(2013, 2025)))
 ap.add_argument("--modes", nargs="+", default=["final", "asof", "asof_adj"])
-ap.add_argument("--models", nargs="+", default=["tfm", "naive", "snaive"], help="tfm naive snaive and/or KDE variants: " + " ".join(["kde_fix", "kde_rv", "kde_mix", "kde_rv_season"]))
+ap.add_argument("--models", nargs="+", default=["tfm", "naive", "snaive"], help="tfm naive snaive, KDE variants (kde_fix kde_rv kde_mix kde_rv_season kde_rv_b2 kde_mix_fix) and ensembles ens:tfm+kde_mix (quantile mean)")
 ap.add_argument("--step", type=int, default=1, help="origin step in days within the season")
 ap.add_argument("--season", nargs=2, default=["06-01", "12-31"])
 ap.add_argument("--context", type=int, default=1095)
@@ -147,6 +147,11 @@ for mode in args.modes:
         for name in kde_models:
             Qk = np.concatenate(kde_q[name], axis=0)                      # (n, H, 9)
             preds[name] = [(Qk[i, :, 4], Qk[i]) for i in range(n)]
+        for name in [m for m in args.models if m.startswith("ens:")]:   # ens:tfm+kde_mix → quantile-wise mean of the members
+            members = name[4:].split("+")
+            if all(m in preds for m in members):
+                Qe = np.mean([np.stack([q for _, q in preds[m]]) for m in members], axis=0)
+                preds[name.replace(":", "_").replace("+", "_")] = [(Qe[i, :, 4], Qe[i]) for i in range(n)]
         for name, pr in preds.items():
             Q = np.stack([q for _, q in pr])                       # (n, H, 9)
             for h in args.hs:

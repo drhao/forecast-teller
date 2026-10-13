@@ -39,6 +39,16 @@ P_GRID = np.round(np.arange(0.05, 0.96, 0.05), 2)
 
 # --- township-week table per mode × model
 anyr = res[res.h == 0].copy(); anyr["week"] = anyr.origin.dt.to_period("W")
+# probability-mean ensembles of tfm with each KDE blend (post hoc; the quantile-mean ensemble ens_* comes from run_backtest)
+if "tfm" in set(anyr.model):
+    key = ["mode", "series", "origin"]
+    base = anyr[anyr.model == "tfm"].set_index(key)
+    for km in [m for m in ["kde_mix", "kde_mix_fix"] if m in set(anyr.model)]:
+        other = anyr[anyr.model == km].set_index(key)["prob"]
+        e = base.copy(); e["prob"] = (base["prob"] + other.reindex(base.index)).to_numpy() / 2; e["model"] = f"ensp_tfm_{km}"
+        anyr = pd.concat([anyr, e.reset_index()], ignore_index=True)
+res = pd.concat([res[res.h > 0], anyr.drop(columns="week")], ignore_index=True)
+models = sorted(res.model.unique())
 wk = anyr.groupby(["mode", "model", "series", "week"]).agg(prob=("prob", "max"), event=("event", "max"), thr_max=(tf_col, "max"), region=("region", "first")).reset_index()
 wk["etype"] = ETYPE(wk.thr_max)
 

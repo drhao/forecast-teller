@@ -62,6 +62,8 @@ VARIANTS = {
     "kde_rv": KDEParams(name="kde_rv"),
     "kde_mix": KDEParams(name="kde_mix", alpha=0.5),
     "kde_rv_season": KDEParams(name="kde_rv_season", season_gamma=0.2),
+    "kde_rv_b2": KDEParams(name="kde_rv_b2", beta=2.0, sigma_min=1.0),          # wider adaptive bandwidth (pilot: β = 1 too narrow)
+    "kde_mix_fix": KDEParams(name="kde_mix_fix", bandwidth="fixed", alpha=0.5),  # fixed 2 km + own persistence blend
 }
 
 
