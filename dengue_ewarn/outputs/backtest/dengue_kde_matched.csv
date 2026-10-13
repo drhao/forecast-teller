@@ -1,0 +1,21 @@
+對照偵測器,其假警報/100 鄉鎮週,模式,模型,模型 p*,模型假警報/100,模型敏感度（週）,模型偵測事件比例,模型前置中位數（天）
+EWMA,3.83,final,TimesFM,0.5,3.13,0.42,0.34,5.0
+EWMA,3.83,final,kde_fix,0.5,2.69,0.331,0.32,13.0
+EWMA,3.83,final,kde_mix,0.4,3.05,0.436,0.41,10.0
+EWMA,3.83,final,kde_rv,0.4,3.24,0.326,0.27,13.0
+EWMA,3.83,final,kde_rv_season,0.5,3.16,0.285,0.24,13.0
+EWMA,3.83,asof_adj,TimesFM,0.6,3.05,0.305,0.3,3.0
+EWMA,3.83,asof_adj,kde_fix,0.6,3.38,0.304,0.27,13.0
+EWMA,3.83,asof_adj,kde_mix,0.6,3.35,0.376,0.33,8.0
+EWMA,3.83,asof_adj,kde_rv,0.5,3.79,0.294,0.23,13.0
+EWMA,3.83,asof_adj,kde_rv_season,0.6,3.43,0.271,0.18,13.0
+CUSUM,10.33,final,TimesFM,0.3,9.83,0.606,0.56,6.0
+CUSUM,10.33,final,kde_fix,0.2,6.86,0.444,0.44,13.0
+CUSUM,10.33,final,kde_mix,0.2,6.51,0.555,0.59,10.0
+CUSUM,10.33,final,kde_rv,0.2,6.43,0.39,0.3,13.0
+CUSUM,10.33,final,kde_rv_season,0.2,7.36,0.405,0.33,13.0
+CUSUM,10.33,asof_adj,TimesFM,0.4,7.96,0.492,0.48,5.0
+CUSUM,10.33,asof_adj,kde_fix,0.2,9.88,0.481,0.45,13.0
+CUSUM,10.33,asof_adj,kde_mix,0.4,7.77,0.512,0.51,9.0
+CUSUM,10.33,asof_adj,kde_rv,0.2,9.17,0.404,0.28,13.0
+CUSUM,10.33,asof_adj,kde_rv_season,0.2,10.19,0.44,0.33,13.0

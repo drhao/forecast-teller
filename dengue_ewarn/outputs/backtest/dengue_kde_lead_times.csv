@@ -1,0 +1,34 @@
+方法,偵測到的事件比例,前置時間中位數（天）,前置 ≥ 3 天的比例
+EWARN 靜態規則,1.0,0.0,0.0
+EWMA,0.13,2.0,0.05
+CUSUM,0.55,0.0,0.2
+TimesFM final p*=0.3,0.56,6.0,0.42
+TimesFM final p*=0.5,0.34,5.0,0.24
+TimesFM final p*=0.7,0.13,2.0,0.06
+kde_fix final p*=0.3,0.42,13.0,0.4
+kde_fix final p*=0.5,0.32,13.0,0.29
+kde_fix final p*=0.7,0.22,13.0,0.22
+kde_mix final p*=0.3,0.57,10.0,0.42
+kde_mix final p*=0.5,0.36,8.5,0.27
+kde_mix final p*=0.7,0.19,8.5,0.16
+kde_rv final p*=0.3,0.29,13.0,0.28
+kde_rv final p*=0.5,0.24,13.0,0.21
+kde_rv final p*=0.7,0.17,11.0,0.14
+kde_rv_season final p*=0.3,0.31,13.0,0.3
+kde_rv_season final p*=0.5,0.24,13.0,0.2
+kde_rv_season final p*=0.7,0.16,13.0,0.13
+TimesFM asof_adj p*=0.3,0.53,7.0,0.39
+TimesFM asof_adj p*=0.5,0.37,4.5,0.26
+TimesFM asof_adj p*=0.7,0.19,3.0,0.13
+kde_fix asof_adj p*=0.3,0.43,13.0,0.39
+kde_fix asof_adj p*=0.5,0.32,13.0,0.28
+kde_fix asof_adj p*=0.7,0.24,13.0,0.2
+kde_mix asof_adj p*=0.3,0.65,9.5,0.51
+kde_mix asof_adj p*=0.5,0.4,9.0,0.28
+kde_mix asof_adj p*=0.7,0.23,8.5,0.17
+kde_rv asof_adj p*=0.3,0.28,13.0,0.24
+kde_rv asof_adj p*=0.5,0.23,13.0,0.19
+kde_rv asof_adj p*=0.7,0.16,11.0,0.13
+kde_rv_season asof_adj p*=0.3,0.32,13.0,0.29
+kde_rv_season asof_adj p*=0.5,0.23,13.0,0.21
+kde_rv_season asof_adj p*=0.7,0.16,13.0,0.16

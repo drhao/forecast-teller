@@ -28,7 +28,7 @@ from dengue_ewarn.data import completeness, ewarn_threshold, load_panel, nowcast
 ap = argparse.ArgumentParser()
 ap.add_argument("--years", nargs="+", type=int, default=list(range(2013, 2025)))
 ap.add_argument("--modes", nargs="+", default=["final", "asof", "asof_adj"])
-ap.add_argument("--models", nargs="+", default=["tfm", "naive", "snaive"])
+ap.add_argument("--models", nargs="+", default=["tfm", "naive", "snaive"], help="tfm naive snaive and/or KDE variants: " + " ".join(["kde_fix", "kde_rv", "kde_mix", "kde_rv_season"]))
 ap.add_argument("--step", type=int, default=1, help="origin step in days within the season")
 ap.add_argument("--season", nargs=2, default=["06-01", "12-31"])
 ap.add_argument("--context", type=int, default=1095)
@@ -74,6 +74,20 @@ def known_daily(d, mode):
         raise ValueError(f"unknown mode {mode}")
     return known
 
+kde_models = [m for m in args.models if m.startswith("kde")]
+kde_fc = {}
+if kde_models:  # space–time KDE forecasters (PLAN_erakde.md): points from the line list with coordinates
+    from dengue_ewarn.data import load_line_list
+    from dengue_ewarn.kde import VARIANTS, KDEForecaster, line_list_with_coords, load_points
+    _raw = pd.read_csv(Path(__file__).resolve().parents[1] / "data" / "Dengue_Daily.csv", encoding="utf-8-sig", dtype=str, low_memory=False)
+    _ll = line_list_with_coords(_raw, load_line_list()); del _raw
+    _pts = load_points(_ll, series, dates); del _ll
+    print(f"KDE points: {len(_pts['x']):,} cases, {_pts['n_villages']} village eval points, {_pts['n_series_missing']} series without villages", flush=True)
+    for name in kde_models:
+        if name not in VARIANTS:
+            raise SystemExit(f"unknown KDE variant {name}; known: {sorted(VARIANTS)}")
+        kde_fc[name] = KDEForecaster(_pts, hist, S, VARIANTS[name])
+
 model = None; mx = None
 if "tfm" in args.models:
     from dengue_ewarn.model import TimesFM3Model
@@ -111,8 +125,11 @@ for mode in args.modes:
         if not origins:
             continue
         ctxs, meta, thrs, thrs_final = [], [], [], []
+        kde_q = {name: [] for name in kde_models}
         for d in origins:
             daily = known_daily(d, mode)
+            for name, fc in kde_fc.items():
+                kde_q[name].append(fc.forecast(d, mode, daily, H))          # (S, H, 9), same (d, s) order as meta
             s7 = rolling7(daily)[:, max(0, d + 1 - L): d + 1]
             thr = ewarn_threshold(daily, d, floor=args.floor)      # alert threshold: data known at the origin (this mode)
             thr_f = ewarn_threshold(C, d, floor=args.floor)        # event threshold: final data (same for every mode)
@@ -127,6 +144,9 @@ for mode in args.modes:
             preds["naive"] = [naive_last(c, H) for c in ctxs]
         if "snaive" in args.models:
             preds["snaive"] = [seasonal_naive(c, H, season=364) if len(c) >= 372 else naive_last(c, H) for c in ctxs]
+        for name in kde_models:
+            Qk = np.concatenate(kde_q[name], axis=0)                      # (n, H, 9)
+            preds[name] = [(Qk[i, :, 4], Qk[i]) for i in range(n)]
         for name, pr in preds.items():
             Q = np.stack([q for _, q in pr])                       # (n, H, 9)
             for h in args.hs:

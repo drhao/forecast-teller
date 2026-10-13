@@ -38,7 +38,9 @@ files = forecast_files(bt, args.tag)
 res = pd.concat([pd.read_parquet(f) for f in files], ignore_index=True).drop_duplicates(subset=["model", "mode", "series", "origin", "h"])
 res["origin"] = pd.to_datetime(res["origin"])
 modes = [m for m in ["final", "asof", "asof_adj"] if m in set(res["mode"])] + sorted(m for m in set(res["mode"]) if m not in ("final", "asof", "asof_adj"))
-models = [m for m in ["tfm", "naive", "snaive"] if m in set(res["model"])]
+models = [m for m in ["tfm", "naive", "snaive"] if m in set(res["model"])] + sorted(m for m in set(res["model"]) if m not in ("tfm", "naive", "snaive"))
+FMODELS = [m for m in models if m not in ("naive", "snaive")]          # forecasters that get the alert / lead-time tables (tfm, kde_*)
+LBL = lambda m: "TimesFM" if m == "tfm" else m
 years = sorted(res.year.unique())
 print(f"loaded {len(res):,} rows | modes {modes} | models {models} | years {years}")
 
@@ -84,24 +86,26 @@ for mode in modes:
 sweep = pd.DataFrame(sweep_rows)
 lines += ["AUC（鄉鎮週層級，事件 vs 模型機率）：", "", sweep.groupby(["mode", "model"])["auc"].first().unstack("model").round(3).to_markdown(), ""]
 for mode in modes:
-    t = sweep[(sweep["mode"] == mode) & (sweep.model == "tfm")][["p_star", "sensitivity", "false_alarm_per100", "ppv", "alerts"]].round(3)
-    lines += [f"TimesFM（{mode}）p* 掃描（{int(sweep[(sweep['mode']==mode)&(sweep.model=='tfm')].n_weeks.iloc[0]):,} 鄉鎮週，其中事件週 {int(sweep[(sweep['mode']==mode)&(sweep.model=='tfm')].event_weeks.iloc[0]):,}）：", "", t.to_markdown(index=False), ""]
+    for fm in FMODELS:
+        t = sweep[(sweep["mode"] == mode) & (sweep.model == fm)][["p_star", "sensitivity", "false_alarm_per100", "ppv", "alerts"]].round(3)
+        lines += [f"{LBL(fm)}（{mode}）p* 掃描（{int(sweep[(sweep['mode']==mode)&(sweep.model==fm)].n_weeks.iloc[0]):,} 鄉鎮週，其中事件週 {int(sweep[(sweep['mode']==mode)&(sweep.model==fm)].event_weeks.iloc[0]):,}）：", "", t.to_markdown(index=False), ""]
 
 # ---- 2b) strata: region × event type of the origin (weekly aggregation; TimesFM only)
 strat_rows = []
 for mode in modes:
-    a = any_rows[(any_rows["mode"] == mode) & (any_rows.model == "tfm")]
+  for fm in FMODELS:
+    a = any_rows[(any_rows["mode"] == mode) & (any_rows.model == fm)]
     wk = a.groupby(["series", "week"]).agg(prob=("prob", "max"), event=("event", "max"), thr_max=(tf_col, "max"), region=("region", "first")).reset_index()
     wk["etype"] = ETYPE(wk.thr_max)
     for (region, etype), g in wk.groupby(["region", "etype"]):
         ev, pr = g.event.to_numpy(bool), g.prob.to_numpy(float)
         for p in (0.3, 0.5):
             m = alert_metrics(ev, pr, p)
-            strat_rows.append({"mode": mode, "區域": region, "事件型態": etype, "鄉鎮週": len(g), "事件週": int(ev.sum()), "AUC": auc(ev, pr),
+            strat_rows.append({"mode": mode, "model": fm, "區域": region, "事件型態": etype, "鄉鎮週": len(g), "事件週": int(ev.sum()), "AUC": auc(ev, pr),
                                "p_star": p, "敏感度": m["sensitivity"], "假警報/100": m["false_alarm_per100"], "PPV": m["ppv"]})
 strat_sweep = pd.DataFrame(strat_rows); strat_sweep.to_csv(bt / f"{args.tag}_strata_sweep.csv", index=False)
 main_mode = "asof_adj" if "asof_adj" in modes else modes[0]
-lines += [f"分層（{main_mode}，TimesFM）：區域 × 起點的事件型態。下限群聚 = 起點閾值在 {args.floor:g} 例下限（非流行區的第一個群聚）；流行中加速 = 閾值高於下限（流行已在進行）。", "",
+lines += [f"分層（{main_mode}，各預測模型）：區域 × 起點的事件型態。下限群聚 = 起點閾值在 {args.floor:g} 例下限（非流行區的第一個群聚）；流行中加速 = 閾值高於下限（流行已在進行）。", "",
           strat_sweep[strat_sweep["mode"] == main_mode].drop(columns="mode").round(3).to_markdown(index=False), ""]
 
 # ---- 3) episodes, lead time, and statistical detectors on final daily counts
@@ -135,9 +139,10 @@ rows = []
 for name, lead in [("EWARN 靜態規則", np.zeros(len(ep))), ("EWMA", detector_leads(ewma)), ("CUSUM", detector_leads(cusum))]:
     rows.append({"方法": name, "偵測到的事件比例": np.mean(~np.isnan(lead)), "前置時間中位數（天）": np.nanmedian(lead) if np.any(~np.isnan(lead)) else np.nan, "前置 ≥ 3 天的比例": np.nanmean(lead >= 3) if np.any(~np.isnan(lead)) else np.nan})
 for mode in modes:
+  for fm in FMODELS:
     for p in (0.3, 0.5, 0.7):
-        lead = model_leads(mode, "tfm", p)
-        rows.append({"方法": f"TimesFM {mode} p*={p}", "偵測到的事件比例": np.mean(~np.isnan(lead)), "前置時間中位數（天）": np.nanmedian(lead) if np.any(~np.isnan(lead)) else np.nan, "前置 ≥ 3 天的比例": np.nanmean(lead >= 3) if np.any(~np.isnan(lead)) else np.nan})
+        lead = model_leads(mode, fm, p)
+        rows.append({"方法": f"{LBL(fm)} {mode} p*={p}", "偵測到的事件比例": np.mean(~np.isnan(lead)), "前置時間中位數（天）": np.nanmedian(lead) if np.any(~np.isnan(lead)) else np.nan, "前置 ≥ 3 天的比例": np.nanmean(lead >= 3) if np.any(~np.isnan(lead)) else np.nan})
 lead_tab = pd.DataFrame(rows).round(2)
 lines += [lead_tab.to_markdown(index=False), ""]
 # false alarms of the detectors (weekly, outside ±14 days of any episode)
@@ -157,10 +162,11 @@ match_rows = []
 for det in det_rows:
     far = det["每 100 鄉鎮週假警報"]
     for mode in modes:
-        sw = sweep[(sweep["mode"] == mode) & (sweep.model == "tfm") & (sweep.false_alarm_per100 <= far)].sort_values("sensitivity", ascending=False)
+      for fm in FMODELS:
+        sw = sweep[(sweep["mode"] == mode) & (sweep.model == fm) & (sweep.false_alarm_per100 <= far)].sort_values("sensitivity", ascending=False)
         if len(sw):
-            p = float(sw.iloc[0].p_star); lead = model_leads(mode, "tfm", p)
-            match_rows.append({"對照偵測器": det["方法"], "其假警報/100 鄉鎮週": far, "模式": mode, "模型 p*": p, "模型假警報/100": round(float(sw.iloc[0].false_alarm_per100), 2),
+            p = float(sw.iloc[0].p_star); lead = model_leads(mode, fm, p)
+            match_rows.append({"對照偵測器": det["方法"], "其假警報/100 鄉鎮週": far, "模式": mode, "模型": LBL(fm), "模型 p*": p, "模型假警報/100": round(float(sw.iloc[0].false_alarm_per100), 2),
                                "模型敏感度（週）": round(float(sw.iloc[0].sensitivity), 3), "模型偵測事件比例": round(float(np.mean(~np.isnan(lead))), 2), "模型前置中位數（天）": float(np.nanmedian(lead)) if np.any(~np.isnan(lead)) else np.nan})
 if match_rows:
     lines += ["配對比較：在不高於各偵測器假警報率的 p* 下，模型的敏感度與前置時間：", "", pd.DataFrame(match_rows).to_markdown(index=False), ""]
@@ -168,7 +174,7 @@ pd.DataFrame(det_rows).to_csv(bt / f"{args.tag}_detectors.csv", index=False)
 pd.DataFrame(match_rows).to_csv(bt / f"{args.tag}_matched.csv", index=False)
 # per-method lead-time arrays for the site (distribution plots)
 lead_long = []
-for name, lead in [("EWMA", detector_leads(ewma)), ("CUSUM", detector_leads(cusum))] + [(f"TimesFM {m} p*={pp}", model_leads(m, "tfm", pp)) for m in modes for pp in args.p_grid]:
+for name, lead in [("EWMA", detector_leads(ewma)), ("CUSUM", detector_leads(cusum))] + [(f"{LBL(fm)} {m} p*={pp}", model_leads(m, fm, pp)) for m in modes for fm in FMODELS for pp in args.p_grid]:
     for (s_i, t), lv in zip(ep, lead):
         lead_long.append({"method": name, "series": series[s_i], "crossing": dates[t], "lead": lv})
 pd.DataFrame(lead_long).to_csv(bt / f"{args.tag}_leads_long.csv", index=False)
@@ -176,8 +182,9 @@ pd.DataFrame(lead_long).to_csv(bt / f"{args.tag}_leads_long.csv", index=False)
 ep_df = pd.DataFrame([{"series": series[s_i], "region": region_of(series[s_i]), "year": dates[t].year, "etype": str(ETYPE(thr_final[s_i, t]))} for s_i, t in ep])
 leads_by_method = {"EWMA": detector_leads(ewma), "CUSUM": detector_leads(cusum)}
 for m in modes:
+  for fm in FMODELS:
     for pp in (0.3, 0.5):
-        leads_by_method[f"TimesFM {m} p*={pp}"] = model_leads(m, "tfm", pp)
+        leads_by_method[f"{LBL(fm)} {m} p*={pp}"] = model_leads(m, fm, pp)
 strata_rows = []
 for (region, etype), g in ep_df.groupby(["region", "etype"]):
     idx = g.index.to_numpy()

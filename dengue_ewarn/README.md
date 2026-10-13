@@ -1,6 +1,6 @@
 # dengue_ewarn — 登革熱鄉鎮層級預測式預警（CHG 情境一驗證）
 
-獨立於流感預測模組的子專案：以 Google TimesFM 3.0 對台南、高雄 74 個鄉鎮的登革熱每日確定病例做 7 日累計的分布預測，換算「未來 14 天內突破 EWARN 閾值的機率」，並以前置時間、假警報率與 EWMA、CUSUM 等偵測器比較。計畫與結果見 [PLAN.md](PLAN.md)，視覺化報告發布在主站 `docs/dengue/`。
+獨立於流感預測模組的子專案：以 Google TimesFM 3.0 對台南、高雄 74 個鄉鎮的登革熱每日確定病例做 7 日累計的分布預測，換算「未來 14 天內突破 EWARN 閾值的機率」，並以前置時間、假警報率與 EWMA、CUSUM 等偵測器比較。計畫與結果見 [PLAN.md](PLAN.md)，視覺化報告發布在主站 `docs/dengue/`。KDE 家族（ERAKDE）的引入規劃與先導結果見 [PLAN_erakde.md](PLAN_erakde.md)（2026-10-13）：`src/dengue_ewarn/kde.py` 時空 KDE 預測器，`run_backtest.py --models tfm naive snaive kde_fix kde_rv kde_mix kde_rv_season --tag dengue_kde --panel dengue --years 2015 2023`，`scripts/compare_models.py --tag dengue_kde --panel dengue` 做同假警報率的分層比較。
 
 ## 結構
 

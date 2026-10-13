@@ -393,3 +393,9 @@ nowcast 變體在流行中加速層的前置時間看起來較長（9–11 天�
 - 評估腳本：目標日過後，用後續快照的最終值對 `dengue_forecast_log.csv` 算事件 / 命中 / 假警報（與回測指標一致）。
 - 把「檢驗中」納入 nowcast 訊號（例如乘上歷史的檢驗中 → 確定比例），讓平靜期轉流行期時更早反應。
 - 若要擴到全台 274 區：`fetch_nidss.py` 的 `CITIES` 加入其他縣市（請求數約再 × 2.5）。
+
+---
+
+## 16. KDE 家族（ERAKDE）規劃（2026-10-13）
+
+使用者提議引入 ERAKDE（Elevated Relaxed Adaptive KDE，台大歐陽實驗室 RVKDE 一脈，2023 年蔡家豪論文的 ERAKDE-ST）。文獻追溯、它能補現行流程的什麼（空間外溢、村里熱點）、預測框架（stKDE 加總量投影）、三種整合角色與評估設計見 [PLAN_erakde.md](PLAN_erakde.md)。尚未實作。
