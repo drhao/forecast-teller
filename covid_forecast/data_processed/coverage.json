@@ -10,7 +10,7 @@
     "raw_first": "202220",
     "raw_last": "202640",
     "first_complete": "202235",
-    "last_complete": "202639",
+    "last_complete": "202640",
     "gate": "rods_total",
     "source": "開放資料 RODS_COVID-19.csv"
   },
@@ -32,12 +32,12 @@
   },
   "rods_total": {
     "first": "202101",
-    "last": "202639",
+    "last": "202640",
     "source": "influenza panel data_processed/national_weekly.parquet (RODS_RS.csv)"
   },
   "resp": {
     "first": "202502",
-    "last": "202637",
+    "last": "202638",
     "source": "influenza panel (RESP_LAB.csv, SARS-CoV-2 positives)"
   },
   "primary": "covid_oe",

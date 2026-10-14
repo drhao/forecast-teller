@@ -84,6 +84,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       <div class="delta"><span class="arrow">${arrow}</span> 相對起點週 ${fmt(last, d)}：${ch >= 0 ? '+' : ''}${ch.toFixed(1)}%${verified ? `，實際 ${fmt(f1.observed, d)}` : ''}</div></div>`);
   });
 
+
+  // threshold-crossing probability over the horizon (forecast_teller.threshold_probs)
+  const to = latest.threshold_outlook;
+  if (to) kpi.insertAdjacentHTML('beforeend', `<div class="kpi"><div class="label">${to.label}${to.provisional ? '（暫行）' : ''}</div>
+      <div class="value">${Math.round(to.p * 100)}<small>%</small></div>
+      <div class="sub">各週 ${to.by_h.map(p => Math.round(p * 100) + '%').join(' / ')}（${to.event === 'exceed' ? '超過' : '維持其上'}）</div>
+      <div class="delta">各週同向近似；若各週獨立約 ${Math.round(to.p_indep * 100)}%${to.first_week ? '；中位數最快 ' + to.first_week + ' 當週' : ''}</div></div>`);
+
   // fan charts (history window switchable; one control row above the grid)
   const grid = document.getElementById('fan-grid'); const fans = {};
   const prim = inds[0]; const rest = inds.slice(1);

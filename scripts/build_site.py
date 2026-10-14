@@ -15,6 +15,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from forecast_teller import OUTPUT_DIR, PROCESSED_DIR, ROOT  # noqa: E402
 from forecast_teller.backtest import DEFAULT_THRESHOLDS, SEGMENTS, segment_of, threshold_note  # noqa: E402
+from forecast_teller.threshold_probs import threshold_outlook  # noqa: E402
 
 RTHR = DEFAULT_THRESHOLDS["rods_ili_pct"]
 from forecast_teller.covariates import holiday_weekly  # noqa: E402
@@ -297,6 +298,8 @@ def build_narrative(nat: pd.DataFrame, latest: dict) -> dict:
     r_path = " → ".join(f"{f['median']:.1f}" for f in rf)
     fut.append(f"RODS 急診類流感%：中位數 {r_path}%；"
                f"維持在流行閾值 {thr:g}% 以上的機率第 1 週{pct_txt(probs[0])}、第 4 週{pct_txt(probs[3])}。")
+    if latest.get("threshold_outlook"):
+        fut.append(latest["threshold_outlook"]["text"])
     # --- outlook: ER
     ef = er["forecast"]; em = [f["median"] for f in ef]; e_imax = int(np.argmax(em))
     fut.append(f"急診人次：中位數 {' → '.join(fmt0(m) for m in em)}"
@@ -468,6 +471,8 @@ def main():
     cov = json.loads((PROCESSED_DIR / "coverage.json").read_text(encoding="utf-8"))
     now = dt.datetime.now().astimezone().isoformat(timespec="minutes")
     latest = build_latest(nat); latest["generated_at"] = now
+    rods = next(i for i in latest["indicators"] if i["key"] == "rods_ili_pct")
+    latest["threshold_outlook"] = threshold_outlook(rods["forecast"], RTHR, rods["last_observed"], "RODS 急診類流感%", f"流行閾值 {RTHR:g}%", "%", 1)
     latest["narrative"] = build_narrative(nat, latest)
     try:
         bt = build_backtest(); bt["generated_at"] = now

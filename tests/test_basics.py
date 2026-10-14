@@ -9,6 +9,7 @@ from forecast_teller.baselines import naive_last, seasonal_naive  # noqa: E402
 from forecast_teller.covariates import future_covariates, holiday_weekly, seasonal_features  # noqa: E402
 from forecast_teller.metrics import covered, wis  # noqa: E402
 from forecast_teller.weeks import next_weeks, seasonal_phase, week_start, yw_of_date, yw_range  # noqa: E402
+from forecast_teller.threshold_probs import prob_ge, threshold_outlook  # noqa: E402
 
 # weeks
 yws = yw_range("201601", "202553")
@@ -44,4 +45,13 @@ m, qq = seasonal_naive(ctx, 4)
 assert m.shape == (4,) and qq.shape == (4, 9) and (np.diff(qq, axis=1) >= 0).all()
 m2, qq2 = naive_last(ctx, 4)
 assert np.allclose(m2, ctx[-1], atol=50) and (qq2 >= 0).all()
+# threshold-crossing probabilities over the horizon
+mk = lambda c, w: {"yw": w, **{f"q{k}": c + (k - 50) / 10 for k in range(10, 100, 10)}}   # q10 = c-4 … q90 = c+4
+fc = [mk(8, "202641"), mk(10, "202642"), mk(12, "202643"), mk(12, "202644")]
+assert abs(prob_ge(mk(10, "x"), 10) - 0.5) < 1e-9 and prob_ge(mk(10, "x"), 20) == 0.05 and prob_ge(mk(10, "x"), 0) == 0.95
+to = threshold_outlook(fc, 11.0, 9.0, "RODS%", "11%")
+assert to["event"] == "exceed" and to["above_now"] is False and to["first_week"] == "202643"
+assert abs(to["p"] - max(to["by_h"])) < 1e-9 and to["p_indep"] >= to["p"]
+to2 = threshold_outlook(fc, 11.0, 12.0, "RODS%", "11%")
+assert to2["event"] == "drop" and abs(to2["p"] - (1 - min(to2["by_h"]))) < 1e-9 and to2["first_week"] == "202641"
 print("all basic checks passed")

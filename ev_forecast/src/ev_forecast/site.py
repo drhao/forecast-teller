@@ -9,6 +9,7 @@ import pandas as pd
 
 from forecast_teller.backtest import SEGMENTS, segment_of
 from forecast_teller.covariates import holiday_weekly
+from forecast_teller.threshold_probs import threshold_outlook
 from forecast_teller.weeks import week_start
 
 from . import DOCS_DIR, OUTPUT_DIR, PROCESSED_DIR
@@ -210,6 +211,8 @@ def build_narrative(nat: pd.DataFrame, latest: dict, calib: dict) -> dict:
         fut.append(f"維持在流行閾值 {fmt0(thr)} 人次以上的機率：{ptxt}。" + (f"中位數自第 {[i for i, m in enumerate(meds) if m < thr][0] + 1} 週起低於閾值，若連續 2 週低於即脫離流行期。" if any(m < thr for m in meds) else "中位數 4 週內都在閾值之上。"))
     else:
         fut.append(f"達到流行閾值 {fmt0(thr)} 人次的機率：{ptxt}。" + (f"以中位數判斷最快在第 {first + 1} 週（{fc[first]['yw']}，{fc[first]['date']} 起）達閾值、進入流行期。" if first is not None else "4 週內中位數都未達閾值。"))
+    if latest.get("threshold_outlook"):
+        fut.append(latest["threshold_outlook"]["text"])
     of = out["forecast"]; rf = rods["forecast"]
     fut.append(f"門診中位數 {' → '.join(fmt0(f['median']) for f in of)} 人次；RODS 急診 {' → '.join(fmt0(f['median']) for f in rf)} 人次。")
     w4 = (fc[3]["q90"] - fc[3]["q10"]) / meds[3] * 100
@@ -436,8 +439,16 @@ def main(config_labels: dict[str, str]):
     now = dt.datetime.now().astimezone().isoformat(timespec="minutes")
     calib = calibration(nat)
     latest = build_latest(nat, config_labels); latest["generated_at"] = now
+    prim = next(i for i in latest["indicators"] if i["key"] == PRIMARY)
+    latest["threshold_outlook"] = threshold_outlook(prim["forecast"], prim["threshold"], prim["last_observed"], "門急診合計", f"流行閾值 {prim['threshold']:,.0f} 人次", "人次", 0)
     latest["narrative"] = build_narrative(nat, latest, calib)
-    bt = build_backtest(); bt["generated_at"] = now
+    try:
+        bt = build_backtest(); bt["generated_at"] = now
+    except (FileNotFoundError, ValueError) as e:   # ValueError: pd.concat of no parquet files
+        # Backtest parquet files are not in git and only change when a backtest is re-run;
+        # a weekly update on a fresh clone keeps the published backtest.json as is.
+        bt = json.loads((DATA / "backtest.json").read_text(encoding="utf-8"))
+        print(f"backtest parquet missing ({getattr(e, 'filename', '')}); reusing docs/ev/data/backtest.json from {bt.get('generated_at')}")
     best = bt["targets"][PRIMARY]["best"]
     meta = {"generated_at": now, "coverage": cov, "calibration": calib,
             "backtest_window": {"start": "201601", "end": "202553", "weeks": 522, "warmup": 104, "origins": bt["targets"][PRIMARY]["n_origins"]},

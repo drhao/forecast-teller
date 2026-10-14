@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 
 from forecast_teller.backtest import SEGMENTS, segment_of
+from forecast_teller.threshold_probs import threshold_outlook
 from forecast_teller.weeks import week_start
 
 from . import DATA_DIR, DOCS_DIR, OUTPUT_DIR, PROCESSED_DIR
@@ -218,6 +219,8 @@ def build_narrative(nat: pd.DataFrame, latest: dict, calib: dict) -> dict:
         first = next((i for i, p in enumerate(p_lvl) if p >= 0.5), None)
         fut.append(f"達暫行進入水準 {fmt0(st['level'])} 人次的機率：" + "、".join(f"第 {i + 1} 週{pct_txt(p)}" for i, p in enumerate(p_lvl)) +
                    "。" + (f"以中位數判斷最快在第 {first + 1} 週達到，但還需連續 3 週上升才符合進入規則。" if first is not None else "4 週內中位數都未達進入水準。"))
+    if latest.get("threshold_outlook"):
+        fut.append(latest["threshold_outlook"]["text"])
     of = out["forecast"]; rf = rods["forecast"]
     fut.append(f"門診中位數 {' → '.join(fmt0(f['median']) for f in of)} 人次；RODS 急診 {' → '.join(fmt0(f['median']) for f in rf)} 人次。")
     w4 = (fc[3]["q90"] - fc[3]["q10"]) / meds[3] * 100
@@ -444,6 +447,9 @@ def main(config_labels: dict[str, str]):
     now = dt.datetime.now().astimezone().isoformat(timespec="minutes")
     calib = calibration(nat)
     latest = build_latest(nat, config_labels); latest["generated_at"] = now
+    prim = next(i for i in latest["indicators"] if i["key"] == PRIMARY); st = latest["status"]
+    lvl_label = ("暫行脫離水準" if st["in_period"] else "暫行進入水準") + f" {st['level']:,.0f} 人次"
+    latest["threshold_outlook"] = threshold_outlook(prim["forecast"], st["level"], prim["last_observed"], "門急診", lvl_label, "人次", 0, provisional=True)
     latest["narrative"] = build_narrative(nat, latest, calib)
     bt = build_backtest(); bt["generated_at"] = now
     best = bt["targets"][PRIMARY]["best"]
