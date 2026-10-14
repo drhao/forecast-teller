@@ -55,6 +55,9 @@ class KDEParams:
     phi: float = 2.0              # NB dispersion (var = μ + μ² / φ)
     pseudo: float = 5.0           # pseudo-count in the trend ratio
     c_floor: float = 0.2
+    points: str = "cases"         # "cases" = line-list points (backtest only); "town_centroid" / "town_villages" = township daily
+                                  # counts (what NIDSS gives in real time) placed at the township's historical case-weighted
+                                  # centroid, or spread over its villages in proportion to the historical case shares
 
 
 VARIANTS = {
@@ -64,6 +67,11 @@ VARIANTS = {
     "kde_rv_season": KDEParams(name="kde_rv_season", season_gamma=0.2),
     "kde_rv_b2": KDEParams(name="kde_rv_b2", beta=2.0, sigma_min=1.0),          # wider adaptive bandwidth (pilot: β = 1 too narrow)
     "kde_mix_fix": KDEParams(name="kde_mix_fix", bandwidth="fixed", alpha=0.5),  # fixed 2 km + own persistence blend
+    # township-level input (real-time degradation): same kernel / blend as kde_mix_fix, points from township counts
+    "kde_mix_fix_town": KDEParams(name="kde_mix_fix_town", bandwidth="fixed", alpha=0.5, points="town_centroid"),
+    "kde_mix_fix_town3": KDEParams(name="kde_mix_fix_town3", bandwidth="fixed", sigma_km=3.0, alpha=0.5, points="town_centroid"),
+    "kde_mix_fix_vill": KDEParams(name="kde_mix_fix_vill", bandwidth="fixed", alpha=0.5, points="town_villages"),
+    "kde_fix_vill": KDEParams(name="kde_fix_vill", bandwidth="fixed", points="town_villages"),
 }
 
 
@@ -82,15 +90,21 @@ def load_points(ll: pd.DataFrame, series: list[str], dates: pd.DatetimeIndex) ->
     s_idx = loc.key.map(idx).to_numpy()
     n = loc.n.to_numpy(float)
     # evaluation points: village centroids (mean of statistical-area centroids), township fallback
-    v = loc.dropna(subset=["village_code"]).groupby("village_code").agg(x=("lon", "mean"), y=("lat", "mean"), key=("key", "first"))
-    ex, ey = to_km(v.x.to_numpy(), v.y.to_numpy()); es = v.key.map(idx).to_numpy()
+    v = loc.dropna(subset=["village_code"]).groupby("village_code").agg(x=("lon", "mean"), y=("lat", "mean"), key=("key", "first"), cases=("n", "sum"))
+    ex, ey = to_km(v.x.to_numpy(), v.y.to_numpy()); es = v.key.map(idx).to_numpy(); ec = v.cases.to_numpy(float)
     missing = [i for i in range(len(series)) if i not in set(es.tolist())]
     for i in missing:
         m = s_idx == i
         if m.any():
-            ex = np.append(ex, x[m].mean()); ey = np.append(ey, y[m].mean()); es = np.append(es, i)
-    return {"x": x, "y": y, "t_on": t_on, "t_rep": t_rep, "s_idx": s_idx, "n": n, "ex": ex, "ey": ey, "es": es.astype(int),
-            "n_villages": int(len(v)), "n_series_missing": len(missing)}
+            ex = np.append(ex, x[m].mean()); ey = np.append(ey, y[m].mean()); es = np.append(es, i); ec = np.append(ec, n[m].sum())
+    es = es.astype(int)
+    # historical share of each village within its township (prior for spreading a township count over its villages)
+    tot = np.bincount(es, weights=ec, minlength=len(series)); eshare = ec / np.where(tot[es] > 0, tot[es], 1.0)
+    # township representative point = case-weighted mean of the historical case coordinates
+    cx = np.bincount(s_idx, weights=x * n, minlength=len(series)) / np.maximum(np.bincount(s_idx, weights=n, minlength=len(series)), 1e-9)
+    cy = np.bincount(s_idx, weights=y * n, minlength=len(series)) / np.maximum(np.bincount(s_idx, weights=n, minlength=len(series)), 1e-9)
+    return {"x": x, "y": y, "t_on": t_on, "t_rep": t_rep, "s_idx": s_idx, "n": n, "ex": ex, "ey": ey, "es": es, "eshare": eshare,
+            "cx": cx, "cy": cy, "n_villages": int(len(v)), "n_series_missing": len(missing)}
 
 
 def line_list_with_coords(ll_raw: pd.DataFrame, ll: pd.DataFrame) -> pd.DataFrame:
@@ -113,6 +127,18 @@ class KDEForecaster:
         if d not in self._c_cache:
             self._c_cache[d] = np.maximum(completeness(self.hist, d), self.prm.c_floor)
         return self._c_cache[d]
+
+    def _select_town(self, d: int, daily: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Township-level points: the recency-weighted sum of each township's daily counts known at the origin (already
+        completeness-adjusted in mode asof_adj), placed at the township centroid or spread over its villages."""
+        p, prm = self.p, self.prm
+        a = np.arange(min(prm.window, daily.shape[1]))
+        W = (daily[:, daily.shape[1] - 1 - a] * 0.5 ** (a / prm.half_life)).sum(axis=1)   # (S,)
+        if prm.points == "town_centroid":
+            m = W > 0
+            return p["cx"][m], p["cy"][m], W[m]
+        w = W[p["es"]] * p["eshare"]; m = w > 0
+        return p["ex"][m], p["ey"][m], w[m]
 
     def _select(self, d: int, mode: str) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """(x, y, w) of the points that feed the density at origin d."""
@@ -165,7 +191,7 @@ class KDEForecaster:
         own7 = daily[:, -7:].sum(axis=1); tot7 = float(own7.sum())
         prev7 = float(daily[:, -14:-7].sum()) if daily.shape[1] >= 14 else tot7
         g = float(np.clip((tot7 + prm.pseudo) / (prev7 + prm.pseudo), 0.5, 2.0)) if prm.trend else 1.0
-        xs, ys, w = self._select(d, mode)
+        xs, ys, w = self._select_town(d, daily) if prm.points != "cases" else self._select(d, mode)
         if len(xs) and w.sum() > 0:
             lam = self._intensity(xs, ys, w, self._bandwidth(xs, ys))
             share = np.bincount(self.p["es"], weights=lam, minlength=S)

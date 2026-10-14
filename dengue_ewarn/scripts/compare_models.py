@@ -24,10 +24,16 @@ ap.add_argument("--panel", default=None)
 ap.add_argument("--floor", type=float, default=3.0)
 ap.add_argument("--budgets", nargs="+", type=float, default=[0.5, 1, 2, 5, 10, 20])
 ap.add_argument("--lead-window", type=int, default=14)
+ap.add_argument("--extra", nargs="*", default=[], help="tag:model pairs to borrow from another run (same panel / years / mode), e.g. dengue_kde_all:tfm")
 args = ap.parse_args()
 
 bt = OUTPUT_DIR / "backtest"
-res = pd.concat([pd.read_parquet(f) for f in forecast_files(bt, args.tag)], ignore_index=True).drop_duplicates(subset=["model", "mode", "series", "origin", "h"])
+res = pd.concat([pd.read_parquet(f) for f in forecast_files(bt, args.tag)], ignore_index=True)
+for spec in args.extra:
+    tag, model = spec.split(":")
+    ex = pd.concat([pd.read_parquet(f) for f in forecast_files(bt, tag)], ignore_index=True)
+    res = pd.concat([res, ex[ex.model == model]], ignore_index=True)
+res = res.drop_duplicates(subset=["model", "mode", "series", "origin", "h"])
 res["origin"] = pd.to_datetime(res["origin"]); res["region"] = res.series.map(region_of)
 tf_col = "thr_final" if "thr_final" in res.columns else "thr"
 ETYPE = lambda thr: np.where(np.asarray(thr) <= args.floor, "下限群聚", "流行中加速")
@@ -43,7 +49,7 @@ anyr = res[res.h == 0].copy(); anyr["week"] = anyr.origin.dt.to_period("W")
 if "tfm" in set(anyr.model):
     key = ["mode", "series", "origin"]
     base = anyr[anyr.model == "tfm"].set_index(key)
-    for km in [m for m in ["kde_mix", "kde_mix_fix"] if m in set(anyr.model)]:
+    for km in sorted(m for m in set(anyr.model) if m.startswith("kde_mix")):
         other = anyr[anyr.model == km].set_index(key)["prob"]
         e = base.copy(); e["prob"] = (base["prob"] + other.reindex(base.index)).to_numpy() / 2; e["model"] = f"ensp_tfm_{km}"
         anyr = pd.concat([anyr, e.reset_index()], ignore_index=True)

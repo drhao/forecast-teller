@@ -28,7 +28,7 @@ from dengue_ewarn.data import completeness, ewarn_threshold, load_panel, nowcast
 ap = argparse.ArgumentParser()
 ap.add_argument("--years", nargs="+", type=int, default=list(range(2013, 2025)))
 ap.add_argument("--modes", nargs="+", default=["final", "asof", "asof_adj"])
-ap.add_argument("--models", nargs="+", default=["tfm", "naive", "snaive"], help="tfm naive snaive, KDE variants (kde_fix kde_rv kde_mix kde_rv_season kde_rv_b2 kde_mix_fix) and ensembles ens:tfm+kde_mix (quantile mean)")
+ap.add_argument("--models", nargs="+", default=["tfm", "naive", "snaive"], help="tfm naive snaive, KDE variants (kde_fix kde_rv kde_mix kde_rv_season kde_rv_b2 kde_mix_fix) and ensembles ens:tfm+kde_mix (quantile mean); township-level input variants kde_mix_fix_town / _town3 / _vill, kde_fix_vill")
 ap.add_argument("--step", type=int, default=1, help="origin step in days within the season")
 ap.add_argument("--season", nargs=2, default=["06-01", "12-31"])
 ap.add_argument("--context", type=int, default=1095)

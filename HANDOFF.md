@@ -292,7 +292,7 @@ forecast-teller/
 
 ## 10. 待辦與候選下一步（都尚未開始，依使用者指示）
 
-- 登革熱 KDE 家族（ERAKDE）：規劃與先導結果見 `dengue_ewarn/PLAN_erakde.md`（2026-10-13）。先導（74 區 × 2015 / 2023，tag `dengue_kde`）：流行城市裡尚未升級的區，KDE 在同假警報率下優於 TimesFM；TimesFM 與 kde_mix 的機率平均在兩層都最好。第二階段（全台 274 鄉鎮 × 12 年，tag `dengue_kde_all`，§10.5）確認：TimesFM 與固定 2 km KDE 混合版的機率平均（`ensp_tfm_kde_mix_fix`）在四層中三層 AUC 最高、同假警報率下敏感度全面不輸現行，列為即時預警候選主模型；RVKDE 自適應帶寬一律較差。第三階段（接進每日流程）待使用者確認；論文全文（「Elevated」定義）仍待使用者取得。個案檔已在這台機器（archive.org 快照）；個案檔自帶統計區座標，不需要界圖。
+- 登革熱 KDE 家族（ERAKDE）：規劃與先導結果見 `dengue_ewarn/PLAN_erakde.md`（2026-10-13）。先導（74 區 × 2015 / 2023，tag `dengue_kde`）：流行城市裡尚未升級的區，KDE 在同假警報率下優於 TimesFM；TimesFM 與 kde_mix 的機率平均在兩層都最好。第二階段（全台 274 鄉鎮 × 12 年，tag `dengue_kde_all`，§10.5）確認：TimesFM 與固定 2 km KDE 混合版的機率平均（`ensp_tfm_kde_mix_fix`）在四層中三層 AUC 最高、同假警報率下敏感度全面不輸現行，列為即時預警候選主模型；RVKDE 自適應帶寬一律較差。即時版只能用鄉鎮層級輸入（個案檔已下架，NIDSS 只有鄉鎮 × 日計數）：以鄉鎮歷史病例座標的加權平均點 + 2 km 核（`kde_mix_fix_town`）重跑全台回測，與個案層級的差異 AUC ≤ 0.005（§10.6，tag `dengue_kde_town`），可直接部署但要在站台說明。第三階段（接進每日流程）待使用者確認；論文全文（「Elevated」定義）仍待使用者取得。個案檔已在這台機器（archive.org 快照）；個案檔自帶統計區座標，不需要界圖。
 
 - 新冠（`covid_forecast/PLAN.md` §13）：向疾管署確認流行閾值數值與流行期規則；每週首報快照累積後估回補係數；6 區與年齡層聯合回測；RESP SARS-CoV-2 與重症作過去共變數（資料自 2025 / 2024w34 起，context 太短尚未測）；舊定義重症（2023/3/20–2024/8/31）回溯；變異株資料結構化。
 
