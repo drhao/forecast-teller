@@ -17,6 +17,7 @@ dengue_ewarn/data/*
 !dengue_ewarn/data/nidss_latest.csv
 !dengue_ewarn/data/nidss_latest_meta.json
 !dengue_ewarn/data/nidss_history.csv
+!dengue_ewarn/data/kde_geometry.csv
 dengue_ewarn/data_processed/*.parquet
 dengue_ewarn/data_processed/*.npz
 dengue_ewarn/outputs/backtest/*.parquet

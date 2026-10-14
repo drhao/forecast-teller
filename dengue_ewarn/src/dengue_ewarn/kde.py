@@ -135,7 +135,7 @@ class KDEForecaster:
         a = np.arange(min(prm.window, daily.shape[1]))
         W = (daily[:, daily.shape[1] - 1 - a] * 0.5 ** (a / prm.half_life)).sum(axis=1)   # (S,)
         if prm.points == "town_centroid":
-            m = W > 0
+            m = (W > 0) & np.isfinite(p["cx"]) & np.isfinite(p["cy"])   # townships without historical cases have no point
             return p["cx"][m], p["cy"][m], W[m]
         w = W[p["es"]] * p["eshare"]; m = w > 0
         return p["ex"][m], p["ey"][m], w[m]

@@ -353,3 +353,11 @@ dengue_ewarn/
 - 人口分母（村里人口統計）與村里面積納入 μ 的分配；
 - 帶寬與 mix 權重用留一年交叉驗證選；
 - 取得即時個案資料後，`forecast_now.py` 加村里層級清單。
+
+## 12. 第三階段：集成接進每日即時預警（2026-10-14，已完成）
+
+- `scripts/build_kde_geometry.py` 自個案檔產生 `data/kde_geometry.csv`（273 個鄉鎮代表點 + 2,758 個村里評估點與歷史比例；進 git，任一 clone 可跑）。
+- `scripts/forecast_now.py`：TimesFM 之後加鄰近 KDE（`kde_mix_fix_town`，§10.6 的部署版），集成 = 兩者「14 天內突破」機率平均（與回測 `ensp` 相同），標示依集成；表與 log 保留兩個分量（`p_any14_tfm` / `p_any14_kde`、`prob_tfm` / `prob_kde`）與 `method` 欄；`--no-kde` 回到純 TimesFM；`--data-dir` / `--dry-run` 供測試。
+- 站台即時一節加「TimesFM / 鄰近 KDE」欄、集成說明與鄉鎮層級輸入的說明（§10.6 要求）。
+- 驗證：合成快照（台南北區注入 32 例）下相鄰區由 0.02 升為 0.41–0.50（警示），不相鄰區不動；細節與副作用見 PLAN §15.3。
+- 待辦：集成版兩級門檻與工作量表；KDE 總量投影改縣市別；村里熱點（§11）待即時個案資料。
