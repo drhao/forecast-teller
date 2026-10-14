@@ -20,19 +20,19 @@ tfm                  0.03  3.38  0.11  13.50
 區域                     其他縣市          台南高雄       
 事件型態                   下限群聚  流行中加速   下限群聚  流行中加速
 model                                           
-ens_tfm_kde_mix       0.788  0.715  0.818  0.774
-ens_tfm_kde_mix_fix   0.791  0.728  0.837  0.788
-ensp_tfm_kde_mix      0.805  0.714  0.833  0.796
-ensp_tfm_kde_mix_fix  0.805  0.729  0.857  0.808
-kde_fix               0.696  0.816  0.794  0.758
-kde_mix               0.777  0.725  0.817  0.755
-kde_mix_fix           0.775  0.751  0.845  0.764
-kde_rv                0.678  0.774  0.748  0.729
-kde_rv_b2             0.677  0.790  0.757  0.743
-kde_rv_season         0.695  0.793  0.768  0.747
-naive                 0.725  0.852  0.746  0.897
-snaive                0.681  0.771  0.685  0.764
-tfm                   0.784  0.687  0.797  0.768
+ens_tfm_kde_mix       0.685  0.711  0.728  0.777
+ens_tfm_kde_mix_fix   0.690  0.724  0.758  0.789
+ensp_tfm_kde_mix      0.711  0.714  0.752  0.796
+ensp_tfm_kde_mix_fix  0.711  0.727  0.789  0.807
+kde_fix               0.548  0.618  0.692  0.670
+kde_mix               0.670  0.723  0.727  0.756
+kde_mix_fix           0.667  0.741  0.770  0.769
+kde_rv                0.521  0.570  0.619  0.632
+kde_rv_b2             0.519  0.574  0.634  0.630
+kde_rv_season         0.546  0.578  0.653  0.645
+naive                 0.590  0.690  0.617  0.675
+snaive                0.523  0.498  0.537  0.519
+tfm                   0.679  0.686  0.698  0.768
 
 === asof_adj: false-alarm budget 0.5/100 township-weeks: sensitivity / detected episodes / median lead ===
 區域                                 其他縣市                                 台南高雄                   

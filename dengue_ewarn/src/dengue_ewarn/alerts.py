@@ -75,5 +75,6 @@ def auc(event: np.ndarray, prob: np.ndarray) -> float:
     pos, neg = prob[event], prob[~event]
     if len(pos) == 0 or len(neg) == 0:
         return np.nan
-    ranks = np.argsort(np.argsort(np.concatenate([pos, neg]))) + 1
-    return (ranks[: len(pos)].sum() - len(pos) * (len(pos) + 1) / 2) / (len(pos) * len(neg))
+    from scipy.stats import rankdata
+    ranks = rankdata(np.concatenate([pos, neg]))          # average ranks for ties (exact zeros are common in quiet areas)
+    return float((ranks[: len(pos)].sum() - len(pos) * (len(pos) + 1) / 2) / (len(pos) * len(neg)))

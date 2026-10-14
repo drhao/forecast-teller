@@ -1,0 +1,209 @@
+tag dengue_kde: 1,583,600 rows | modes ['asof_adj', 'final'] | models ['ensp_tfm_kde_mix', 'kde_fix', 'kde_mix', 'kde_rv', 'kde_rv_season', 'naive', 'snaive', 'tfm'] | years [np.int64(2015), np.int64(2023)] | episodes 172
+
+=== asof_adj: WIS h=7 (cov80) by region × event type ===
+region         台南高雄       
+etype          下限群聚  流行中加速
+model                     
+kde_fix        0.41  24.60
+kde_mix        0.39  20.89
+kde_rv         0.40  25.03
+kde_rv_season  0.54  24.69
+naive          0.50  21.12
+snaive         0.93  35.74
+tfm            0.43  16.78
+
+=== asof_adj: AUC by stratum ===
+區域                 台南高雄       
+事件型態               下限群聚  流行中加速
+model                         
+ensp_tfm_kde_mix  0.719  0.831
+kde_fix           0.664  0.696
+kde_mix           0.715  0.798
+kde_rv            0.583  0.658
+kde_rv_season     0.604  0.672
+naive             0.609  0.685
+snaive            0.545  0.539
+tfm               0.657  0.792
+
+=== asof_adj: false-alarm budget 0.5/100 township-weeks: sensitivity / detected episodes / median lead ===
+區域                             台南高雄                  
+事件型態                           下限群聚             流行中加速
+model                                                
+ensp_tfm_kde_mix   0.07 / 0.07 / 2d  0.12 / 0.07 / 7d
+kde_fix            0.10 / 0.12 / 6d   0.00 / 0.00 / —
+kde_mix            0.14 / 0.16 / 2d  0.07 / 0.08 / 8d
+kde_rv             0.10 / 0.12 / 8d   0.00 / 0.00 / —
+kde_rv_season     0.10 / 0.11 / 12d   0.00 / 0.00 / —
+naive               0.00 / 0.00 / —   0.00 / 0.00 / —
+snaive              0.00 / 0.00 / —   0.00 / 0.00 / —
+tfm                0.07 / 0.03 / 2d  0.14 / 0.07 / 3d
+
+=== asof_adj: false-alarm budget 1/100 township-weeks: sensitivity / detected episodes / median lead ===
+區域                             台南高雄                   
+事件型態                           下限群聚              流行中加速
+model                                                 
+ensp_tfm_kde_mix   0.12 / 0.10 / 2d   0.24 / 0.17 / 8d
+kde_fix            0.14 / 0.18 / 7d  0.15 / 0.20 / 12d
+kde_mix            0.19 / 0.22 / 4d   0.15 / 0.09 / 9d
+kde_rv            0.12 / 0.14 / 12d  0.10 / 0.09 / 13d
+kde_rv_season     0.12 / 0.12 / 11d    0.00 / 0.00 / —
+naive               0.00 / 0.00 / —    0.00 / 0.00 / —
+snaive              0.00 / 0.00 / —    0.00 / 0.00 / —
+tfm                0.08 / 0.04 / 2d   0.14 / 0.07 / 3d
+
+=== asof_adj: false-alarm budget 2/100 township-weeks: sensitivity / detected episodes / median lead ===
+區域                             台南高雄                   
+事件型態                           下限群聚              流行中加速
+model                                                 
+ensp_tfm_kde_mix   0.18 / 0.24 / 2d   0.31 / 0.26 / 9d
+kde_fix           0.24 / 0.27 / 12d  0.20 / 0.22 / 13d
+kde_mix            0.24 / 0.31 / 4d  0.24 / 0.17 / 10d
+kde_rv            0.14 / 0.15 / 12d  0.17 / 0.13 / 12d
+kde_rv_season     0.16 / 0.19 / 12d  0.18 / 0.14 / 13d
+naive               0.00 / 0.00 / —   0.32 / 0.42 / 3d
+snaive            0.07 / 0.09 / 13d    0.00 / 0.00 / —
+tfm                0.14 / 0.15 / 2d   0.25 / 0.18 / 4d
+
+=== asof_adj: false-alarm budget 5/100 township-weeks: sensitivity / detected episodes / median lead ===
+區域                             台南高雄                   
+事件型態                           下限群聚              流行中加速
+model                                                 
+ensp_tfm_kde_mix   0.34 / 0.45 / 4d   0.44 / 0.42 / 8d
+kde_fix           0.37 / 0.45 / 11d  0.27 / 0.25 / 14d
+kde_mix            0.30 / 0.41 / 4d  0.33 / 0.25 / 10d
+kde_rv            0.19 / 0.22 / 12d  0.20 / 0.16 / 13d
+kde_rv_season     0.25 / 0.25 / 13d  0.21 / 0.16 / 13d
+naive              0.24 / 0.33 / 4d   0.36 / 0.46 / 5d
+snaive            0.14 / 0.17 / 14d  0.20 / 0.14 / 14d
+tfm                0.27 / 0.35 / 4d   0.36 / 0.37 / 4d
+
+=== asof_adj: false-alarm budget 10/100 township-weeks: sensitivity / detected episodes / median lead ===
+區域                             台南高雄                   
+事件型態                           下限群聚              流行中加速
+model                                                 
+ensp_tfm_kde_mix   0.48 / 0.69 / 5d  0.58 / 0.55 / 10d
+kde_fix           0.37 / 0.45 / 11d  0.36 / 0.36 / 13d
+kde_mix            0.51 / 0.69 / 5d  0.43 / 0.39 / 12d
+kde_rv            0.19 / 0.22 / 12d  0.31 / 0.28 / 12d
+kde_rv_season     0.25 / 0.25 / 13d  0.34 / 0.24 / 13d
+naive              0.27 / 0.35 / 4d   0.41 / 0.53 / 5d
+snaive            0.18 / 0.20 / 14d  0.22 / 0.21 / 13d
+tfm                0.35 / 0.50 / 4d   0.49 / 0.50 / 8d
+
+=== asof_adj: false-alarm budget 20/100 township-weeks: sensitivity / detected episodes / median lead ===
+區域                             台南高雄                   
+事件型態                           下限群聚              流行中加速
+model                                                 
+ensp_tfm_kde_mix   0.56 / 0.74 / 9d  0.65 / 0.58 / 10d
+kde_fix           0.37 / 0.45 / 11d  0.49 / 0.47 / 13d
+kde_mix            0.51 / 0.69 / 5d  0.59 / 0.58 / 13d
+kde_rv            0.19 / 0.22 / 12d  0.44 / 0.39 / 13d
+kde_rv_season     0.25 / 0.25 / 13d  0.45 / 0.32 / 14d
+naive              0.27 / 0.35 / 4d   0.41 / 0.53 / 5d
+snaive            0.19 / 0.21 / 14d  0.25 / 0.24 / 13d
+tfm                0.43 / 0.62 / 5d   0.61 / 0.64 / 8d
+
+=== final: WIS h=7 (cov80) by region × event type ===
+region         台南高雄       
+etype          下限群聚  流行中加速
+model                     
+kde_fix        0.42  18.23
+kde_mix        0.36  14.19
+kde_rv         0.39  18.63
+kde_rv_season  0.56  18.49
+naive          0.44  14.10
+snaive         0.93  35.74
+tfm            0.42  10.32
+
+=== final: AUC by stratum ===
+區域                 台南高雄       
+事件型態               下限群聚  流行中加速
+model                         
+ensp_tfm_kde_mix  0.788  0.869
+kde_fix           0.671  0.697
+kde_mix           0.749  0.822
+kde_rv            0.600  0.672
+kde_rv_season     0.613  0.680
+naive             0.558  0.654
+snaive            0.547  0.535
+tfm               0.700  0.846
+
+=== final: false-alarm budget 0.5/100 township-weeks: sensitivity / detected episodes / median lead ===
+區域                             台南高雄                   
+事件型態                           下限群聚              流行中加速
+model                                                 
+ensp_tfm_kde_mix   0.18 / 0.19 / 2d   0.24 / 0.16 / 8d
+kde_fix           0.14 / 0.14 / 10d  0.18 / 0.22 / 13d
+kde_mix            0.18 / 0.18 / 3d   0.06 / 0.07 / 9d
+kde_rv             0.14 / 0.16 / 9d  0.09 / 0.09 / 11d
+kde_rv_season       0.00 / 0.00 / —  0.10 / 0.09 / 13d
+naive               0.04 / 0.00 / —  0.24 / 0.05 / 10d
+snaive              0.00 / 0.00 / —    0.00 / 0.00 / —
+tfm                0.10 / 0.12 / 2d   0.22 / 0.04 / 3d
+
+=== final: false-alarm budget 1/100 township-weeks: sensitivity / detected episodes / median lead ===
+區域                             台南高雄                   
+事件型態                           下限群聚              流行中加速
+model                                                 
+ensp_tfm_kde_mix   0.21 / 0.22 / 2d   0.30 / 0.22 / 8d
+kde_fix           0.17 / 0.20 / 10d  0.18 / 0.22 / 13d
+kde_mix            0.23 / 0.27 / 3d   0.23 / 0.17 / 9d
+kde_rv            0.17 / 0.19 / 11d  0.13 / 0.13 / 11d
+kde_rv_season     0.09 / 0.12 / 12d  0.14 / 0.11 / 13d
+naive               0.04 / 0.00 / —  0.24 / 0.05 / 10d
+snaive              0.00 / 0.00 / —    0.00 / 0.00 / —
+tfm                0.12 / 0.12 / 2d   0.28 / 0.14 / 3d
+
+=== final: false-alarm budget 2/100 township-weeks: sensitivity / detected episodes / median lead ===
+區域                             台南高雄                   
+事件型態                           下限群聚              流行中加速
+model                                                 
+ensp_tfm_kde_mix   0.28 / 0.38 / 2d  0.41 / 0.29 / 10d
+kde_fix           0.26 / 0.29 / 12d  0.22 / 0.25 / 13d
+kde_mix            0.26 / 0.33 / 3d   0.29 / 0.25 / 8d
+kde_rv            0.19 / 0.21 / 13d  0.19 / 0.20 / 13d
+kde_rv_season     0.16 / 0.20 / 10d  0.20 / 0.16 / 13d
+naive             0.11 / 0.05 / 13d  0.30 / 0.14 / 13d
+snaive            0.07 / 0.08 / 13d  0.16 / 0.13 / 13d
+tfm                0.23 / 0.24 / 5d   0.41 / 0.25 / 5d
+
+=== final: false-alarm budget 5/100 township-weeks: sensitivity / detected episodes / median lead ===
+區域                             台南高雄                   
+事件型態                           下限群聚              流行中加速
+model                                                 
+ensp_tfm_kde_mix   0.39 / 0.52 / 3d  0.60 / 0.57 / 10d
+kde_fix           0.38 / 0.46 / 12d  0.33 / 0.34 / 14d
+kde_mix            0.34 / 0.55 / 3d  0.44 / 0.41 / 13d
+kde_rv            0.22 / 0.23 / 13d  0.30 / 0.32 / 13d
+kde_rv_season     0.27 / 0.27 / 13d  0.29 / 0.26 / 13d
+naive             0.14 / 0.07 / 14d  0.34 / 0.21 / 12d
+snaive            0.14 / 0.17 / 14d  0.18 / 0.16 / 14d
+tfm                0.35 / 0.44 / 3d   0.45 / 0.32 / 8d
+
+=== final: false-alarm budget 10/100 township-weeks: sensitivity / detected episodes / median lead ===
+區域                             台南高雄                   
+事件型態                           下限群聚              流行中加速
+model                                                 
+ensp_tfm_kde_mix   0.52 / 0.72 / 5d  0.65 / 0.57 / 10d
+kde_fix           0.38 / 0.46 / 12d  0.41 / 0.41 / 13d
+kde_mix            0.55 / 0.70 / 5d  0.53 / 0.51 / 13d
+kde_rv            0.22 / 0.23 / 13d  0.37 / 0.34 / 14d
+kde_rv_season     0.27 / 0.27 / 13d  0.40 / 0.33 / 13d
+naive             0.14 / 0.07 / 14d  0.34 / 0.21 / 12d
+snaive            0.17 / 0.20 / 14d  0.21 / 0.18 / 14d
+tfm                0.44 / 0.64 / 4d   0.58 / 0.51 / 8d
+
+=== final: false-alarm budget 20/100 township-weeks: sensitivity / detected episodes / median lead ===
+區域                             台南高雄                   
+事件型態                           下限群聚              流行中加速
+model                                                 
+ensp_tfm_kde_mix   0.69 / 0.88 / 8d  0.75 / 0.75 / 13d
+kde_fix           0.38 / 0.46 / 12d  0.52 / 0.50 / 14d
+kde_mix            0.55 / 0.70 / 5d  0.67 / 0.63 / 13d
+kde_rv            0.22 / 0.23 / 13d  0.48 / 0.41 / 13d
+kde_rv_season     0.27 / 0.27 / 13d  0.51 / 0.45 / 13d
+naive             0.14 / 0.07 / 14d  0.34 / 0.21 / 12d
+snaive            0.19 / 0.21 / 14d  0.24 / 0.21 / 13d
+tfm                0.51 / 0.71 / 5d  0.68 / 0.66 / 10d
+
+saved /Users/drhao/Documents/GitHub/forecast-teller/dengue_ewarn/outputs/backtest/dengue_kde_model_compare.csv and /Users/drhao/Documents/GitHub/forecast-teller/dengue_ewarn/outputs/backtest/dengue_kde_wis_strata.csv
