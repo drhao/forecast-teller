@@ -10,6 +10,7 @@ import pandas as pd
 from forecast_teller.backtest import SEGMENTS, segment_of
 from forecast_teller.covariates import holiday_weekly
 from forecast_teller.threshold_probs import threshold_outlook
+from forecast_teller.site_common import THRESHOLD_PROB_LINE, method_page, page_head, reading_items, table, ul
 from forecast_teller.weeks import week_start
 
 from . import DOCS_DIR, OUTPUT_DIR, PROCESSED_DIR
@@ -336,18 +337,7 @@ def build_report(bt: dict, latest: dict, meta: dict, calib: dict) -> str:
                       for x in [best] + [lb[c] for c in ["tfm_cov_school_hol", "tfm_expanding", "ets", "ma3", "naive", "snaive"] if c in lb and c != t["best"]])
     layer_rows = "".join(f"<tr class='{'best' if x['config'] == tout['best'] else ''} {'baseline' if x['kind'] == 'baseline' else ''}'><td>{x['label']}</td><td class='num'>{fmt(x['wis'])}</td><td class='num'>{x['rel_naive']:.2f}</td><td class='num'>{x['mape']:.1f}</td><td class='num'>{x['cov80']:.2f}</td><td class='num'>{x['dir_hit']:.2f}</td></tr>"
                          for x in tout["segments"]["post_covid"]["leaderboard"] if x["config"] != "snaive")
-    head = """<!doctype html>
-<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>解讀與評估報告 · 台灣腸病毒 TimesFM 3.0 預測</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&family=Noto+Serif+TC:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../assets/epi.css?v=ev1">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="../assets/charts.js?v=ev1" defer></script></head>
-<body>
-<header class="masthead"><div class="masthead-inner"><div class="masthead-left"><div class="crest">FT</div><div class="masthead-title">台灣腸病毒疫情預測 · TimesFM 3.0<small>FORECAST-TELLER · EV · 解讀與評估報告</small></div></div>
-<nav class="masthead-right"><a href="../index.html">流感</a><a href="../covid/">新冠</a><a href="index.html">每週預測</a><a href="backtest.html">回測</a><a href="report.html" class="active">報告</a><a href="../dengue/">登革熱預警</a></nav></div></header>
-<main class="report">
-"""
+    head = page_head("報告 · 腸病毒 · 台灣重點傳染病預測", "ev", "report") + '<main class="report">\n'
     body = f"""<div class="hero-kicker">EVALUATION REPORT · {gen}</div>
 <h1 class="report-title">以 TimesFM 3.0 零樣本預測台灣腸病毒門急診就診：<em>回測解讀與評估</em></h1>
 <p class="lead">資料窗 2016w01–2025w53（522 週），以 2016–2017 為暖機 context，2018w01 起每週一個起點共 {t['n_origins']} 個，預測未來 1–4 週；主要決策依據為 COVID 後（2023–2025）的加權區間分數（WIS）。目標序列為全國腸病毒門急診就診人次，其中急診部分暫以 RODS 急診腸病毒人次代替。</p>
@@ -432,6 +422,44 @@ document.addEventListener('DOMContentLoaded', async () => {
     return head + body + script
 
 
+def build_method(bt: dict, latest: dict, meta: dict, calib: dict) -> str:
+    """docs/ev/method.html"""
+    cov = meta["coverage"]; li = {x["key"]: x for x in latest["indicators"]}; st = latest["status"]
+    t = bt["targets"][PRIMARY]; seg = {x["config"]: x for x in t["segments"]["post_covid"]["leaderboard"]}; best = seg[t["best"]]
+    s1 = (table(["指標", "定義與來源", "預測設定", "最新起點"], [[IND[k]["label"] + ("（主指標）" if k == PRIMARY else ""), IND[k]["source"], li[k]["config"], li[k]["origin_yw"]]
+                                                       for k in ["ev_oe", "ev_out", "ev_rods", "ev_rods_pct"] if k in li]) +
+          '<p class="source">門急診合計是疾管署判定腸病毒流行期的指標。開放資料的健保檔只有門診與住院，急診部分暫以 RODS 急診腸病毒人次代替（2026-09-19 決定），取得健保急診檔後替換。</p>')
+    s2 = table(["來源", "內容", "粒度", "完整週範圍"], [
+        ["健保門診及住院就診人次統計－腸病毒（開放資料）", "腸病毒健保就診人次、健保就診總人次；門診與住院", "週 × 9 年齡層 × 22 縣市", f"{cov['nhi']['first_complete']}–{cov['nhi']['last_complete']}"],
+        ["急診傳染病監測統計－腸病毒（開放資料，RODS）", "急診腸病毒就診人次（無分母）", "週 × 5 年齡層 × 22 縣市", f"{cov['rods']['first_complete']}–{cov['rods']['last_complete']}"],
+        ["RODS 急診總人次（類流感面板 RODS_RS.csv）", "急診就診總人次，急診腸病毒% 的分母", "週 × 醫院", f"{cov['rods_total']['first']}–{cov['rods_total']['last']}"],
+        ["行事曆", "學校暑假／寒假／開學前兩週（近似規則）、平日假日天數、春節", "週", "2016–2027"]]) + ul([
+        "開放資料每週自疾管署資料開放平台下載（需 TWCA 中繼憑證）；不完整週以「低於前 8 週中位數的 60%」與日曆截斷自動排除。",
+        f"合成指標與疾管署新聞稿公布的門急診人次比較：2024 年後差 {calib['min_diff_pct']:+.1f}% 至 {calib['max_diff_pct']:+.1f}%（平均 {calib['mean_diff_pct']:+.1f}%），2016–2023 年偏低 2–9%；校驗表見<a href=\"report.html\">報告</a>第 2 節。"])
+    s3 = table(["項目", "設定"], [
+        ["模型", "Google TimesFM 3.0，零樣本、未微調（MLX 後端）"],
+        ["context", "擴張視窗，自 2016w01 起；聯合預測截到成員共同的最新完整週"],
+        ["預測", "未來 1–4 週，每週中位數與 9 個分位數"],
+        ["每週流程設定", "門急診合計、門診、RODS 三變量聯合 + 學校行事曆（暑假、寒假、開學前兩週）+ 平日假日天數；急診腸病毒% 單變量"],
+        ["回測最佳設定", f"{best['label']}（COVID 後 WIS 為 naive 的 {best['rel_naive']:.2f}）"],
+        ["回測", f"資料窗 2016w01–2025w53，起點 2018w01 起共 {t['n_origins']} 個，h = 1–4；分 COVID 前／期／後三段"],
+        ["基準模型", "last-value naive、MA3、季節性 naive、AutoETS、Theta"]])
+    thr_rows = [[y, f"{v:,.0f}"] for y, v in st["thresholds_by_year"].items()]
+    s4 = (ul([f"<b>流行閾值</b>由疾管署每年設定，依各年新聞稿記錄於 <code>ev_forecast/data/thresholds.csv</code>；{list(st['thresholds_by_year'])[-1]} 年為 {list(st['thresholds_by_year'].values())[-1]:,.0f} 人次。2017–2022 未找到新聞稿，推定沿用 11,000（待確認）。",
+              f"<b>流行期規則（暫定）</b>：{RULE_TEXT}"]) + table(["年", "門急診就診人次閾值"], thr_rows, (1,)))
+    s5 = ul(reading_items(THRESHOLD_PROB_LINE + " 腸病毒以門急診合計對當年閾值計算。") + ["<b>學校行事曆</b>：暑假前半就診人次每週平均下降 5–6%、開學後 3–4 週上升 3–7%；預測週若落在這些時段，每週頁會標出。"])
+    s6 = ul(["急診以 RODS 代替：RODS 只涵蓋部分急診，合成指標早年偏低 2–9%。",
+             "開放資料有回補：新聞稿首報值與日後開放資料相差可達 3–5%。",
+             "流行規模與重症由病毒型別（EV-A71、CVA6、CVA16、E11、EV-D68 等）決定，零樣本模型看不到型別轉換，異常季節會慢半拍。",
+             "學校行事曆為近似規則，非各學年實際日期。",
+             "TimesFM 3.0 權重為非商業、非生產用途授權。"])
+    return method_page("ev", "方法 · 腸病毒 · 台灣重點傳染病預測", "Method", "腸病毒預測的方法與資料",
+                       "說明每週腸病毒預測用了哪些資料、模型怎麼設定、流行閾值與流行期規則，以及預測輸出該怎麼讀。回測成績見<a href=\"backtest.html\">回測</a>，完整解讀見<a href=\"report.html\">報告</a>。",
+                       [("預測目標與指標", "Targets", s1), ("資料來源與完整週", "Data", s2), ("模型與設定", "Model", s3),
+                        ("流行閾值與流行期", "Thresholds", s4), ("預測輸出怎麼讀", "How to read", s5), ("限制", "Limitations", s6)],
+                       f"資料：疾病管制署資料開放平台（健保門診腸病毒、RODS 急診腸病毒）、RODS_RS.csv（急診總人次）。模型：{meta['model']['checkpoint']}（{meta['model']['license']}）。產生時間 {meta['generated_at']}。")
+
+
 def main(config_labels: dict[str, str]):
     DATA.mkdir(parents=True, exist_ok=True)
     nat = load_national()
@@ -458,5 +486,6 @@ def main(config_labels: dict[str, str]):
     (DATA / "backtest.json").write_text(json.dumps(bt, ensure_ascii=False), encoding="utf-8")
     (DATA / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=1), encoding="utf-8")
     (DOCS_DIR / "report.html").write_text(build_report(bt, latest, meta, calib), encoding="utf-8")
+    (DOCS_DIR / "method.html").write_text(build_method(bt, latest, meta, calib), encoding="utf-8")
     print("site data written:", {p.name: p.stat().st_size // 1024 for p in DATA.glob('*.json')}, "KB; best", best)
     print("headline:", latest["narrative"]["headline"])

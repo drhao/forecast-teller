@@ -12,3 +12,8 @@ OUTPUT_DIR = ROOT / "outputs"
 SITE_DIR = REPO / "docs" / "dengue"                 # published with the main GitHub Pages site
 for _d in (DATA_DIR, PROCESSED_DIR, OUTPUT_DIR / "backtest", OUTPUT_DIR / "figures"):
     _d.mkdir(parents=True, exist_ok=True)
+
+# shared site helpers (forecast_teller.site_common: page head + docs/assets/nav.js navigation)
+import sys as _sys
+if str(REPO / "src") not in _sys.path:
+    _sys.path.insert(0, str(REPO / "src"))

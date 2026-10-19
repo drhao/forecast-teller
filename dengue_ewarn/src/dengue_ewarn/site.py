@@ -1,4 +1,4 @@
-"""Build the dengue early-warning visual report (docs/dengue/index.html + data.json + figures)."""
+"""Build the dengue pages (docs/dengue/index.html 每日預警, report.html 驗證報告, method.html 方法 + data.json + figures)."""
 from __future__ import annotations
 
 import datetime as dt
@@ -16,6 +16,7 @@ from matplotlib import font_manager
 from . import OUTPUT_DIR, PROCESSED_DIR, SITE_DIR
 from .alerts import episodes, prob_ge
 from .data import CITIES, completeness, context_counts, epidemic_years, ewarn_threshold, forecast_files, load_panel, mode_label, region_of, rolling7
+from forecast_teller.site_common import page_head
 
 P = {"300": "#B4C9B1", "500": "#739A6D", "600": "#5D7F58", "800": "#374C34"}
 N = {"200": "#E4E7E4", "400": "#A2ABA0", "600": "#5D675B", "700": "#444C43", "900": "#181B18"}
@@ -194,7 +195,8 @@ def build(tag: str = "dengue", panel: str | None = None, n_sites: int = 20, site
             "tag": tag, "scope_text": scope_text, "counties": counties, "n_tnkh": int(n_tnkh), "asof_ref": asof_ref, "main_mode": main_mode,
             "strata_leads": strata_leads, "strata_sweep": strata_sweep, "examples": examples, "practical": practical}
     (site_dir / "data.json").write_text(json.dumps(data, ensure_ascii=False, allow_nan=False, default=str), encoding="utf-8")
-    (site_dir / "index.html").write_text(render_html(data), encoding="utf-8")
+    for name, html in render_html(data).items():
+        (site_dir / name).write_text(html, encoding="utf-8")
     return data
 
 
@@ -262,7 +264,8 @@ def plain_language_section(D: dict) -> str:
   </section>"""
 
 
-def render_html(D: dict) -> str:
+def render_html(D: dict) -> dict[str, str]:
+    """Three pages: index.html（每日預警，讀 latest.json）、report.html（驗證報告 04–08 節）、method.html（01–03 節）。"""
     fmt = lambda v, nd=2: "—" if v is None else f"{v:,.{nd}f}"
     MM = D["main_mode"]; MM_SHORT = {"asof_adj": "已通報 ÷ 完整度", }.get(MM, "貝氏 nowcast" if MM.startswith("asof_nc") else MM)
     aa = D["auc"][MM]; sw = D["sweep"][MM]; i5 = sw["p"].index(0.5) if 0.5 in sw["p"] else 4
@@ -306,24 +309,13 @@ def render_html(D: dict) -> str:
     <div class="tbl-wrap" style="margin-top:10px"><table class="tbl compact"><thead><tr><th>區域</th><th>事件型態</th><th class="num">鄉鎮週</th><th class="num">事件週</th><th class="num">AUC</th><th class="num">p*</th><th class="num">敏感度</th><th class="num">假警報 / 100 週</th><th class="num">PPV</th></tr></thead><tbody>{strata_sweep_rows}</tbody></table></div>""" if D.get('strata_leads') else "")
     plain_html = plain_language_section(D) if D.get("practical") else ""
     cases_html = "".join(f"<div class='card'><h3>{c['series'].replace('|', ' ')} {c['year']}：該年 7 日累計最高的鄉鎮</h3><div class='sub'>上：最終資料的 7 日累計與 EWARN 閾值（虛線）；下：模型每個起點給的「14 天內突破閾值」機率（{c['mode']}）；紅色虛線 = 實際突破日</div><img src='figures/{c['figure']}' alt='{c['figure']}' style='width:100%'></div>" for c in D["cases"])
-    return f"""<!doctype html>
-<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>登革熱鄉鎮預測式預警 · TimesFM 3.0 驗證報告</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&family=Noto+Serif+TC:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../assets/epi.css?v=dengue1">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="../assets/charts.js?v=dengue1" defer></script>
-<style>.readme li{{margin-bottom:6px}} .callout{{background:var(--p-50);border-left:3px solid var(--p-400);padding:12px 16px;margin:14px 0;font-size:14px}} .steps{{counter-reset:s;list-style:none;padding:0}} .steps li{{position:relative;padding-left:38px;margin-bottom:10px}} .steps li::before{{counter-increment:s;content:counter(s);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:50%;background:var(--p-500);color:#fff;font-weight:700;font-size:13px;display:grid;place-items:center}} img.fig{{width:100%;border:1px solid var(--n-200);border-radius:4px;background:#fff}} .tbl.mini th,.tbl.mini td{{padding:2px 4px;font-size:11px;white-space:nowrap}} .tbl.mini .mark{{background:var(--p-50);font-weight:700}}    .grid-2 > *, .card {{ min-width: 0; }} .tbl-wrap {{ overflow-x: auto; max-width: 100%; }}
+    style = f"""<style>.readme li{{margin-bottom:6px}} .callout{{background:var(--p-50);border-left:3px solid var(--p-400);padding:12px 16px;margin:14px 0;font-size:14px}} .steps{{counter-reset:s;list-style:none;padding:0}} .steps li{{position:relative;padding-left:38px;margin-bottom:10px}} .steps li::before{{counter-increment:s;content:counter(s);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:50%;background:var(--p-500);color:#fff;font-weight:700;font-size:13px;display:grid;place-items:center}} img.fig{{width:100%;border:1px solid var(--n-200);border-radius:4px;background:#fff}} .tbl.mini th,.tbl.mini td{{padding:2px 4px;font-size:11px;white-space:nowrap}} .tbl.mini .mark{{background:var(--p-50);font-weight:700}}    .grid-2 > *, .card {{ min-width: 0; }} .tbl-wrap {{ overflow-x: auto; max-width: 100%; }} #la-rows td:nth-child(-n+2) {{ white-space: nowrap; }}
   </style>
-</head><body>
-<header class="masthead"><div class="masthead-inner">
-  <div class="masthead-left"><div class="crest">FT</div><div class="masthead-title">登革熱鄉鎮預測式預警 · TimesFM 3.0<small>DENGUE-EWARN · CHG SCENARIO 1 · VALIDATION REPORT</small></div></div>
-  <nav class="masthead-right"><a href="../index.html">流感每週預測</a><a href="../backtest.html">流感回測</a><a href="../report.html">流感報告</a><a href="../ev/">腸病毒</a><a href="../covid/">新冠</a><a href="index.html" class="active">登革熱預警</a></nav>
-</div></header>
-<main>
+"""
+    report_hero = f"""<main>
   <div class="hero-kicker">Validation report · {D['generated_at'][:10]}</div>
   <h1 class="page-title">登革熱鄉鎮層級預測式預警：<em>TimesFM 3.0 在承平期資料上的驗證</em></h1>
-  <p class="lead">對應 CHG 情境一（複合災難下收容所自報的離線早期警示）第一至二年的驗證工作：以疾管署登革熱每日確定病例，模擬「小區域、每日、低計數」的症候群序列，檢驗時序基礎模型能否在 WHO EWARN 靜態閾值被突破之前數天、帶著不確定區間發出預警。本頁說明資料、方法、模型輸出的讀法、驗證結果與應用情境。</p>
+  <p class="lead">對應 CHG 情境一（複合災難下收容所自報的離線早期警示）第一至二年的驗證工作：以疾管署登革熱每日確定病例，模擬「小區域、每日、低計數」的症候群序列，檢驗時序基礎模型能否在 WHO EWARN 靜態閾值被突破之前數天、帶著不確定區間發出預警。本頁為驗證結果與應用情境（第 04–08 節）；問題定義、資料與方法、模型輸出的讀法（第 01–03 節）見<a href="method.html">方法</a>，每日最新預警見<a href="index.html">預警</a>。</p>
   <div class="meta-strip"><span>資料：疾管署登革熱每日確定病例（本土，居住鄉鎮），<b>{D['scope_text']}</b></span><span>回測年份：<b>{'、'.join(map(str, D['years']))}</b> 年 6–12 月，每 2 天一個起點（每年 {D['n_origins_per_year']} 個）</span><span>模型：TimesFM 3.0（零樣本，未微調）</span></div>
 
   <div class="kpi-strip">
@@ -333,22 +325,25 @@ def render_html(D: dict) -> str:
     <div class="kpi"><div class="label">7 日累計 WIS vs naive（流行年，h = 7）</div><div class="value">−{impr:.0f}%</div><div class="sub">無通報延遲時 −{impr_f:.0f}%；季節性 naive 對登革熱無用</div></div>
   </div>
 
-  <section id="latest-alerts" hidden>
-    <div class="section-head"><span class="section-num">00</span><h2>最新預警：台南、高雄、屏東各鄉鎮，今天起 14 天</h2><span class="en">Live early warning (daily)</span></div>
+"""
+    alert_sec = f"""  <section id="latest-alerts">
+    <div class="section-head"><span class="section-num">01</span><h2>各鄉鎮今天起 14 天的突破機率</h2><span class="en">Live early warning (daily)</span></div>
+    <p class="note" id="la-loading">讀取最新預警中；若持續顯示此訊息，代表今天的 latest.json 尚未產生。</p>
     <div class="kpi-strip" id="la-kpis"></div>
-    <div class="grid-2">
+    <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:18px">
       <div class="card"><h3>有標示的鄉鎮</h3><div class="sub" id="la-sub"></div><div class="tbl-wrap"><table class="tbl compact"><thead><tr><th>縣市</th><th>鄉鎮</th><th class="num">已知 7 日累計</th><th class="num">校正後</th><th class="num">閾值</th><th class="num">檢驗中（14 天）</th><th class="num">p（7 天）</th><th class="num">p（14 天內）</th><th class="num">TimesFM / 鄰近 KDE</th><th class="num">14 天後 7 日累計中位數（q90）</th><th>標示</th></tr></thead><tbody id="la-rows"></tbody></table></div>
         <p class="source" id="la-notes"></p></div>
       <div class="card"><h3>怎麼讀</h3><ul class="findings readme">
         <li><b>資料</b>：每天從疾管署 NIDSS 查詢系統抓「本土確定病例，依居住地鄉鎮」，以發病日序列作為今天可得的快照（衛生局收到日 = 通報日），再除以歷史通報完整度（回測的 asof_adj 模式）。</li>
         <li><b>閾值</b>：EWARN 規則，前 3 週週均值 × 2，下限 3 例；<b>p</b> 為模型 9 個分位數內插的「7 日累計達閾值」機率，14 天內取最大。</li>
         <li><b>集成</b>（2026-10-14 起）：p 為 TimesFM 與「鄰近 KDE」的機率平均。KDE 把各鄉鎮近 60 天的校正後病例放在該鄉鎮歷史病例座標的加權平均點，以 2 km 高斯核估各區的鄰近強度，再與自身持續各半；相鄰區有病例時本區的 p 會先被拉高。回測（全台 274 鄉鎮 × 12 年）顯示集成在流行城市裡尚未升級的區明顯優於單用 TimesFM；即時資料只有鄉鎮層級，與個案座標版的差異可忽略。表中「TimesFM / 鄰近 KDE」為兩個分量。</li>
-        <li><b>標示</b>：p ≥ 警示門檻 → 警示（建議開查證單）；p ≥ 注意門檻 → 注意（focal point 預先關注）。門檻與工作量見第 07 節兩級門檻表（以 TimesFM 單模型推得，集成版待重算）。</li>
+        <li><b>標示</b>：p ≥ 警示門檻 → 警示（建議開查證單）；p ≥ 注意門檻 → 注意（focal point 預先關注）。門檻與工作量見<a href="report.html">驗證報告</a>「應用情境與工作量」的兩級門檻表（以 TimesFM 單模型推得，集成版待重算）。</li>
         <li><b>平靜期</b>：沒有本土病例時各區機率接近 0，表格只列有標示或近 14 天有病例的區；完整鄉鎮清單在 <a href="latest.json">latest.json</a>。</li>
         <li>每次預測都存檔（<code>dengue_ewarn/outputs/forecast_log/</code>），日後與最終資料比對評估。</li></ul></div>
     </div>
   </section>
-  <section>
+"""
+    method_secs = f"""  <section>
     <div class="section-head"><span class="section-num">01</span><h2>要回答的問題</h2><span class="en">From scenario to testable question</span></div>
     <div class="grid-2">
       <div class="card"><h3>情境一的要求</h3><ul class="findings readme">
@@ -383,17 +378,18 @@ def render_html(D: dict) -> str:
       <div class="card"><h3>讀圖四步</h3><ol class="steps">
         <li><b>先看區間，不看單點。</b>模型輸出的是分布：中位數是「一半機會比它高、一半比它低」，60%/80% 區間表示大部分可能的範圍。區間寬代表不確定，是資訊不是缺陷。</li>
         <li><b>機率 = 分布超過閾值的比例。</b>每個 horizon 的 P(≥ 閾值) 由分位數內插而得；頁面與儀表板用的是 14 天內的最大值，代表「這兩週內任一時點突破」的機率。</li>
-        <li><b>p* 是行動門檻，不是模型參數。</b>機率 ≥ p* 才發警示；p* 越低越早、越敏感，但假警報越多。第 6 節把 p* 換成每週查證單數量，由防疫單位選。</li>
+        <li><b>p* 是行動門檻，不是模型參數。</b>機率 ≥ p* 才發警示；p* 越低越早、越敏感，但假警報越多。<a href="report.html">驗證報告</a>的「應用情境與工作量」把 p* 換成每週查證單數量，由防疫單位選。</li>
         <li><b>前置時間才是價值。</b>EWARN 規則在突破當天才知道；模型在事件前幾天就把機率拉高，這段時間就是病媒防治、隔離空間與 ORS 整備的時間。</li></ol></div>
       <div class="card"><h3>三種資料狀態的意義</h3><ul class="findings readme">
         <li><b>final</b> 是理論上限：假設所有病例當天就通報。實務上不存在。</li>
-        <li><b>asof</b> 是災難現場真正看到的樣子：最近幾天永遠偏低。直接餵給模型，它會把「通報未齊」誤讀成「疫情下降」，前置時間幾乎歸零（見第 4 節）。</li>
+        <li><b>asof</b> 是災難現場真正看到的樣子：最近幾天永遠偏低。直接餵給模型，它會把「通報未齊」誤讀成「疫情下降」，前置時間幾乎歸零（見<a href="report.html">驗證報告</a>第 04 節）。</li>
         <li><b>{MM}</b>（{MM_SHORT}）把最近幾天的已通報數補回估計值，是一種 nowcast。這一步讓 AUC 從 {asof_auc_txt} 回到 {fmt(aa['tfm'])}、前置時間回到 {fmt(ls5.get('median'), 0)} 天，是部署時的必要元件；文件裡的「分布位移偵測 → 降級」也應以完整度異常為第一個觸發條件。</li>
         <li>閾值本身是反應式的：疫情爆發後閾值隨之升高、遠在病例之上，因此事件集中在流行「起始」與「加速」時刻，這正是 EWARN 想抓的時點。</li></ul></div>
     </div>
   </section>
 
-  <section>
+"""
+    report_secs = f"""  <section>
     <div class="section-head"><span class="section-num">04</span><h2>驗證結果</h2><span class="en">Results</span></div>
     <div class="grid-2">
       <div class="card"><h3>7 日累計的 WIS 依 horizon</h3><div class="sub">越低越好；{MM} 為實務可得資料，final 為無延遲上限</div><div class="chart-box"><canvas id="c-wis"></canvas></div></div>
@@ -451,9 +447,10 @@ def render_html(D: dict) -> str:
         <li>把同一流程套到週層級的急性腹瀉、腸病毒、類流感（RODS），完成情境一四類症候群。</li></ul></div>
     </div>
   </section>
-</main>
-<footer class="site-footer">資料：疾病管制署登革熱每日確定病例（Internet Archive 保存之官方檔案）。模型：google/timesfm-3.0-pytorch（非商業授權）。子專案 dengue_ewarn；圖表依《疫情資料視覺化指引》v1.1。產生時間 {D['generated_at']}。</footer>
-<script>
+"""
+    footer = f"""<footer class="site-footer">資料：疾病管制署登革熱每日確定病例（Internet Archive 保存之官方檔案）。模型：google/timesfm-3.0-pytorch（非商業授權）。子專案 dengue_ewarn；圖表依《疫情資料視覺化指引》v1.1。產生時間 {D['generated_at']}。</footer>
+"""
+    charts_js = f"""<script>
 document.addEventListener('DOMContentLoaded', async () => {{
   const D = await (await fetch('data.json?v={D['generated_at'][:16].replace(':', '')}')).json();   // cache-buster: regenerated with every build
   const H = D.hs.map(String);
@@ -478,11 +475,12 @@ document.addEventListener('DOMContentLoaded', async () => {{
   EPI.hbarChart(document.getElementById('c-lead-med'), rows, rows.map(k => lt[k]['前置時間中位數（天）'] ?? 0), {{label: '前置中位數（天）', fmt: v => Number(v).toFixed(1), xMax: 8}});
 }});
 </script>
-<script>
+"""
+    latest_js = f"""<script>
 (async function(){{
   try{{
     const r = await fetch('latest.json?v=' + Date.now()); if(!r.ok) return;
-    const L = await r.json(); const sec = document.getElementById('latest-alerts'); sec.hidden = false;
+    const L = await r.json(); document.getElementById('la-loading').hidden = true;
     const f = (v, nd=2) => (v==null||Number.isNaN(v)) ? '—' : Number(v).toLocaleString('zh-Hant-TW', {{minimumFractionDigits: nd, maximumFractionDigits: nd}});
     const T = L.totals, P = L.params;
     document.getElementById('la-kpis').innerHTML = [
@@ -498,4 +496,19 @@ document.addEventListener('DOMContentLoaded', async () => {{
   }}catch(e){{ console.warn('latest.json 載入失敗', e); }}
 }})();
 </script>
-</body></html>"""
+"""
+    alert_hero = """<main>
+  <div class="hero-kicker">Daily early warning · {L_ORIGIN}</div>
+  <h1 class="page-title">登革熱鄉鎮預測式預警：<em>台南、高雄、屏東，今天起 14 天</em></h1>
+  <p class="lead">每天從疾管署 NIDSS 抓本土確定病例的最新快照，經通報完整度校正後，以 TimesFM 3.0 與鄰近 KDE 的機率平均估計各鄉鎮未來 14 天內 7 日累計病例突破 EWARN 閾值的機率，依兩級門檻標示「注意」與「警示」。模型如何驗證、門檻怎麼選，見<a href="report.html">驗證報告</a>；資料與讀法見<a href="method.html">方法</a>。</p>
+""".replace("{L_ORIGIN}", "每日更新")
+    method_hero = """<main>
+  <div class="hero-kicker">Method</div>
+  <h1 class="page-title">登革熱預警的方法與資料</h1>
+  <p class="lead">對應 CHG 情境一的驗證問題、使用的資料與回測設計，以及模型輸出（分位數、突破機率、行動門檻）該怎麼讀。驗證結果見<a href="report.html">驗證報告</a>，每日最新預警見<a href="index.html">預警</a>。</p>
+"""
+    H = lambda title, page: page_head(f"{title} · 登革熱 · 台灣重點傳染病預測", "dengue", page, extra_head="\n" + style)
+    end = "</main>\n" + footer
+    return {"index.html": H("預警", "alert") + alert_hero + alert_sec + end + latest_js + "</body></html>",
+            "report.html": H("驗證報告", "report") + report_hero + report_secs + end + charts_js + "</body></html>",
+            "method.html": H("方法", "method") + method_hero + method_secs + end + "</body></html>"}

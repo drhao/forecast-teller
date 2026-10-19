@@ -21,8 +21,8 @@ C = {"p50": "F6F9F6", "p100": "E8EEE7", "p300": "B4C9B1", "p500": "739A6D", "p60
      "slate": "587A9D", "mustard": "A8821F", "alert": "BE373C"}
 FONT = "PingFang TC"
 SL = OUTPUT_DIR / "slides"
-bt = json.loads((ROOT / "docs/data/backtest.json").read_text(encoding="utf-8"))
-latest = json.loads((ROOT / "docs/data/latest.json").read_text(encoding="utf-8"))
+bt = json.loads((ROOT / "docs/flu/data/backtest.json").read_text(encoding="utf-8"))
+latest = json.loads((ROOT / "docs/flu/data/latest.json").read_text(encoding="utf-8"))
 T = bt["targets"]["nhi_out_ili"]; POST = T["segments"]["post_covid"]; LB = {x["config"]: x for x in POST["leaderboard"]}
 ER = bt["targets"]["nhi_er_ili"]; ERB = {x["config"]: x for x in ER["segments"]["post_covid"]["leaderboard"]}[ER["best"]]
 RD = bt["targets"]["rods_ili_pct"]; RDL = {x["config"]: x for x in RD["segments"]["post_covid"]["leaderboard"]}; RDB = RDL[RD["best"]]; RDN = RDL["naive"]

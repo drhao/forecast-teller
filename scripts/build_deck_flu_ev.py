@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Build the 9-slide flu + enterovirus deck (cover + 4 flu + 4 EV), numbers read from docs/data, docs/ev/data and outputs/.
+"""Build the 9-slide flu + enterovirus deck (cover + 4 flu + 4 EV), numbers read from docs/flu/data, docs/ev/data and outputs/.
 
 Run `python scripts/make_slide_charts.py` first (charts in outputs/slides/).
 """
@@ -37,7 +37,7 @@ def pick(e, mode, target, h):
 
 
 # ---------------------------------------------------------------- flu data
-bt = load("docs/data/backtest.json"); latest = load("docs/data/latest.json"); meta = load("docs/data/meta.json")
+bt = load("docs/flu/data/backtest.json"); latest = load("docs/flu/data/latest.json"); meta = load("docs/flu/data/meta.json")
 T = bt["targets"]["nhi_out_ili"]; POST = T["segments"]["post_covid"]; LB = {x["config"]: x for x in POST["leaderboard"]}
 PRE = {x["config"]: x for x in T["segments"]["pre_covid"]["leaderboard"]}
 ER = bt["targets"]["nhi_er_ili"]; ERB = {x["config"]: x for x in ER["segments"]["post_covid"]["leaderboard"]}[ER["best"]]

@@ -1,15 +1,13 @@
 <!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>每週預測 · 台灣流感 TimesFM 3.0</title>
+<title>預測 · 類流感 · 台灣重點傳染病預測</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&family=Noto+Serif+TC:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/epi.css?v=20260917b">
+<link rel="stylesheet" href="../assets/epi.css?v=nav2">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="assets/charts.js?v=20260917b" defer></script>
+<script src="../assets/charts.js?v=nav2" defer></script>
 </head><body>
-<header class="masthead"><div class="masthead-inner">
-  <div class="masthead-left"><div class="crest">FT</div><div class="masthead-title">台灣流感疫情預測 · TimesFM 3.0<small>FORECAST-TELLER · WEEKLY FORECAST</small></div></div>
-  <nav class="masthead-right"><a href="index.html" class="active">每週預測</a><a href="backtest.html">回測</a><a href="report.html">報告</a><a href="ev/">腸病毒</a><a href="covid/">新冠</a><a href="dengue/">登革熱預警</a></nav>
-</div></header>
+<header class="masthead" data-disease="flu" data-page="forecast"></header>
+<script src="../assets/nav.js?v=nav2"></script>
 <main>
   <div class="hero-kicker">Weekly forecast</div>
   <h1 class="page-title">未來 4 週類流感疫情預測 <em id="origin-title"></em></h1>
@@ -40,23 +38,7 @@
     <p class="source">q10–q90 為分位數；80% 預測區間 = q10–q90，60% = q20–q80。「實際」欄只在該週申報已完整時顯示，可用來事後驗證。</p>
   </section>
 
-  <section>
-    <div class="section-head"><span class="section-num">03</span><h2>方法與注意事項</h2><span class="en">Method &amp; caveats</span></div>
-    <div class="grid-2">
-      <div class="card"><h3>模型設定</h3><p class="sub" id="method-text"></p>
-        <ul class="findings" style="font-size:13.5px">
-          <li>門診、急診、RODS 三個指標以多變量聯合預測（TimesFM 3.0 變數注意力），共變數為春節週旗標與每週平日假日天數；急診%與重症為單變量。</li>
-          <li>回測（2016–2025，415 個起點）顯示此設定在 COVID 後 1–4 週的 WIS 比 last-value naive 低約 22–32%，80% 區間涵蓋率 0.82。詳見<a href="backtest.html">回測</a>與<a href="report.html">報告</a>。</li>
-        </ul></div>
-      <div class="card"><h3>解讀時請注意</h3>
-        <ul class="findings" style="font-size:13.5px">
-          <li>健保申報有回補：最近 1–2 週的觀測值可能上修；不完整週已自動排除，不進入 context。</li>
-          <li>重症以發病週計，通報延遲較長，起點週較早。</li>
-          <li>1–2 週最可靠；3–4 週僅供規劃參考。高流行週歷史上略有低估（2–8%）。</li>
-          <li>TimesFM 3.0 權重為非商業、非生產用途授權。</li>
-        </ul></div>
-    </div>
-  </section>
+  <p class="note">模型設定、資料來源、閾值與流行期規則、預測輸出的讀法與限制，見<a href="method.html">方法</a>；回測成績見<a href="backtest.html">回測</a>，完整解讀見<a href="report.html">報告</a>。</p>
 </main>
 <footer class="site-footer" id="footer"></footer>
 <script>
@@ -125,7 +107,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const tbl = document.getElementById('forecast-table');
   tbl.innerHTML = `<thead><tr><th>指標</th><th>起點週</th><th>目標週</th><th>週起始日</th><th class="num">h</th><th class="num">中位數</th><th class="num">q10</th><th class="num">q20</th><th class="num">q80</th><th class="num">q90</th><th class="num">實際</th></tr></thead><tbody>` +
     [...(comb ? [comb] : []), ...inds].flatMap(ind => ind.forecast.map(f => `<tr>${ind.key === 'nhi_oe_ili' ? '<td><b>' + ind.short + '</b></td>' : '<td>' + ind.short + '</td>'}<td>${ind.origin_yw}</td><td>${f.yw}${f.cny ? ' <span class="badge cny">春節</span>' : ''}</td><td>${f.date}</td><td class="num">${f.h}</td><td class="num"><b>${fmt(f.median, ind.decimals)}</b></td><td class="num">${fmt(f.q10, ind.decimals)}</td><td class="num">${fmt(f.q20, ind.decimals)}</td><td class="num">${fmt(f.q80, ind.decimals)}</td><td class="num">${fmt(f.q90, ind.decimals)}</td><td class="num">${f.observed != null ? fmt(f.observed, ind.decimals) : '—'}</td></tr>`)).join('') + '</tbody>';
-  document.getElementById('method-text').textContent = `最佳回測設定：${meta.best_label}。所有指標從 2016 年起以擴張視窗餵入模型，horizon 4 週，輸出 9 個分位數。`;
   document.getElementById('footer').textContent = `資料：疾病管制署資料開放平台（健保申報、RODS、NIDDS、實驗室自動通報系統（LARS））。模型：${meta.model.checkpoint}，授權 ${meta.model.license}。圖表依《疫情資料視覺化指引》v1.1。產生時間 ${meta.generated_at}。`;
 });
 </script>

@@ -12,7 +12,7 @@
 - 檢查：`python tests/test_basics.py`（無輸出即通過）。
 - 流感流程：`scripts/fetch_resp_lab.py` → `scripts/build_panel.py` → `scripts/forecast_now.py --joint nhi_out_ili nhi_er_ili rods_ili --covariates cny holiday` → `scripts/log_forecast.py` → `scripts/evaluate_forecasts.py` → `scripts/build_site.py`；一鍵 `scripts/weekly_update.sh [--push]`。
 - 腸病毒：`ev_forecast/scripts/weekly_update.sh [--push]`。新冠：`covid_forecast/scripts/weekly_update.sh [--push]`（NIDSS 門急診與重症由 `fetch_nidss_visits.py`、`fetch_severe.py` 抓，首報值留存於 `covid_forecast/data/*_history.csv`）。登革熱：回測見 `dengue_ewarn/README.md`；即時預警每日 `dengue_ewarn/scripts/daily_update.sh [--push]`（資料來自 NIDSS 網站，任一 clone 可跑；定義見 `dengue_ewarn/PLAN.md` §15）。
-- 本機預覽站台：`python3 -m http.server 8765 --directory docs`（或 `.claude/launch.json` 的 `docs-site`）。頁面用 fetch，必須走 HTTP。
+- 本機預覽站台：`python3 -m http.server 8765 --directory docs`（或 `.claude/launch.json` 的 `docs-site`），總覽在 `/`、類流感在 `/flu/`。頁面用 fetch，必須走 HTTP。
 - 改了網頁要在瀏覽器實際驗證（本機或線上加 `?v=時間戳` 避免快取）。內建瀏覽器對 Chart.js 頁面固定會報 `Cannot convert object to primitive value`，不是頁面錯誤。
 
 ## 資料
@@ -31,5 +31,6 @@
 
 ## 風格
 - 圖表依 https://github.com/drhao/epi-dataviz-styleguide ：主色 #739A6D、線 #5D7F58、區間 #B4C9B1、紅色 #BE373C 只用於閾值線、Noto Sans/Serif TC、tabular-nums、僅水平格線、直條圖 Y 軸從零。
-- 報告、投影片、網頁的數字從 `outputs/` 與 `docs/data/*.json` 讀取，不手打。
+- 報告、投影片、網頁的數字從 `outputs/` 與 `docs/{flu,covid,ev}/data/*.json`、`docs/dengue/*.json` 讀取，不手打。
+- 網站以疾病分類：`docs/index.html` 總覽，`docs/{flu,covid,ev,dengue}/` 各放預測（登革熱為預警）、回測、報告、方法頁。**導覽列只改 `docs/assets/nav.js`**，不要在個別頁面寫導覽；產生的頁面用 `forecast_teller.site_common.page_head`。改了 CSS/JS 要調 `site_common.ASSET_V` 與手寫頁的 `?v=`。
 - TimesFM 3.0 權重為非商業授權；談正式部署時要提醒改用 2.5 或另談授權。

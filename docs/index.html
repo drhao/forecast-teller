@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>總覽 · 台灣重點傳染病預測</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&family=Noto+Serif+TC:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/epi.css?v=nav2">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="assets/charts.js?v=nav2" defer></script>
+</head><body>
+<header class="masthead" data-disease="" data-page="overview"></header>
+<script src="assets/nav.js?v=nav2"></script>
+<main>
+  <div class="hero-kicker">Overview</div>
+  <h1 class="page-title">台灣重點傳染病預測 <em>類流感、新冠、腸病毒、登革熱</em></h1>
+  <p class="lead">以 Google TimesFM 3.0 零樣本時間序列基礎模型，對疾管署監測資料做滾動預測。類流感、新冠、腸病毒每週更新未來 4 週的就診人次分布；登革熱每日更新台南、高雄、屏東各鄉鎮 14 天內突破 EWARN 閾值的機率。每張卡片的數字取自各疾病最新一次產出，點進去可看完整預測、回測、報告與方法。</p>
+  <div class="grid-2" id="cards"></div>
+  <p class="source" id="foot-note"></p>
+</main>
+<footer class="site-footer">資料：疾病管制署（健保申報、RODS、NIDDS、實驗室自動通報系統、資料開放平台、傳染病統計資料查詢系統）。模型：google/timesfm-3.0-pytorch（非商業、非生產用途授權）。圖表依《疫情資料視覺化指引》v1.1。</footer>
+<script>
+const fmt = (v, d = 0) => (v == null || Number.isNaN(v)) ? '—' : Number(v).toLocaleString('zh-TW', {minimumFractionDigits: d, maximumFractionDigits: d});
+const pct = p => p == null ? '—' : Math.round(p * 100) + '<small>%</small>';
+const get = u => fetch(u + '?v=' + Date.now()).then(r => r.ok ? r.json() : null).catch(() => null);
+const links = (path, pages) => `<div class="dz-links">${pages.map(([t, f]) => `<a href="${path}${f}">${t}</a>`).join('')}</div>`;
+const WEEKLY = [['預測', ''], ['回測', 'backtest.html'], ['報告', 'report.html'], ['方法', 'method.html']];
+
+function weeklyCard(c, L) {
+  if (!L) return `<div class="card dz-card"><h3><a href="${c.path}">${c.name}</a></h3><p class="dz-headline">最新資料讀取失敗。</p>${links(c.path, WEEKLY)}</div>`;
+  const main = c.pick(L); const f1 = main.forecast[0]; const to = L.threshold_outlook; const st = c.status(L);
+  return `<div class="card dz-card">
+    <h3><a href="${c.path}">${c.name}</a><span class="status ${st[0]}">${st[1]}</span></h3>
+    <div class="dz-meta">資料至 ${main.origin_yw}（${main.origin_date} 當週）· 每週更新 · ${main.label}</div>
+    <div class="chart-box short"><canvas id="mini-${c.key}" role="img" aria-label="${main.label} 最近半年與未來 4 週預測"></canvas></div>
+    <p class="dz-headline">${L.narrative ? L.narrative.headline : ''}</p>
+    <div class="dz-nums">
+      <div><div class="label">起點週觀測</div><div class="value">${fmt(main.last_observed, main.decimals)}<small>${main.unit}</small></div></div>
+      <div><div class="label">下週預測（80% 區間）</div><div class="value">${fmt(f1.median, main.decimals)}<small>${fmt(f1.q10, main.decimals)}–${fmt(f1.q90, main.decimals)}</small></div></div>
+      <div><div class="label">${to && to.event === 'drop' ? '4 週內降到閾值以下' : '4 週內超過閾值'}</div><div class="value">${to ? pct(to.p) : '—'}</div><div class="label">${to ? to.threshold_label.replace('流行閾值 ', '閾值 ') + (to.provisional ? '（暫行）' : '') : ''}</div></div>
+    </div>${links(c.path, WEEKLY)}</div>`;
+}
+
+function dengueCard(L) {
+  const path = 'dengue/'; const pages = [['預警', ''], ['驗證報告', 'report.html'], ['方法', 'method.html']];
+  if (!L) return `<div class="card dz-card"><h3><a href="${path}">登革熱</a></h3><p class="dz-headline">最新預警讀取失敗。</p>${links(path, pages)}</div>`;
+  const T = L.totals, P = L.params;
+  const st = T.n_alert > 0 ? ['on', '警示 ' + T.n_alert + ' 區'] : (T.n_watch > 0 ? ['watch', '注意 ' + T.n_watch + ' 區'] : ['off', '無標示']);
+  const top = [...L.table].sort((a, b) => (b.p_any14 ?? 0) - (a.p_any14 ?? 0)).slice(0, 5);
+  return `<div class="card dz-card">
+    <h3><a href="${path}">登革熱</a><span class="status ${st[0]}">${st[1]}</span></h3>
+    <div class="dz-meta">起點 ${L.origin}（資料日）· 每日更新 · 台南、高雄、屏東 ${L.n_series} 鄉鎮</div>
+    <p class="dz-headline">近 14 天本土確定 ${T.confirmed14} 例、檢驗中 ${T.pending14} 例；注意 ${T.n_watch} 區、警示 ${T.n_alert} 區，已達 EWARN 閾值 ${T.n_rule_now} 區。門檻：注意 p ≥ ${P.watch_p}、警示 p ≥ ${P.alert_p}。</p>
+    <div class="tbl-wrap"><table class="tbl compact"><thead><tr><th>14 天內突破機率最高的鄉鎮</th><th class="num">近 14 天確定</th><th class="num">p（14 天內）</th></tr></thead><tbody>
+      ${top.map(x => `<tr><td>${x.county}${x.town}</td><td class="num">${x.confirmed14}</td><td class="num">${fmt(x.p_any14, 2)}</td></tr>`).join('')}</tbody></table></div>
+    <div class="dz-nums">
+      <div><div class="label">近 14 天本土確定</div><div class="value">${T.confirmed14}<small>例</small></div></div>
+      <div><div class="label">注意 / 警示</div><div class="value">${T.n_watch} / ${T.n_alert}<small>區</small></div></div>
+      <div><div class="label">最高突破機率（14 天內）</div><div class="value">${pct(T.max_p_any14)}</div></div>
+    </div>${links(path, pages)}</div>`;
+}
+
+const DZ = [
+  {key: 'flu', name: '類流感', path: 'flu/', data: 'flu/data/latest.json',
+   pick: L => L.combined || L.indicators[0],
+   status: L => { const r = L.indicators.find(i => i.key === 'rods_ili_pct'); return r && r.last_observed >= r.threshold ? ['on', `流行期（RODS ${fmt(r.last_observed, 1)}%）`] : ['off', `非流行期（RODS ${r ? fmt(r.last_observed, 1) : '—'}%）`]; }},
+  {key: 'covid', name: '新冠', path: 'covid/', data: 'covid/data/latest.json',
+   pick: L => L.indicators.find(i => i.key === 'covid_oe'),
+   status: L => L.status.in_period ? ['on', '流行期（暫行規則）'] : ['off', '非流行期（暫行規則）']},
+  {key: 'ev', name: '腸病毒', path: 'ev/', data: 'ev/data/latest.json',
+   pick: L => L.indicators.find(i => i.key === 'ev_oe'),
+   status: L => L.status.in_period ? ['on', '流行期'] : ['off', '非流行期']},
+];
+
+document.addEventListener('DOMContentLoaded', async () => {
+  const [flu, covid, ev, dengue] = await Promise.all([...DZ.map(c => get(c.data)), get('dengue/latest.json')]);
+  const all = [flu, covid, ev];
+  document.getElementById('cards').innerHTML = DZ.map((c, i) => weeklyCard(c, all[i])).join('') + dengueCard(dengue);
+  DZ.forEach((c, i) => {
+    const L = all[i]; if (!L) return; const m = c.pick(L);
+    const thr = c.key === 'ev' ? m.threshold : (c.key === 'covid' ? m.level : null);
+    EPI.fanChart(document.getElementById('mini-' + c.key), m, {unit: m.unit, decimals: m.decimals, historyWeeks: 26, threshold: thr,
+      thresholdLabel: c.key === 'ev' ? m.threshold_label : (c.key === 'covid' ? m.level_label : null), thresholdColor: c.key === 'covid' ? '#9AA3A8' : undefined});
+  });
+  const gen = [flu, covid, ev].map((L, i) => L ? `${DZ[i].name} ${L.generated_at.replace('T', ' ').slice(0, 16)}` : null).filter(Boolean);
+  if (dengue) gen.push(`登革熱 ${dengue.generated_at.replace('T', ' ').slice(0, 16)}`);
+  document.getElementById('foot-note').textContent = '各疾病最新產出時間：' + gen.join('；') + '。類流感的「4 週內」機率以 RODS 急診類流感% 對流行閾值 11% 計算；新冠以暫行進入／脫離水準計算。';
+});
+</script>
+</body></html>

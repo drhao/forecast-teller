@@ -9,6 +9,7 @@ import pandas as pd
 
 from forecast_teller.backtest import SEGMENTS, segment_of
 from forecast_teller.threshold_probs import threshold_outlook
+from forecast_teller.site_common import THRESHOLD_PROB_LINE, method_page, page_head, reading_items, table, ul
 from forecast_teller.weeks import week_start
 
 from . import DATA_DIR, DOCS_DIR, OUTPUT_DIR, PROCESSED_DIR
@@ -346,18 +347,7 @@ def build_report(bt: dict, latest: dict, meta: dict, calib: dict) -> str:
     lb_rows = "".join(f"<tr class='{'best' if x['config'] == t['best'] else ''} {'baseline' if x['kind'] == 'baseline' else ''}'><td>{x['label']}</td><td class='num'>{fmt(x['wis'])}</td><td class='num'>{x['rel_naive']:.2f}</td><td class='num'>{x['mape']:.1f}</td><td class='num'>{x['cov80']:.2f}</td><td class='num'>{x['dir_hit']:.2f}</td></tr>"
                       for x in seg["leaderboard"] if x["config"] != "snaive")
     yr_rows = "".join(f"<tr><td>{SEG_LABELS[s]}</td><td>{b['label']}</td><td class='num'>{fmt(b['wis'])}</td><td class='num'>{b['rel_naive']:.2f}</td><td class='num'>{t['segments'][s]['n_origins']}</td></tr>" for s, b in yr_best.items())
-    head = """<!doctype html>
-<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>解讀與評估報告 · 台灣新冠 TimesFM 3.0 預測</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&family=Noto+Serif+TC:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../assets/epi.css?v=covid1">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="../assets/charts.js?v=covid2" defer></script></head>
-<body>
-<header class="masthead"><div class="masthead-inner"><div class="masthead-left"><div class="crest">FT</div><div class="masthead-title">台灣新冠疫情預測 · TimesFM 3.0<small>FORECAST-TELLER · COVID-19 · 解讀與評估報告</small></div></div>
-<nav class="masthead-right"><a href="../index.html">流感</a><a href="../ev/">腸病毒</a><a href="index.html">每週預測</a><a href="backtest.html">回測</a><a href="report.html" class="active">報告</a><a href="../dengue/">登革熱預警</a></nav></div></header>
-<main class="report">
-"""
+    head = page_head("報告 · 新冠 · 台灣重點傳染病預測", "covid", "report") + '<main class="report">\n'
     body = f"""<div class="hero-kicker">EVALUATION REPORT · {gen}</div>
 <h1 class="report-title">以 TimesFM 3.0 零樣本預測台灣新冠門急診就診：<em>回測解讀與評估</em></h1>
 <p class="lead">資料自 2021w27（健保新冠門診申報起）至 {meta['backtest_window']['end']}，context 含 2022 年 Omicron 大流行；起點 2024w01 起每週一個共 {t['n_origins']} 個，預測未來 1–4 週。主要決策依據為全期（2024–2026）的加權區間分數（WIS），並檢查三年各段是否一致。目標序列為全國新冠門急診就診人次（NIDSS 健保門診 + 急診，疾管署新聞稿使用的指標）。</p>
@@ -440,6 +430,49 @@ document.addEventListener('DOMContentLoaded', async () => {
     return head + body + script
 
 
+def build_method(bt: dict, latest: dict, meta: dict, calib: dict) -> str:
+    """docs/covid/method.html"""
+    cov = meta["coverage"]; li = {x["key"]: x for x in latest["indicators"]}; st = latest["status"]
+    t = bt["targets"][PRIMARY]; seg = {x["config"]: x for x in t["segments"][DECISION_SEG]["leaderboard"]}; best = seg[t["best"]]
+    rng = lambda k: f"{cov[k]['first_complete']}–{cov[k]['last_complete']}" if k in cov and "first_complete" in cov[k] else (f"{cov[k]['first']}–{cov[k]['last']}" if k in cov else "—")
+    s1 = (table(["指標", "定義與來源", "預測設定", "最新起點"], [[IND[k]["label"] + ("（主指標）" if k == PRIMARY else ""), IND[k]["source"], li[k]["config"], li[k]["origin_yw"]]
+                                                       for k in ["covid_oe", "covid_out", "covid_rods", "covid_rods_pct", "covid_inp", "covid_oe_alt"] if k in li]) +
+          '<p class="source">主指標為 NIDSS 查詢系統的健保門診 + 急診就診人次，即疾管署新聞稿與宣布流行期使用的「門急診就診人次」。開放資料的健保檔沒有急診、RODS 檔沒有分母，因此「開放資料門診 + RODS 急診」合成指標並列對照。</p>')
+    s2 = table(["來源", "內容", "粒度", "完整週範圍"], [
+        ["NIDSS 傳染病統計資料查詢系統（健保門急診，新冠病毒感染）", "門診 + 急診、門診 就診人次與就診率", "週 × 全國／6 區 × 9 年齡層", rng("nidss")],
+        ["健保門診及住院就診人次統計－COVID-19（開放資料）", "健保就診人次、健保就診總人次；門診與住院", "週 × 9 年齡層 × 22 縣市", rng("nhi")],
+        ["急診傳染病監測統計－COVID-19（開放資料，RODS）", "急診新冠就診人次（無分母）", "週 × 5 年齡層 × 22 縣市", rng("rods")],
+        ["RODS 急診總人次（類流感面板 RODS_RS.csv）", "急診新冠% 的分母", "週 × 醫院", rng("rods_total")],
+        ["NIDSS 新冠併發重症", "週確定病例數（發病週；2024/9/1 新病例定義）", "週 × 全國", rng("severe")],
+        ["社區合約實驗室呼吸道 PCR（RESP_LAB）", "SARS-CoV-2 週陽性數、總陽性率（敘事用）", "週 × 全國", rng("resp")],
+        ["行事曆", "平日假日天數、春節（tw_holiday.csv）", "週", "2016–2026"]]) + ul([
+        "NIDSS 門急診與重症每週以程式抓取，每次抓到的值留存於 history 檔，日後用來估計首報與回補的差距。",
+        "完整週判定：本週尚未結束的週一律不用；人次序列在下降期每週可跌 20–40%，不用比值測試，改以同一來源的分母（健保總就診人次、RODS 急診總人次）是否完整來把關。RODS 2022w20–w34 只有零星資料，自動排除。",
+        f"與疾管署新聞稿首報值比較：NIDSS 門急診平均高 {calib['mean_diff_nidss_pct']:+.1f}%，「門診 + RODS」平均差 {calib['mean_diff_alt_pct']:+.1f}%；校驗表見<a href=\"report.html\">報告</a>第 2 節。"])
+    s3 = table(["項目", "設定"], [
+        ["模型", "Google TimesFM 3.0，零樣本、未微調（MLX 後端）"],
+        ["context", "擴張視窗，自 2021w27（健保新冠門診申報起，含 2022 年 Omicron 大流行）；含 RODS 的設定自 2022w35"],
+        ["預測", "未來 1–4 週，每週中位數與 9 個分位數"],
+        ["每週流程設定", "門急診（主指標）單變量 + 春節 + 假日天數；門診與 RODS 二變量聯合 + 同樣共變數；急診新冠%、住院、合成指標單變量"],
+        ["回測最佳設定", f"{best['label']}（全期 2024–2026 的 WIS 為 naive 的 {best['rel_naive']:.2f}）；多變量聯合因 RODS 只能自 2022w35 起算、失去較長 context 而無增益"],
+        ["回測", f"起點 2024w01 起至最新完整週共 {t['n_origins']} 個，所有設定同一組起點，h = 1–4；依年（2024、2025、2026）與全期分段"],
+        ["基準模型", "last-value naive、MA3、季節性 naive、AutoETS、Theta"]])
+    s4 = ul(["<b>流行閾值數值尚未取得。</b>疾管署新聞稿只稱「疫情達流行閾值，進入流行期」（例如 2026 年第 28 週門急診 4,766 人次、連續第 6 週上升時宣布），未公布數值；記錄於 <code>covid_forecast/data/thresholds.csv</code>（待確認）。",
+             f"<b>暫行規則</b>（2026-10-13 決定）：{RULE_TEXT}",
+             f"目前{'處於' if st['in_period'] else '不在'}流行期；{'脫離水準（本波峰值一半）' if st['in_period'] else '進入水準（本波低點 2 倍）'} {st['level']:,.0f} 人次。每週頁扇形圖上的灰色虛線即此暫行水準，不用紅色以免與官方閾值混淆。"])
+    s5 = ul(reading_items(THRESHOLD_PROB_LINE + " 新冠以門急診對暫行進入／脫離水準計算，並標示「暫行」。"))
+    s6 = ul([f"回測只有 2024–2026 三個夏季波與兩個冬春波（{t['n_origins']} 個起點），結論屬初步；每週預測存檔累積的事前表現才是最終依據。",
+             "NIDSS 與開放資料為回補後數值，回測對「首報」情境偏樂觀。",
+             "每一波由新變異株驅動，零樣本模型只從就診人次的形狀外推；波的起點通常慢 1–2 週才被模型捕捉。",
+             "重症序列自 2024w34 起（新病例定義），只做敘事；舊定義（2023/3/20–2024/8/31）未納入。",
+             "TimesFM 3.0 權重為非商業、非生產用途授權。"])
+    return method_page("covid", "方法 · 新冠 · 台灣重點傳染病預測", "Method", "新冠預測的方法與資料",
+                       "說明每週新冠預測用了哪些資料、模型怎麼設定、在官方閾值確認前如何判定流行期，以及預測輸出該怎麼讀。回測成績見<a href=\"backtest.html\">回測</a>，完整解讀見<a href=\"report.html\">報告</a>。",
+                       [("預測目標與指標", "Targets", s1), ("資料來源與完整週", "Data", s2), ("模型與設定", "Model", s3),
+                        ("流行閾值與流行期", "Thresholds", s4), ("預測輸出怎麼讀", "How to read", s5), ("限制", "Limitations", s6)],
+                       f"資料：NIDSS 傳染病統計資料查詢系統、疾病管制署資料開放平台、RODS_RS.csv、NIDSS 新冠併發重症。模型：{meta['model']['checkpoint']}（{meta['model']['license']}）。產生時間 {meta['generated_at']}。")
+
+
 def main(config_labels: dict[str, str]):
     DATA.mkdir(parents=True, exist_ok=True)
     nat = load_national()
@@ -462,5 +495,6 @@ def main(config_labels: dict[str, str]):
     (DATA / "backtest.json").write_text(json.dumps(bt, ensure_ascii=False), encoding="utf-8")
     (DATA / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=1), encoding="utf-8")
     (DOCS_DIR / "report.html").write_text(build_report(bt, latest, meta, calib), encoding="utf-8")
+    (DOCS_DIR / "method.html").write_text(build_method(bt, latest, meta, calib), encoding="utf-8")
     print("site data written:", {p.name: p.stat().st_size // 1024 for p in DATA.glob('*.json')}, "KB; best", best)
     print("headline:", latest["narrative"]["headline"])

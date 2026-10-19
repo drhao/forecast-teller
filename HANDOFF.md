@@ -166,7 +166,7 @@ forecast-teller/
 | `scripts/forecast_now.py` | 即時預測：`--joint nhi_out_ili nhi_er_ili rods_ili --covariates cny holiday`；單變量 `--targets ...` |
 | `scripts/log_forecast.py` | 把 `outputs/latest/latest_forecast*.csv` 累積到 `outputs/forecast_log/forecast_log.csv`（含 `run_at`，同 mode/target/origin/target_yw 以最新取代；另加門急診合計 `nhi_oe_ili`、mode `joint_sum`）；`--from-git` 回填 git 歷史的快照 |
 | `scripts/evaluate_forecasts.py` | 把 forecast_log 與 `national_weekly.csv` 實際值對上 → `outputs/forecast_log/evaluation.csv`（逐列 abs_err / ape / in60 / in80 / wis）與 `evaluation_summary.csv`（mode × target × h）；`--since 起點週` 篩選 |
-| `scripts/build_site.py` | `outputs/` → `docs/data/{latest,backtest,meta}.json` + `docs/report.html`；`build_narrative`（規則生成的趨勢判讀）、`combine_out_er`（門急診合計圖） |
+| `scripts/build_site.py` | `outputs/` → `docs/flu/data/{latest,backtest,meta}.json` + `docs/flu/report.html` + `docs/flu/method.html`；`build_narrative`（規則生成的趨勢判讀）、`combine_out_er`（門急診合計圖） |
 | `scripts/weekly_update.sh [--push]` | 抓 RESP_LAB → 面板 → 聯合與單變量即時預測 → `log_forecast.py` → `evaluate_forecasts.py` → 站台；`--push` 只 add `docs`、`data_processed/{coverage.json,qa_report.md,national_weekly.csv}`、`outputs/latest`、`outputs/forecast_log`、`data/resp_lab_history.csv` |
 | `scripts/make_slide_charts.py`、`build_deck.py` | 流感 6 頁成果投影片（`outputs/slides/forecast-teller_成果報告_2026-09-17.pptx`，PingFang TC）；`make_slide_charts.py` 現在同時產生流感與腸病毒的圖 |
 | `scripts/deck_lib.py`、`build_deck_flu_ev.py` | 流感 + 腸病毒 9 頁投影片（封面 + 流感 4 + 腸病毒 4：資料方法 / 回測 / 驗證與命中率 / 最新預測與即時評估），`outputs/slides/forecast-teller_流感與腸病毒成果_<日期>.pptx`；數字全部從 `docs/data`、`docs/ev/data`、`outputs/forecast_log` 讀。流程：`make_slide_charts.py` → `build_deck_flu_ev.py` → PowerPoint 匯出 PDF（§2）→ PyMuPDF 轉圖檢查 |
@@ -199,9 +199,10 @@ forecast-teller/
 
 ### 5.4 網站
 
-- `docs/index.html`：趨勢判讀（headline / 目前趨勢 / 模型判讀 / 注意事項，`build_narrative` 自動生成）、KPI、門急診合計總覽圖（門診 + 急診兩個聯合預測相加；分位數同向相加，區間偏保守）、四張扇形圖（歷史範圍 40 週 / 1.5 年 / 2.5 年）、分位數表。
-- `docs/backtest.html`：目標切換、分段、可排序排行榜（含 MAPE、閾值註腳）、依 horizon 的 WIS / 方向命中 / 涵蓋 / 閾值命中、1–4 週前預測 vs 實際四張圖、各年、縣市與年齡層。
-- `docs/report.html`：一頁式解讀與評估報告，含「使用的資料」一節與 RESP 實驗說明。
+- **網站架構（2026-10-19 改版，以疾病分類）**：`docs/index.html` 總覽（四張疾病卡片，讀各自的 `latest.json`）；`docs/flu/`、`docs/covid/`、`docs/ev/` 各有預測 `index.html`、回測 `backtest.html`、報告 `report.html`、方法 `method.html`；`docs/dengue/` 有每日預警 `index.html`、驗證報告 `report.html`（原 04–08 節）、方法 `method.html`（原 01–03 節）。導覽列唯一來源 `docs/assets/nav.js`；產生的頁面用 `src/forecast_teller/site_common.py`。舊網址 `/backtest.html`、`/report.html` 不再存在（使用者決定不留轉址頁）。
+- `docs/flu/index.html`：趨勢判讀（`build_narrative` 自動生成）、KPI（含 4 週內超過閾值機率）、門急診合計總覽圖、四張扇形圖、分位數表。
+- `docs/flu/backtest.html`：目標切換、分段、可排序排行榜、依 horizon 的 WIS / 方向命中 / 涵蓋 / 閾值命中、1–4 週前預測 vs 實際、各年、縣市與年齡層。
+- `docs/flu/report.html`：一頁式解讀與評估報告；`docs/flu/method.html`：預測目標、資料、模型設定、閾值、讀法、限制。
 - 風格：`docs/assets/charts.js`（`window.EPI`：fanChart、linesChart、backtestTsChart、hbarChart、refLines）與 `epi.css`，依 https://github.com/drhao/epi-dataviz-styleguide （主色 #739A6D、線 #5D7F58、區間 #B4C9B1、警示紅 #BE373C 僅用於閾值線、Noto Sans/Serif TC、tabular-nums、僅水平格線）。Chart.js 4.4.1 由 cdnjs 載入；資產連結帶 `?v=` 版本號避免快取。
 - 瀏覽器檢查時的已知假訊息：內建瀏覽器對任何 Chart.js 頁面都會報 `Cannot convert object to primitive value`，是工具儀器化造成，不是頁面錯誤。
 
@@ -259,6 +260,7 @@ forecast-teller/
 | 2026-10-01 | 登革熱第二版在 `dengue` 分支做（主線每週更新在 `main`），完成後再合併 |
 | 2026-10-01 | 登革熱：事件定義統一為最終資料閾值；面板起點拉到 2008；驗證只用固定的歷史快照，不處理資料來源斷線 |
 | 2026-10-14 | 三條每週預測頁加「未來 4 週內超過（或降到以下）閾值的機率」：`src/forecast_teller/threshold_probs.py`，以各週機率的極值近似（假設各週誤差同向）為主值、各週獨立為上界，兩者都顯示；流感用 RODS 11%、腸病毒用當年閾值、新冠用暫行進入／脫離水準（標「暫行」） |
+| 2026-10-19 | 網站改以疾病分類（總覽 + 類流感 / 新冠 / 腸病毒 / 登革熱，各有預測或預警、回測、報告、方法）；類流感搬到 `/flu/`；登革熱拆成預警、驗證報告、方法三頁；不留舊網址轉址頁 |
 
 ### 8.2 工作規則
 
@@ -268,7 +270,7 @@ forecast-teller/
 4. 回覆與文件用繁體中文；程式註解可中英混用。
 5. 站台改版後必須在瀏覽器實際驗證（本機 `http.server` 或線上加 `?v=時間戳`），再回報。
 6. 流感原始資料是使用者手動放進 `data/` 的內部檔，不要用 `scripts/refresh_data.sh` 的開放資料檔直接覆蓋（欄位格式不同）。
-7. 投影片、報告、網頁的數字一律從 `outputs/` 與 `docs/data/*.json` 讀取，不手打。
+7. 投影片、報告、網頁的數字一律從 `outputs/` 與 `docs/{flu,covid,ev}/data/*.json` 讀取，不手打。
 8. 記憶檔（`~/.claude/projects/-Users-drhao-Documents-GitHub-forecast-teller/memory/`）與本文件若有衝突，以本文件與 repo 內 PLAN 為準。
 
 ---
@@ -319,7 +321,7 @@ forecast-teller/
 - PowerPoint AppleScript：`tell application "Keynote"` 會打到別的 app；PowerPoint 需用 bundle id、HFS 路徑、先關閉所有簡報，否則匯出舊內容；表格框線在 `a:tcPr` 要先放 `a:lnL/R/T/B` 再放填色。
 - 瀏覽器快取舊 CSS/HTML → 資產連結加 `?v=`。
 - LARS 當週只申報一半就通過 0.6 倍門檻被當成完整週（202640，2026-10-09）→ `coverage_from_national` 先用日期排除尚未結束的週。
-- 新 clone 沒有 `outputs/backtest/*.parquet`，`build_site.py` 原本會中斷 → 改為沿用 `docs/data/backtest.json` 並印提示。
+- 新 clone 沒有 `outputs/backtest/*.parquet`，`build_site.py` 原本會中斷 → 改為沿用 `docs/flu/data/backtest.json` 並印提示（腸病毒同）。
 - 兩個 clone 各自有舊版內部檔；在資料較舊的那台重建流感面板會把 coverage 倒退 → 先比對 `data/` 檔案日期與 `coverage.json`。
 - 一次 push 因 DNS 失敗 → 重試即可。
 
@@ -329,7 +331,7 @@ forecast-teller/
 
 - 快照日期 2026-10-11，HEAD `c1de6cd`。10/1 之後的 commit：登革熱第二、三版與白話解讀（`8be45a8`、`ca21d5a`、`4d9e7ff`）、第四版 nowcast 負面結果（`2c91e9e`）、流感 + 腸病毒 9 頁投影片（`308b5c4`，`scripts/build_deck_flu_ev.py`）、另一個 clone 的流感每週更新 10/9（`a1d3753`，資料至 202639，加 `asof` 日期判斷與 build_site 缺 parquet 的 fallback）、本機的腸病毒每週更新 10/9（`cdbd25e`）、登革熱即時預警上線 10/11（`c1de6cd`）。remote `origin` = https://github.com/drhao/forecast-teller.git 。
 - **登革熱每日預警正在本機自動跑**：launchd `com.drhao.forecast-teller.dengue-daily`（每天 08:30，`git pull --ff-only` 後 `dengue_ewarn/scripts/daily_update.sh --push`，log 在 `~/Library/Logs/forecast-teller-dengue-daily.log`）。只裝在 find.ebilink 帳號那台；另一個 clone 不要同時排程，避免同日兩次 commit。第一次執行 2026-10-11：75 區 p 全 0.02、無標示（平靜年）。
-- 線上七個頁面：`/`、`/backtest.html`、`/report.html`、`/dengue/`（頂部「00 最新預警」讀 `docs/dengue/latest.json`，起點 2026-10-11）、`/ev/`、`/ev/backtest.html`、`/ev/report.html`；`docs/data/latest.json` 起點 202639、含 `combined`；`docs/ev/data/latest.json` 起點 202639（`ev_rods_pct` 202638）。
+- （2026-10-11 快照；10-19 網站改版後的路徑見 §5.4）線上七個頁面：`/`、`/backtest.html`、`/report.html`、`/dengue/`（頂部「00 最新預警」讀 `docs/dengue/latest.json`，起點 2026-10-11）、`/ev/`、`/ev/backtest.html`、`/ev/report.html`；`docs/data/latest.json` 起點 202639、含 `combined`；`docs/ev/data/latest.json` 起點 202639（`ev_rods_pct` 202638）。
 - 資料：流感各來源完整至 202639（NIDDS 202636、RESP 202637）；腸病毒至 202639；登革熱至 2025-07-23。本機（find.ebilink 帳號那台）的 `data/` 內部檔是 9/30 版（原始到 202639），10/9 的流感更新是在另一個 clone 用更新的檔跑的。
 - 登革熱第二、三版（2026-10-01）在 `dengue` 分支完成後合併回 `main`，見 `dengue_ewarn/PLAN.md` §12–13；站台 `docs/dengue/` 以第三版（全台 274 鄉鎮，tag `dengue_all`）為主；第一版的 outputs 備份在該 session 的 scratchpad，不在 repo。
 - `outputs/forecast_log/forecast_log.csv` 有 8 個起點（202603–202639）共 128 列，`ev_forecast/outputs/forecast_log/forecast_log.csv` 有 3 個起點（202636–202639）共 56 列，`dengue_ewarn/outputs/forecast_log/dengue_forecast_log.csv` 有 1 個起點（2026-10-11）共 375 列；`data/resp_lab_history.csv` 有 2026-09-17、10-01、10-09 三次抓取（網站至 202638）；`dengue_ewarn/data/nidss_history.csv` 有 2026-10-11 一次（153 列）。

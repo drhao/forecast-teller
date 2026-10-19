@@ -458,11 +458,11 @@ WIS 依 horizon（COVID 後）：最佳設定 4,145 / 5,794 / 7,993 / 9,497，na
 
 ## 13. Dashboard 與 GitHub Pages（2026-09-17）
 
-- `docs/index.html` 每週預測：四項指標的 M1 扇形圖（觀測實線、預測中位數虛線、60%/80% 淺綠帶、預測起點與春節週標線；歷史範圍 40 週 / 1.5 年 / 2.5 年切換）、KPI 與變化方向、分位數表、方法與注意事項。
-- `docs/backtest.html` 回測：目標序列與分段切換、可排序排行榜（WIS、相對 naive、MASE、涵蓋率、命中率、閾值命中/誤報）、WIS / 方向命中 / 涵蓋率 / 閾值命中依 horizon、最佳設定預測 vs 實際（h 可切換）、各年 WIS、22 縣市與 18 年齡層相對 WIS 橫條與分段表。
-- `docs/report.html` 一頁式解讀與評估報告，由 `scripts/build_site.py` 以最新數字填入，可列印。
+- `docs/flu/index.html` 每週預測：四項指標的 M1 扇形圖（觀測實線、預測中位數虛線、60%/80% 淺綠帶、預測起點與春節週標線；歷史範圍 40 週 / 1.5 年 / 2.5 年切換）、KPI 與變化方向、分位數表、方法與注意事項。
+- `docs/flu/backtest.html` 回測：目標序列與分段切換、可排序排行榜（WIS、相對 naive、MASE、涵蓋率、命中率、閾值命中/誤報）、WIS / 方向命中 / 涵蓋率 / 閾值命中依 horizon、最佳設定預測 vs 實際（h 可切換）、各年 WIS、22 縣市與 18 年齡層相對 WIS 橫條與分段表。
+- `docs/flu/report.html` 一頁式解讀與評估報告，由 `scripts/build_site.py` 以最新數字填入，可列印。
 - 圖表風格依《疫情資料視覺化指引》v1.1：主色 Sage、折線加深版 `#5D7F58`、類別順序綠→藍→黃、基準用中性灰虛線與不同點形狀、紅色不作類別色、Noto Sans/Serif TC、tabular-nums、僅水平格線、直條圖 Y 軸從零。
-- 每週更新：`scripts/weekly_update.sh [--push]`；資料流為 `outputs/` → `docs/data/*.json`（`build_site.py`）→ 靜態頁面 fetch。GitHub Pages 設定步驤見 `README.md`。
+- 每週更新：`scripts/weekly_update.sh [--push]`；資料流為 `outputs/` → `docs/flu/data/*.json`（`build_site.py`）→ 靜態頁面 fetch。GitHub Pages 設定步驤見 `README.md`。
 
 ### 12.7 社區合約實驗室呼吸道病原體 PCR（RESP_LAB）近兩年實驗（2026-09-17）
 

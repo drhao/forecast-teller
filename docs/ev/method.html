@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>方法 · 腸病毒 · 台灣重點傳染病預測</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&family=Noto+Serif+TC:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/epi.css?v=nav2">
+
+</head><body>
+<header class="masthead" data-disease="ev" data-page="method"></header>
+<script src="../assets/nav.js?v=nav2"></script>
+<main>
+  <div class="hero-kicker">Method</div>
+  <h1 class="page-title">腸病毒預測的方法與資料</h1>
+  <p class="lead">說明每週腸病毒預測用了哪些資料、模型怎麼設定、流行閾值與流行期規則，以及預測輸出該怎麼讀。回測成績見<a href="backtest.html">回測</a>，完整解讀見<a href="report.html">報告</a>。</p>
+  <section>
+    <div class="section-head"><span class="section-num">01</span><h2>預測目標與指標</h2><span class="en">Targets</span></div>
+    <div class="tbl-wrap"><table class="tbl compact"><thead><tr><th>指標</th><th>定義與來源</th><th>預測設定</th><th>最新起點</th></tr></thead><tbody><tr><td>全國腸病毒門急診就診人次（健保門診 + RODS 急診）（主指標）</td><td>健保申報門診腸病毒就診人次（疾管署資料開放平台）+ RODS 急診腸病毒就診人次（急診部分暫以 RODS 代替）</td><td>聯合三變量（門急診合計 + 門診 + RODS）+ 學校行事曆 + 假日天數</td><td>202640</td></tr><tr><td>全國腸病毒健保門診就診人次</td><td>健保申報（疾管署資料開放平台）</td><td>聯合三變量（門急診合計 + 門診 + RODS）+ 學校行事曆 + 假日天數</td><td>202640</td></tr><tr><td>RODS 急診腸病毒就診人次</td><td>即時疫情監視及預警系統 RODS（資料開放平台）</td><td>聯合三變量（門急診合計 + 門診 + RODS）+ 學校行事曆 + 假日天數</td><td>202640</td></tr><tr><td>RODS 急診腸病毒就診百分比</td><td>RODS 腸病毒人次 ÷ RODS 急診總人次（分母來自流感面板的 RODS_RS.csv）</td><td>單變量 + 學校行事曆 + 假日天數</td><td>202640</td></tr></tbody></table></div><p class="source">門急診合計是疾管署判定腸病毒流行期的指標。開放資料的健保檔只有門診與住院，急診部分暫以 RODS 急診腸病毒人次代替（2026-09-19 決定），取得健保急診檔後替換。</p>
+  </section>
+  <section>
+    <div class="section-head"><span class="section-num">02</span><h2>資料來源與完整週</h2><span class="en">Data</span></div>
+    <div class="tbl-wrap"><table class="tbl compact"><thead><tr><th>來源</th><th>內容</th><th>粒度</th><th>完整週範圍</th></tr></thead><tbody><tr><td>健保門診及住院就診人次統計－腸病毒（開放資料）</td><td>腸病毒健保就診人次、健保就診總人次；門診與住院</td><td>週 × 9 年齡層 × 22 縣市</td><td>201601–202640</td></tr><tr><td>急診傳染病監測統計－腸病毒（開放資料，RODS）</td><td>急診腸病毒就診人次（無分母）</td><td>週 × 5 年齡層 × 22 縣市</td><td>200701–202640</td></tr><tr><td>RODS 急診總人次（類流感面板 RODS_RS.csv）</td><td>急診就診總人次，急診腸病毒% 的分母</td><td>週 × 醫院</td><td>200901–202640</td></tr><tr><td>行事曆</td><td>學校暑假／寒假／開學前兩週（近似規則）、平日假日天數、春節</td><td>週</td><td>2016–2027</td></tr></tbody></table></div><ul class="findings"><li>開放資料每週自疾管署資料開放平台下載（需 TWCA 中繼憑證）；不完整週以「低於前 8 週中位數的 60%」與日曆截斷自動排除。</li><li>合成指標與疾管署新聞稿公布的門急診人次比較：2024 年後差 -8.5% 至 +5.6%（平均 -1.3%），2016–2023 年偏低 2–9%；校驗表見<a href="report.html">報告</a>第 2 節。</li></ul>
+  </section>
+  <section>
+    <div class="section-head"><span class="section-num">03</span><h2>模型與設定</h2><span class="en">Model</span></div>
+    <div class="tbl-wrap"><table class="tbl compact"><thead><tr><th>項目</th><th>設定</th></tr></thead><tbody><tr><td>模型</td><td>Google TimesFM 3.0，零樣本、未微調（MLX 後端）</td></tr><tr><td>context</td><td>擴張視窗，自 2016w01 起；聯合預測截到成員共同的最新完整週</td></tr><tr><td>預測</td><td>未來 1–4 週，每週中位數與 9 個分位數</td></tr><tr><td>每週流程設定</td><td>門急診合計、門診、RODS 三變量聯合 + 學校行事曆（暑假、寒假、開學前兩週）+ 平日假日天數；急診腸病毒% 單變量</td></tr><tr><td>回測最佳設定</td><td>三變量聯合（門急診合計 + 門診 + RODS）+ 學校行事曆 + 假日（COVID 後 WIS 為 naive 的 0.81）</td></tr><tr><td>回測</td><td>資料窗 2016w01–2025w53，起點 2018w01 起共 415 個，h = 1–4；分 COVID 前／期／後三段</td></tr><tr><td>基準模型</td><td>last-value naive、MA3、季節性 naive、AutoETS、Theta</td></tr></tbody></table></div>
+  </section>
+  <section>
+    <div class="section-head"><span class="section-num">04</span><h2>流行閾值與流行期</h2><span class="en">Thresholds</span></div>
+    <ul class="findings"><li><b>流行閾值</b>由疾管署每年設定，依各年新聞稿記錄於 <code>ev_forecast/data/thresholds.csv</code>；2026 年為 12,000 人次。2017–2022 未找到新聞稿，推定沿用 11,000（待確認）。</li><li><b>流行期規則（暫定）</b>：單週門急診就診人次達流行閾值即進入流行期；連續 2 週低於閾值即脫離（第 2 週起視為非流行期）。閾值由疾管署每年設定，本專案依各年新聞稿記錄於 data/thresholds.csv。</li></ul><div class="tbl-wrap"><table class="tbl compact"><thead><tr><th>年</th><th class="num">門急診就診人次閾值</th></tr></thead><tbody><tr><td>2016</td><td class="num">11,000</td></tr><tr><td>2017</td><td class="num">11,000</td></tr><tr><td>2018</td><td class="num">11,000</td></tr><tr><td>2019</td><td class="num">11,000</td></tr><tr><td>2020</td><td class="num">11,000</td></tr><tr><td>2021</td><td class="num">11,000</td></tr><tr><td>2022</td><td class="num">11,000</td></tr><tr><td>2023</td><td class="num">11,000</td></tr><tr><td>2024</td><td class="num">11,000</td></tr><tr><td>2025</td><td class="num">11,000</td></tr><tr><td>2026</td><td class="num">12,000</td></tr></tbody></table></div>
+  </section>
+  <section>
+    <div class="section-head"><span class="section-num">05</span><h2>預測輸出怎麼讀</h2><span class="en">How to read</span></div>
+    <ul class="findings"><li><b>先看區間，不看單點。</b>模型對每個未來週輸出 9 個分位數（q10–q90）。中位數是「一半機會比它高、一半比它低」；q10–q90 為 80% 預測區間，q20–q80 為 60%。區間寬代表不確定，是資訊不是缺陷。</li><li><b>預測起點是最新的完整申報週。</b>本週尚未結束、或申報明顯未齊的週不進入模型；各指標的起點可能不同（例如重症依發病週，通報較慢）。</li><li><b>「下週續升機率」</b>是第 1 週分布高於起點週觀測值的比例，由 9 個分位數線性內插而得，上下限 5%–95%。</li><li><b>「未來 4 週內超過閾值的機率」</b>：模型只給每週各自的分布，沒有聯合路徑。主值取 4 週中最高的單週機率，等於假設各週誤差同向（同一模型連續週的誤差高度正相關，這是合理近似）；另列各週獨立時的上界 1 − Π(1 − p<sub>h</sub>)。指標已在閾值之上時，改報「4 週內降到閾值以下」的機率。 腸病毒以門急診合計對當年閾值計算。</li><li><b>「已驗證」</b>標記表示該目標週的實際值已公布，可直接比對；每週的預測都存檔（forecast_log），並與日後的實際值比對評估。</li><li><b>1–2 週最可靠，3–4 週僅供規劃參考。</b>回測中誤差隨預測週數大致線性上升。</li><li><b>學校行事曆</b>：暑假前半就診人次每週平均下降 5–6%、開學後 3–4 週上升 3–7%；預測週若落在這些時段，每週頁會標出。</li></ul>
+  </section>
+  <section>
+    <div class="section-head"><span class="section-num">06</span><h2>限制</h2><span class="en">Limitations</span></div>
+    <ul class="findings"><li>急診以 RODS 代替：RODS 只涵蓋部分急診，合成指標早年偏低 2–9%。</li><li>開放資料有回補：新聞稿首報值與日後開放資料相差可達 3–5%。</li><li>流行規模與重症由病毒型別（EV-A71、CVA6、CVA16、E11、EV-D68 等）決定，零樣本模型看不到型別轉換，異常季節會慢半拍。</li><li>學校行事曆為近似規則，非各學年實際日期。</li><li>TimesFM 3.0 權重為非商業、非生產用途授權。</li></ul>
+  </section>
+</main>
+<footer class="site-footer">資料：疾病管制署資料開放平台（健保門診腸病毒、RODS 急診腸病毒）、RODS_RS.csv（急診總人次）。模型：google/timesfm-3.0-pytorch（timesfm-non-commercial-license-v1.0（非商業、非生產用途））。產生時間 2026-10-19T10:20+08:00。</footer>
+</body></html>

@@ -1,15 +1,13 @@
 <!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>每週預測 · 台灣腸病毒 TimesFM 3.0</title>
+<title>預測 · 腸病毒 · 台灣重點傳染病預測</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&family=Noto+Serif+TC:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../assets/epi.css?v=ev1">
+<link rel="stylesheet" href="../assets/epi.css?v=nav2">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="../assets/charts.js?v=ev1" defer></script>
+<script src="../assets/charts.js?v=nav2" defer></script>
 </head><body>
-<header class="masthead"><div class="masthead-inner">
-  <div class="masthead-left"><div class="crest">FT</div><div class="masthead-title">台灣腸病毒疫情預測 · TimesFM 3.0<small>FORECAST-TELLER · EV · WEEKLY FORECAST</small></div></div>
-  <nav class="masthead-right"><a href="../index.html">流感</a><a href="../covid/">新冠</a><a href="index.html" class="active">每週預測</a><a href="backtest.html">回測</a><a href="report.html">報告</a><a href="../dengue/">登革熱預警</a></nav>
-</div></header>
+<header class="masthead" data-disease="ev" data-page="forecast"></header>
+<script src="../assets/nav.js?v=nav2"></script>
 <main>
   <div class="hero-kicker">Weekly forecast</div>
   <h1 class="page-title">未來 4 週腸病毒疫情預測 <em id="origin-title"></em></h1>
@@ -40,16 +38,7 @@
     <p class="source">q10–q90 為分位數；80% 預測區間 = q10–q90，60% = q20–q80。「實際」欄只在該週申報已完整時顯示，可用來事後驗證。</p>
   </section>
 
-  <section>
-    <div class="section-head"><span class="section-num">03</span><h2>方法與注意事項</h2><span class="en">Method &amp; caveats</span></div>
-    <div class="grid-2">
-      <div class="card"><h3>模型設定</h3><p class="sub" id="method-text"></p>
-        <ul class="findings" style="font-size:13.5px">
-          <li id="method-li-1"></li><li id="method-li-2"></li>
-        </ul></div>
-      <div class="card"><h3>解讀時請注意</h3><ul class="findings" style="font-size:13.5px" id="caveat-list"></ul></div>
-    </div>
-  </section>
+  <p class="note">模型設定、資料來源、閾值與流行期規則、預測輸出的讀法與限制，見<a href="method.html">方法</a>；回測成績見<a href="backtest.html">回測</a>，完整解讀見<a href="report.html">報告</a>。</p>
 </main>
 <footer class="site-footer" id="footer"></footer>
 <script>
@@ -115,10 +104,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const tbl = document.getElementById('forecast-table');
   tbl.innerHTML = `<thead><tr><th>指標</th><th>起點週</th><th>目標週</th><th>週起始日</th><th class="num">h</th><th class="num">中位數</th><th class="num">q10</th><th class="num">q20</th><th class="num">q80</th><th class="num">q90</th><th class="num">實際</th></tr></thead><tbody>` +
     inds.flatMap(ind => ind.forecast.map(f => `<tr>${ind.key === 'ev_oe' ? '<td><b>' + ind.short + '</b></td>' : '<td>' + ind.short + '</td>'}<td>${ind.origin_yw}</td><td>${f.yw}${f.cny ? ' <span class="badge cny">春節</span>' : ''}</td><td>${f.date}</td><td class="num">${f.h}</td><td class="num"><b>${fmt(f.median, ind.decimals)}</b></td><td class="num">${fmt(f.q10, ind.decimals)}</td><td class="num">${fmt(f.q20, ind.decimals)}</td><td class="num">${fmt(f.q80, ind.decimals)}</td><td class="num">${fmt(f.q90, ind.decimals)}</td><td class="num">${f.observed != null ? fmt(f.observed, ind.decimals) : '—'}</td></tr>`)).join('') + '</tbody>';
-  document.getElementById('method-text').textContent = `最佳回測設定：${meta.best_label}。所有指標從 2016 年起以擴張視窗餵入模型，horizon 4 週，輸出 9 個分位數。`;
-  document.getElementById('method-li-1').textContent = '門急診合計、門診、RODS 急診三個指標以多變量聯合預測（TimesFM 3.0 變數注意力），共變數為學校行事曆（暑假、寒假、開學前兩週）與每週平日假日天數；急診腸病毒%為單變量。急診部分暫以 RODS 人次代替健保急診。';
-  document.getElementById('method-li-2').innerHTML = `回測（2016–2025，${meta.backtest_window.origins} 個起點）結果見<a href="backtest.html">回測</a>與<a href="report.html">報告</a>。流行閾值由疾管署每年設定：${Object.entries(meta.thresholds_by_year).slice(-3).map(([y, v]) => y + ' 年 ' + fmt(v)).join('、')} 人次。`;
-  document.getElementById('caveat-list').innerHTML = latest.narrative.caveats.map(c => `<li>${c}</li>`).join('') + '<li>TimesFM 3.0 權重為非商業、非生產用途授權。</li>';
   document.getElementById('footer').textContent = `資料：疾病管制署資料開放平台（健保門診腸病毒、RODS 急診腸病毒）、RODS_RS.csv（急診總人次）。模型：${meta.model.checkpoint}，授權 ${meta.model.license}。圖表依《疫情資料視覺化指引》v1.1。產生時間 ${meta.generated_at}。`;
 });
 </script>

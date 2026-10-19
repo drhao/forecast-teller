@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 登革熱每日預警：抓 NIDSS 快照 → 即時預測（TimesFM 3.0，asof_adj）→ 重建 docs/dengue/ → [--push]
+# 登革熱每日預警：抓 NIDSS 快照 → 即時預測（TimesFM 3.0，asof_adj）→ 重建 docs/dengue/（預警、驗證報告、方法三頁）→ [--push]
 # 用法：dengue_ewarn/scripts/daily_update.sh [--push]
 # 台南 + 高雄 + 屏東共 108 鄉鎮，抓取約 13 分鐘。可在任一 clone 跑（資料來自網站）；重建站台需要本機有 outputs/backtest/*.parquet，沒有就只更新 latest.json。
 set -euo pipefail
@@ -14,7 +14,7 @@ else
   echo "缺 outputs/backtest parquet，跳過 build_site（docs/dengue/latest.json 已更新，index.html 讀取時會自行載入）"
 fi
 if [[ "${1:-}" == "--push" ]]; then
-  (cd .. && git add docs/dengue/latest.json docs/dengue/index.html \
+  (cd .. && git add docs/dengue/latest.json docs/dengue/index.html docs/dengue/report.html docs/dengue/method.html docs/dengue/data.json \
                     dengue_ewarn/data/nidss_latest.csv dengue_ewarn/data/nidss_latest_meta.json dengue_ewarn/data/nidss_history.csv \
                     dengue_ewarn/outputs/latest/dengue_alerts.csv dengue_ewarn/outputs/forecast_log/dengue_forecast_log.csv \
     && git commit -m "登革熱每日預警 $(date +%F)

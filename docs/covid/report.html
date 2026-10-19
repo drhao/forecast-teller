@@ -1,15 +1,15 @@
 <!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>解讀與評估報告 · 台灣新冠 TimesFM 3.0 預測</title>
+<title>報告 · 新冠 · 台灣重點傳染病預測</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&family=Noto+Serif+TC:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../assets/epi.css?v=covid1">
+<link rel="stylesheet" href="../assets/epi.css?v=nav2">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="../assets/charts.js?v=covid2" defer></script></head>
-<body>
-<header class="masthead"><div class="masthead-inner"><div class="masthead-left"><div class="crest">FT</div><div class="masthead-title">台灣新冠疫情預測 · TimesFM 3.0<small>FORECAST-TELLER · COVID-19 · 解讀與評估報告</small></div></div>
-<nav class="masthead-right"><a href="../index.html">流感</a><a href="../ev/">腸病毒</a><a href="index.html">每週預測</a><a href="backtest.html">回測</a><a href="report.html" class="active">報告</a><a href="../dengue/">登革熱預警</a></nav></div></header>
+<script src="../assets/charts.js?v=nav2" defer></script>
+</head><body>
+<header class="masthead" data-disease="covid" data-page="report"></header>
+<script src="../assets/nav.js?v=nav2"></script>
 <main class="report">
-<div class="hero-kicker">EVALUATION REPORT · 2026-10-14</div>
+<div class="hero-kicker">EVALUATION REPORT · 2026-10-19</div>
 <h1 class="report-title">以 TimesFM 3.0 零樣本預測台灣新冠門急診就診：<em>回測解讀與評估</em></h1>
 <p class="lead">資料自 2021w27（健保新冠門診申報起）至 202640，context 含 2022 年 Omicron 大流行；起點 2024w01 起每週一個共 141 個，預測未來 1–4 週。主要決策依據為全期（2024–2026）的加權區間分數（WIS），並檢查三年各段是否一致。目標序列為全國新冠門急診就診人次（NIDSS 健保門診 + 急診，疾管署新聞稿使用的指標）。</p>
 
@@ -36,7 +36,7 @@
 </tbody></table>
 <div class="card"><h3>NIDSS 門急診、「門診 + RODS」合成指標 與疾管署新聞稿公布值（首報）的比較</h3>
 <table class="tbl compact"><thead><tr><th>週</th><th class="num">新聞稿門急診</th><th class="num">NIDSS 門急診</th><th class="num">差</th><th class="num">開放資料門診</th><th class="num">RODS</th><th class="num">門診 + RODS</th><th class="num">差</th></tr></thead><tbody><tr><td>202622</td><td class='num'>1,000</td><td class='num'>1,149</td><td class='num'>+14.9%</td><td class='num'>1,099</td><td class='num'>28</td><td class='num'>1,127</td><td class='num'>+12.7%</td></tr><tr><td>202628</td><td class='num'>4,766</td><td class='num'>5,224</td><td class='num'>+9.6%</td><td class='num'>4,393</td><td class='num'>520</td><td class='num'>4,913</td><td class='num'>+3.1%</td></tr><tr><td>202629</td><td class='num'>10,605</td><td class='num'>11,340</td><td class='num'>+6.9%</td><td class='num'>9,662</td><td class='num'>1,029</td><td class='num'>10,691</td><td class='num'>+0.8%</td></tr><tr><td>202630</td><td class='num'>18,990</td><td class='num'>19,971</td><td class='num'>+5.2%</td><td class='num'>17,237</td><td class='num'>1,669</td><td class='num'>18,906</td><td class='num'>-0.4%</td></tr><tr><td>202631</td><td class='num'>24,645</td><td class='num'>26,086</td><td class='num'>+5.8%</td><td class='num'>22,600</td><td class='num'>2,105</td><td class='num'>24,705</td><td class='num'>+0.2%</td></tr><tr><td>202633</td><td class='num'>24,995</td><td class='num'>26,225</td><td class='num'>+4.9%</td><td class='num'>23,129</td><td class='num'>1,881</td><td class='num'>25,010</td><td class='num'>+0.1%</td></tr><tr><td>202635</td><td class='num'>20,199</td><td class='num'>21,126</td><td class='num'>+4.6%</td><td class='num'>18,525</td><td class='num'>1,495</td><td class='num'>20,020</td><td class='num'>-0.9%</td></tr></tbody></table>
-<p class="source">新聞稿為首報值，NIDSS 與開放資料為查詢當日（2026-10-14）的回補後數值。NIDSS 門急診平均比首報高 +7.4%，「門診 + RODS」平均差 +2.2%（範圍 -0.9% 至 +12.7%）。差異來自申報回補或新聞稿的急診定義，本專案每週保存首報快照（data/nidss_visits_history.csv）以後續分辨。主指標採 NIDSS 門急診（疾管署定義），合成指標並列對照。</p></div>
+<p class="source">新聞稿為首報值，NIDSS 與開放資料為查詢當日（2026-10-19）的回補後數值。NIDSS 門急診平均比首報高 +7.4%，「門診 + RODS」平均差 +2.2%（範圍 -0.9% 至 +12.7%）。差異來自申報回補或新聞稿的急診定義，本專案每週保存首報快照（data/nidss_visits_history.csv）以後續分辨。主指標採 NIDSS 門急診（疾管署定義），合成指標並列對照。</p></div>
 <p class="source"><strong>流行期判定。</strong>暫行規則（待確認）：門急診就診人次連續 3 週上升且達本波低點的 2 倍即進入流行期；進入後連續 2 週下降且低於本波峰值的一半即脫離。疾管署宣布流行期的「流行閾值」數值尚未取得，確認後改依官方閾值，網頁在此之前不畫閾值線。</p></section>
 
 <section><h2>3. 主要結果</h2>
@@ -75,7 +75,7 @@
 <section><h2>6. 最新預測摘要（起點 202640，2026-10-04 當週）</h2>
 <p>門急診未來 4 週中位數：3,559、2,277、2,087、1,837 人次；第 1 週 80% 區間 1,907–4,925。依暫行規則目前不在流行期。完整內容見<a href="index.html">每週預測</a>。</p></section>
 
-<footer class="report-footer">資料：NIDSS 傳染病統計資料查詢系統、疾病管制署資料開放平台（健保門診新冠、RODS 急診新冠）、RODS_RS.csv（急診總人次）、NIDSS 新冠併發重症。模型：google/timesfm-3.0-pytorch（非商業授權）。產生時間 2026-10-14T16:29+08:00。圖表依《疫情資料視覺化指引》v1.1。</footer>
+<footer class="report-footer">資料：NIDSS 傳染病統計資料查詢系統、疾病管制署資料開放平台（健保門診新冠、RODS 急診新冠）、RODS_RS.csv（急診總人次）、NIDSS 新冠併發重症。模型：google/timesfm-3.0-pytorch（非商業授權）。產生時間 2026-10-19T10:20+08:00。圖表依《疫情資料視覺化指引》v1.1。</footer>
 </main>
 <script>
 document.addEventListener('DOMContentLoaded', async () => {

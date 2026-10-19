@@ -2,7 +2,7 @@
 
 以 Google **TimesFM 3.0** 對台灣流感監測資料做零樣本（zero-shot）預測。規劃文件見 [PLAN_timesfm3_flu.md](PLAN_timesfm3_flu.md)；接手或交接請先讀 [HANDOFF.md](HANDOFF.md)（狀態快照、決定事項、每週 SOP）與 [CLAUDE.md](CLAUDE.md)（工作規則）。
 
-**線上 dashboard（GitHub Pages）**：[每週預測](https://drhao.github.io/forecast-teller/) · [回測](https://drhao.github.io/forecast-teller/backtest.html) · [解讀與評估報告](https://drhao.github.io/forecast-teller/report.html) · [腸病毒](https://drhao.github.io/forecast-teller/ev/) · [新冠](https://drhao.github.io/forecast-teller/covid/) · [登革熱預警](https://drhao.github.io/forecast-teller/dengue/)
+**線上網站（GitHub Pages）**：[總覽](https://drhao.github.io/forecast-teller/) · [類流感](https://drhao.github.io/forecast-teller/flu/) · [新冠](https://drhao.github.io/forecast-teller/covid/) · [腸病毒](https://drhao.github.io/forecast-teller/ev/) · [登革熱](https://drhao.github.io/forecast-teller/dengue/)
 
 ## 環境
 
@@ -57,17 +57,19 @@ python scripts/forecast_now.py --joint nhi_out_ili nhi_er_ili rods_ili --covaria
 
 ## Dashboard 與 GitHub Pages
 
-`docs/` 是可直接發布到 GitHub Pages 的靜態站台（Chart.js，依《疫情資料視覺化指引》配色與規範）：
+`docs/` 是可直接發布到 GitHub Pages 的靜態站台（Chart.js，依《疫情資料視覺化指引》配色與規範），**以疾病分類**（2026-10-19 改版）：上層導覽選疾病，下層選該疾病的頁面。
 
-| 頁面 | 內容 |
-|---|---|
-| `docs/index.html` | 每週預測 dashboard：趨勢判讀、KPI、門急診合計總覽圖（門診 + 急診預測相加）、四項指標的 4 週扇形圖（60%/80% 區間）、分位數表 |
-| `docs/backtest.html` | 回測 dashboard：排行榜（可排序）、WIS/命中率/涵蓋率依 horizon、預測 vs 實際、各年、縣市與年齡層 |
-| `docs/report.html` | 一頁式解讀與評估報告（可列印） |
-| `docs/dengue/index.html` | 登革熱鄉鎮預測式預警的視覺化報告（子專案 `dengue_ewarn/` 產生） |
-| `docs/ev/` | 腸病毒每週預測、回測、報告（子專案 `ev_forecast/` 產生；門急診合計 = 健保門診 + RODS 急診，流行閾值依年設定） |
-| `docs/covid/` | 新冠每週預測、回測、報告（子專案 `covid_forecast/` 產生；門急診 = NIDSS 健保門診 + 急診，流行閾值待確認、以暫行規則標示流行期） |
-| `docs/data/*.json` | 由 `scripts/build_site.py` 從 `outputs/` 產生 |
+| 路徑 | 內容 | 產生方式 |
+|---|---|---|
+| `docs/index.html` | 總覽：四種疾病各一張卡片（最新週、判讀、主指標近半年與 4 週預測、4 週內超過閾值機率、流行期狀態） | 靜態，讀各疾病的 `latest.json` |
+| `docs/flu/` | 類流感：`index.html` 預測、`backtest.html` 回測、`report.html` 報告、`method.html` 方法、`data/*.json` | `scripts/build_site.py` |
+| `docs/covid/` | 新冠：同上四頁（門急診 = NIDSS 健保門診 + 急診；流行閾值待確認，以暫行規則標示） | `covid_forecast/scripts/build_site.py` |
+| `docs/ev/` | 腸病毒：同上四頁（門急診合計 = 健保門診 + RODS 急診；流行閾值依年設定） | `ev_forecast/scripts/build_site.py` |
+| `docs/dengue/` | 登革熱：`index.html` 每日預警、`report.html` 驗證報告、`method.html` 方法、`latest.json`、`data.json` | `dengue_ewarn/scripts/build_site.py`、`daily_update.sh` |
+| `docs/assets/nav.js` | **導覽列唯一來源**：網站地圖與兩層頁首；各頁只放 `<header class="masthead" data-disease=… data-page=…>` | 手改 |
+| `docs/assets/epi.css`、`charts.js` | 共用樣式與圖表（`window.EPI`） | 手改 |
+
+產生的頁面（報告、方法、登革熱三頁）用 `src/forecast_teller/site_common.py` 的 `page_head`、`method_page`；手寫的預測頁與回測頁直接放 header 與 `nav.js`。新增疾病或頁面時改 `nav.js` 的 `SITE` 與 `site_common.DISEASE_NAME`。
 
 本機預覽（頁面用 fetch 讀 JSON，需走 HTTP）：
 
@@ -80,4 +82,4 @@ python3 -m http.server 8765 --directory docs
 發布到 GitHub Pages（首次）：
 1. `git init && git add -A && git commit -m "init"`，在 GitHub 建 repo 並 `git remote add origin ... && git push -u origin main`。`data/*.csv` 已在 `.gitignore`（RODS 檔 196 MB 超過 GitHub 單檔上限），只有假日與週對應表會進版控。
 2. GitHub repo → Settings → Pages → Source 選「Deploy from a branch」→ Branch `main`、資料夾 `/docs` → Save。
-3. 1–2 分鐘後網址為 https://drhao.github.io/forecast-teller/ 。之後每次 push `docs/` 的變動都會自動重新部署（已於 2026-09-17 設定完成）。
+3. 1–2 分鐘後網址為 https://drhao.github.io/forecast-teller/ （總覽），類流感在 `/flu/`。之後每次 push `docs/` 的變動都會自動重新部署（已於 2026-09-17 設定完成）。

@@ -1,8 +1,9 @@
 #!/usr/bin/env python
-"""Build the static GitHub Pages site (docs/) from pipeline outputs.
+"""Build the influenza (類流感) pages of the GitHub Pages site (docs/flu/) from pipeline outputs.
 
-Writes docs/data/{meta,latest,backtest}.json and docs/report.html (numbers filled in).
-The dashboards docs/index.html and docs/backtest.html are static and read the JSON.
+Writes docs/flu/data/{meta,latest,backtest}.json, docs/flu/report.html and docs/flu/method.html (numbers filled in).
+The dashboards docs/flu/index.html and docs/flu/backtest.html are static and read the JSON. Navigation comes
+from docs/assets/nav.js; the overview page docs/index.html reads every disease's latest.json.
 """
 import datetime as dt
 import json
@@ -16,13 +17,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from forecast_teller import OUTPUT_DIR, PROCESSED_DIR, ROOT  # noqa: E402
 from forecast_teller.backtest import DEFAULT_THRESHOLDS, SEGMENTS, segment_of, threshold_note  # noqa: E402
 from forecast_teller.threshold_probs import threshold_outlook  # noqa: E402
+from forecast_teller.site_common import THRESHOLD_PROB_LINE, method_page, page_head, reading_items, table, ul  # noqa: E402
 
 RTHR = DEFAULT_THRESHOLDS["rods_ili_pct"]
 from forecast_teller.covariates import holiday_weekly  # noqa: E402
 from forecast_teller.panel import load_long, load_national  # noqa: E402
 from forecast_teller.weeks import week_start  # noqa: E402
 
-DOCS = ROOT / "docs"; DATA = DOCS / "data"; BT = OUTPUT_DIR / "backtest"; LATEST = OUTPUT_DIR / "latest"
+SITE_ROOT = ROOT / "docs"; DOCS = SITE_ROOT / "flu"; DATA = DOCS / "data"; BT = OUTPUT_DIR / "backtest"; LATEST = OUTPUT_DIR / "latest"
 
 IND = {
     "nhi_out_ili": {"label": "全國類流感門診就診人次", "short": "類流感門診", "unit": "人次", "decimals": 0, "source": "健保申報（疾管署資料開放平台）"},
@@ -31,6 +33,12 @@ IND = {
     "nidds_severe": {"label": "流感併發重症週病例數（發病週）", "short": "流感併發重症", "unit": "例", "decimals": 0, "source": "法定傳染病通報 NIDDS"},  # lab indicators come from LARS (實驗室自動通報系統), not contract labs
     "rods_ili": {"label": "RODS 急診類流感就診人次", "short": "RODS 急診人次", "unit": "人次", "decimals": 0, "source": "RODS"},
 }
+SOURCES = [("nhi", "健保申報 門診/住院", "類流感（ICD 48X）與流感及其所致肺炎（487）就診人次、健保就診總人次", "週 × 門診/住院 × 19 年齡層 × 22 縣市"),
+           ("nhi_er", "健保申報 急診", "同上，急診", "週 × 年齡層 × 縣市"),
+           ("rods", "即時疫情監視及預警系統（RODS）", "急診類流感就診人次、急診總人次", "週 × 年齡層 × 234 家醫院"),
+           ("nidds", "法定傳染病通報（NIDDS）", "流感併發重症確定病例（發病週）", "週 × 縣市 × 鄉鎮 × 性別 × 年齡層"),
+           ("lab", "實驗室自動通報系統（LARS）", "流感 A / B / 未分型陽性數、檢驗件數（陽性率）", "週 × 縣市 × 醫院"),
+           ("resp", "社區合約實驗室 呼吸道病原體 PCR（RESP_LAB）", "流感、RSV、SARS-CoV-2、hMPV、副流感、鼻病毒、腺病毒、黴漿菌陽性數、總陽性率", "週（全國）")]
 CONFIG_LABELS = {
     "snaive": "季節性 naive（去年同週）", "naive": "last-value naive", "ma3": "MA3（前 3 週移動平均）", "ets": "AutoETS", "theta": "Theta",
     "tfm_expanding": "TimesFM zero-shot（無共變數）", "tfm_expanding_log1p": "TimesFM（log1p）", "tfm_expanding_sym": "TimesFM（對稱平均）",
@@ -359,26 +367,11 @@ def build_report(bt: dict, latest: dict, meta: dict) -> str:
     f_out = li["nhi_out_ili"]; f1 = f_out["forecast"]
     gen = meta["generated_at"][:10]
     fmt = lambda v, nd=0: f"{v:,.{nd}f}"
-    src_rows = [("nhi", "健保申報 門診/住院", "類流感（ICD 48X）與流感及其所致肺炎（487）就診人次、健保就診總人次", "週 × 門診/住院 × 19 年齡層 × 22 縣市"),
-                ("nhi_er", "健保申報 急診", "同上，急診", "週 × 年齡層 × 縣市"),
-                ("rods", "即時疫情監視及預警系統（RODS）", "急診類流感就診人次、急診總人次", "週 × 年齡層 × 234 家醫院"),
-                ("nidds", "法定傳染病通報（NIDDS）", "流感併發重症確定病例（發病週）", "週 × 縣市 × 鄉鎮 × 性別 × 年齡層"),
-                ("lab", "實驗室自動通報系統（LARS）", "流感 A / B / 未分型陽性數、檢驗件數（陽性率）", "週 × 縣市 × 醫院"),
-                ("resp", "社區合約實驗室 呼吸道病原體 PCR（RESP_LAB）", "流感、RSV、SARS-CoV-2、hMPV、副流感、鼻病毒、腺病毒、黴漿菌陽性數、總陽性率", "週（全國）")]
+    src_rows = SOURCES
     cov = meta["coverage"]
     data_rows = "".join(f"<tr><td>{n}</td><td>{c}</td><td>{g}</td><td class='num'>{cov[k]['first_complete']}–{cov[k]['last_complete']}<br><span style='color:var(--n-500)'>{cov[k]['first_date']} 起至 {cov[k]['last_date']} 當週</span></td></tr>"
                         for k, n, c, g in src_rows if k in cov)
-    html = f"""<!doctype html>
-<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>解讀與評估報告 · 台灣流感 TimesFM 3.0 預測</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&family=Noto+Serif+TC:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/epi.css?v=20260917b">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="assets/charts.js?v=20260917b" defer></script></head>
-<body>
-<header class="masthead"><div class="masthead-inner"><div class="masthead-left"><div class="crest">FT</div><div class="masthead-title">台灣流感疫情預測 · TimesFM 3.0<small>FORECAST-TELLER · 解讀與評估報告</small></div></div>
-<nav class="masthead-right"><a href="index.html">每週預測</a><a href="backtest.html">回測</a><a href="report.html" class="active">報告</a><a href="ev/">腸病毒</a><a href="covid/">新冠</a><a href="dengue/">登革熱預警</a></nav></div></header>
-<main class="report">
+    html = page_head("報告 · 類流感 · 台灣重點傳染病預測", "flu", "report") + f"""<main class="report">
 <div class="hero-kicker">EVALUATION REPORT · {gen}</div>
 <h1 class="report-title">以 TimesFM 3.0 零樣本預測台灣類流感就診：<em>回測解讀與評估</em></h1>
 <p class="lead">資料窗 2016w01–2025w53（522 週），以 2016–2017 為暖機 context，2018w01 起每週一個起點共 {t['n_origins']} 個，預測未來 1–4 週；主要決策依據為 COVID 後（2023–2025）的加權區間分數（WIS）。</p>
@@ -465,6 +458,44 @@ document.addEventListener('DOMContentLoaded', async () => {{
     return html
 
 
+def build_method(bt: dict, latest: dict, meta: dict) -> str:
+    """docs/flu/method.html：預測目標、資料、模型設定、閾值、讀法、限制（數字取自 meta / latest / backtest）。"""
+    cov = meta["coverage"]; li = {x["key"]: x for x in latest["indicators"]}; comb = latest.get("combined")
+    t = bt["targets"]["nhi_out_ili"]; seg = {x["config"]: x for x in t["segments"]["post_covid"]["leaderboard"]}; best = seg[t["best"]]
+    rng = lambda k: f"{cov[k]['first_complete']}–{cov[k]['last_complete']}" if k in cov else "—"
+    ind_rows = ([["<b>門急診合計</b>（總覽主指標）", "健保類流感門診 + 急診就診人次", comb["config"] if comb else "—", comb["origin_yw"] if comb else "—"]] if comb else []) + [
+        [IND[k]["label"], IND[k]["source"], li[k]["config"], li[k]["origin_yw"]] for k in ["nhi_out_ili", "nhi_er_ili", "rods_ili_pct", "nidds_severe"] if k in li]
+    s1 = (table(["指標", "來源", "預測設定", "最新起點"], ind_rows) +
+          '<p class="source">類流感 = 健保申報 ICD 48X（流感樣疾病）就診；門急診合計是首頁與總覽卡片使用的主指標，由門診與急診兩個聯合預測相加。</p>')
+    s2 = (table(["來源", "內容", "粒度", "完整週範圍"], [[n, c, g, rng(k)] for k, n, c, g in SOURCES]) + ul([
+        "以疾管署疫情週（週日起算）對齊成全國、縣市、年齡層三層週資料面板；健保、RODS、NIDDS、LARS 為使用者手動提供的內部檔，RESP_LAB 每週自 NIDSS 網站抓取。",
+        "<b>不完整週自動排除</b>：本週尚未結束的週一律不用；最後幾週若低於前 8 週中位數的 60%（重症 50%）視為申報未齊。重症以發病週計，再保守多排除 3 週；RESP_LAB 以檢體收件週計，多排除 1 週。",
+        "<b>隱性零值</b>：NIDDS 為病例列表彙總，沒有病例的週補 0。",
+        "<b>已知未來共變數</b>：春節週旗標與每週平日假日天數，取自行政機關辦公日曆（tw_holiday.csv）。"]))
+    s3 = table(["項目", "設定"], [
+        ["模型", "Google TimesFM 3.0（330M 參數時間序列基礎模型），零樣本、未微調；Apple Silicon 以 MLX 後端執行"],
+        ["context", "擴張視窗，自 2016w01 起至各指標最新完整週；聯合預測截到所有成員共同的最新完整週"],
+        ["預測", "未來 1–4 週，每週輸出中位數與 9 個分位數（q10–q90）"],
+        ["每週流程設定", "門診、急診、RODS 三變量聯合 + 春節旗標 + 假日天數；RODS 急診類流感% 與重症為單變量 + 同樣共變數"],
+        ["門急診合計", "門診與急診兩個聯合預測相加；分位數同向相加（q10+q10 … q90+q90），等同假設兩者完全同步，區間偏保守"],
+        ["回測最佳設定", f"{best['label']}（COVID 後 2023–2025 的 WIS 為 last-value naive 的 {best['rel_naive']:.2f}）；每週流程因重症通報落後 3 週，改用不含重症的三變量以保持時效"],
+        ["回測", f"資料窗 2016w01–2025w53，暖機 104 週，起點 2018w01 起每週一個共 {t['n_origins']} 個，h = 1–4；分 COVID 前／期／後三段"],
+        ["基準模型", "last-value naive、MA3、季節性 naive、AutoETS、Theta"]])
+    s4 = ul([f"<b>RODS 急診類流感就診百分比的流行閾值 {RTHR:g}%</b>（使用者指定，對應疾管署發布流行期的判定）。每週頁與 4 週內超過閾值機率都以此計算；扇形圖上的紅色虛線即此閾值。",
+             "健保門診與急診人次沒有官方閾值；回測的閾值命中率以資料窗內實際值的第 75 百分位計算，只作評估用。"])
+    s5 = ul(reading_items(THRESHOLD_PROB_LINE + f" 類流感以 RODS 急診類流感% 對 {RTHR:g}% 計算。"))
+    s6 = ul(["健保申報有回補，最近 1–2 週的觀測值日後可能上修；正式使用時應以首報／終報比值校正。",
+             "回測顯示高流行週的中位數偏低 2–8%；零樣本模型不知道當季疫苗策略或流行株變化，遇到創新高的季節會慢半拍，上升期請參考區間上緣。",
+             "回測只用 2016–2025 十年資料；閾值命中率所用的第 75 百分位帶有少量事後資訊。",
+             "假日表需每年延伸；未延伸的年份春節週以農曆新年日期外推。",
+             "TimesFM 3.0 權重為非商業、非生產用途授權；正式部署需改用 2.5（Apache-2.0）或另取授權。"])
+    return method_page("flu", "方法 · 類流感 · 台灣重點傳染病預測", "Method", "類流感預測的方法與資料",
+                       "說明每週類流感預測用了哪些資料、模型怎麼設定、閾值怎麼定，以及預測輸出該怎麼讀。回測成績見<a href=\"backtest.html\">回測</a>，完整解讀見<a href=\"report.html\">報告</a>。",
+                       [("預測目標與指標", "Targets", s1), ("資料來源與完整週", "Data", s2), ("模型與設定", "Model", s3),
+                        ("閾值與流行期", "Thresholds", s4), ("預測輸出怎麼讀", "How to read", s5), ("限制", "Limitations", s6)],
+                       f"資料：疾病管制署（健保申報、RODS、NIDDS、實驗室自動通報系統 LARS、社區合約實驗室 RESP_LAB）。模型：{meta['model']['checkpoint']}（{meta['model']['license']}）。產生時間 {meta['generated_at']}。")
+
+
 def main():
     DATA.mkdir(parents=True, exist_ok=True)
     nat = load_national()
@@ -480,7 +511,7 @@ def main():
         # Backtest parquet files are not in git and only change when a backtest is re-run;
         # a weekly update on a fresh clone keeps the published backtest.json as is.
         bt = json.loads((DATA / "backtest.json").read_text(encoding="utf-8"))
-        print(f"backtest parquet missing ({Path(e.filename).name}); reusing docs/data/backtest.json from {bt.get('generated_at')}")
+        print(f"backtest parquet missing ({Path(e.filename).name}); reusing docs/flu/data/backtest.json from {bt.get('generated_at')}")
     meta = {"generated_at": now, "coverage": {k: {"first_complete": v["first_complete"], "last_complete": v["last_complete"],
                                                   "first_date": ds(v["first_complete"]), "last_date": ds(v["last_complete"])} for k, v in cov.items()},
             "backtest_window": {"start": "201601", "end": "202553", "weeks": 522, "warmup": 104, "origins": bt["targets"]["nhi_out_ili"]["n_origins"]},
@@ -490,7 +521,8 @@ def main():
     (DATA / "backtest.json").write_text(json.dumps(bt, ensure_ascii=False), encoding="utf-8")
     (DATA / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=1), encoding="utf-8")
     (DOCS / "report.html").write_text(build_report(bt, latest, meta), encoding="utf-8")
-    (DOCS / ".nojekyll").write_text("", encoding="utf-8")
+    (DOCS / "method.html").write_text(build_method(bt, latest, meta), encoding="utf-8")
+    (SITE_ROOT / ".nojekyll").write_text("", encoding="utf-8")
     sizes = {p.name: p.stat().st_size // 1024 for p in DATA.glob("*.json")}
     print("site data written:", sizes, "KB; report.html", (DOCS / "report.html").stat().st_size // 1024, "KB")
 

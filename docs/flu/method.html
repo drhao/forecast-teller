@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>方法 · 類流感 · 台灣重點傳染病預測</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&family=Noto+Serif+TC:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/epi.css?v=nav2">
+
+</head><body>
+<header class="masthead" data-disease="flu" data-page="method"></header>
+<script src="../assets/nav.js?v=nav2"></script>
+<main>
+  <div class="hero-kicker">Method</div>
+  <h1 class="page-title">類流感預測的方法與資料</h1>
+  <p class="lead">說明每週類流感預測用了哪些資料、模型怎麼設定、閾值怎麼定，以及預測輸出該怎麼讀。回測成績見<a href="backtest.html">回測</a>，完整解讀見<a href="report.html">報告</a>。</p>
+  <section>
+    <div class="section-head"><span class="section-num">01</span><h2>預測目標與指標</h2><span class="en">Targets</span></div>
+    <div class="tbl-wrap"><table class="tbl compact"><thead><tr><th>指標</th><th>來源</th><th>預測設定</th><th>最新起點</th></tr></thead><tbody><tr><td><b>門急診合計</b>（總覽主指標）</td><td>健保類流感門診 + 急診就診人次</td><td>門診與急診兩個聯合預測相加；分位數同向相加（偏保守）</td><td>202640</td></tr><tr><td>全國類流感門診就診人次</td><td>健保申報（疾管署資料開放平台）</td><td>聯合三變量（門診 + 急診 + RODS）+ 春節旗標 + 假日天數</td><td>202640</td></tr><tr><td>全國類流感急診就診人次</td><td>健保申報</td><td>聯合三變量（門診 + 急診 + RODS）+ 春節旗標 + 假日天數</td><td>202640</td></tr><tr><td>RODS 急診類流感就診百分比</td><td>即時疫情監視系統 RODS</td><td>單變量 + 春節旗標 + 假日天數</td><td>202640</td></tr><tr><td>流感併發重症週病例數（發病週）</td><td>法定傳染病通報 NIDDS</td><td>單變量 + 春節旗標 + 假日天數</td><td>202637</td></tr></tbody></table></div><p class="source">類流感 = 健保申報 ICD 48X（流感樣疾病）就診；門急診合計是首頁與總覽卡片使用的主指標，由門診與急診兩個聯合預測相加。</p>
+  </section>
+  <section>
+    <div class="section-head"><span class="section-num">02</span><h2>資料來源與完整週</h2><span class="en">Data</span></div>
+    <div class="tbl-wrap"><table class="tbl compact"><thead><tr><th>來源</th><th>內容</th><th>粒度</th><th>完整週範圍</th></tr></thead><tbody><tr><td>健保申報 門診/住院</td><td>類流感（ICD 48X）與流感及其所致肺炎（487）就診人次、健保就診總人次</td><td>週 × 門診/住院 × 19 年齡層 × 22 縣市</td><td>200502–202640</td></tr><tr><td>健保申報 急診</td><td>同上，急診</td><td>週 × 年齡層 × 縣市</td><td>201601–202640</td></tr><tr><td>即時疫情監視及預警系統（RODS）</td><td>急診類流感就診人次、急診總人次</td><td>週 × 年齡層 × 234 家醫院</td><td>200901–202640</td></tr><tr><td>法定傳染病通報（NIDDS）</td><td>流感併發重症確定病例（發病週）</td><td>週 × 縣市 × 鄉鎮 × 性別 × 年齡層</td><td>200302–202637</td></tr><tr><td>實驗室自動通報系統（LARS）</td><td>流感 A / B / 未分型陽性數、檢驗件數（陽性率）</td><td>週 × 縣市 × 醫院</td><td>201502–202640</td></tr><tr><td>社區合約實驗室 呼吸道病原體 PCR（RESP_LAB）</td><td>流感、RSV、SARS-CoV-2、hMPV、副流感、鼻病毒、腺病毒、黴漿菌陽性數、總陽性率</td><td>週（全國）</td><td>202502–202638</td></tr></tbody></table></div><ul class="findings"><li>以疾管署疫情週（週日起算）對齊成全國、縣市、年齡層三層週資料面板；健保、RODS、NIDDS、LARS 為使用者手動提供的內部檔，RESP_LAB 每週自 NIDSS 網站抓取。</li><li><b>不完整週自動排除</b>：本週尚未結束的週一律不用；最後幾週若低於前 8 週中位數的 60%（重症 50%）視為申報未齊。重症以發病週計，再保守多排除 3 週；RESP_LAB 以檢體收件週計，多排除 1 週。</li><li><b>隱性零值</b>：NIDDS 為病例列表彙總，沒有病例的週補 0。</li><li><b>已知未來共變數</b>：春節週旗標與每週平日假日天數，取自行政機關辦公日曆（tw_holiday.csv）。</li></ul>
+  </section>
+  <section>
+    <div class="section-head"><span class="section-num">03</span><h2>模型與設定</h2><span class="en">Model</span></div>
+    <div class="tbl-wrap"><table class="tbl compact"><thead><tr><th>項目</th><th>設定</th></tr></thead><tbody><tr><td>模型</td><td>Google TimesFM 3.0（330M 參數時間序列基礎模型），零樣本、未微調；Apple Silicon 以 MLX 後端執行</td></tr><tr><td>context</td><td>擴張視窗，自 2016w01 起至各指標最新完整週；聯合預測截到所有成員共同的最新完整週</td></tr><tr><td>預測</td><td>未來 1–4 週，每週輸出中位數與 9 個分位數（q10–q90）</td></tr><tr><td>每週流程設定</td><td>門診、急診、RODS 三變量聯合 + 春節旗標 + 假日天數；RODS 急診類流感% 與重症為單變量 + 同樣共變數</td></tr><tr><td>門急診合計</td><td>門診與急診兩個聯合預測相加；分位數同向相加（q10+q10 … q90+q90），等同假設兩者完全同步，區間偏保守</td></tr><tr><td>回測最佳設定</td><td>四變量聯合 + 春節 + 假日（最佳）（COVID 後 2023–2025 的 WIS 為 last-value naive 的 0.74）；每週流程因重症通報落後 3 週，改用不含重症的三變量以保持時效</td></tr><tr><td>回測</td><td>資料窗 2016w01–2025w53，暖機 104 週，起點 2018w01 起每週一個共 415 個，h = 1–4；分 COVID 前／期／後三段</td></tr><tr><td>基準模型</td><td>last-value naive、MA3、季節性 naive、AutoETS、Theta</td></tr></tbody></table></div>
+  </section>
+  <section>
+    <div class="section-head"><span class="section-num">04</span><h2>閾值與流行期</h2><span class="en">Thresholds</span></div>
+    <ul class="findings"><li><b>RODS 急診類流感就診百分比的流行閾值 11%</b>（使用者指定，對應疾管署發布流行期的判定）。每週頁與 4 週內超過閾值機率都以此計算；扇形圖上的紅色虛線即此閾值。</li><li>健保門診與急診人次沒有官方閾值；回測的閾值命中率以資料窗內實際值的第 75 百分位計算，只作評估用。</li></ul>
+  </section>
+  <section>
+    <div class="section-head"><span class="section-num">05</span><h2>預測輸出怎麼讀</h2><span class="en">How to read</span></div>
+    <ul class="findings"><li><b>先看區間，不看單點。</b>模型對每個未來週輸出 9 個分位數（q10–q90）。中位數是「一半機會比它高、一半比它低」；q10–q90 為 80% 預測區間，q20–q80 為 60%。區間寬代表不確定，是資訊不是缺陷。</li><li><b>預測起點是最新的完整申報週。</b>本週尚未結束、或申報明顯未齊的週不進入模型；各指標的起點可能不同（例如重症依發病週，通報較慢）。</li><li><b>「下週續升機率」</b>是第 1 週分布高於起點週觀測值的比例，由 9 個分位數線性內插而得，上下限 5%–95%。</li><li><b>「未來 4 週內超過閾值的機率」</b>：模型只給每週各自的分布，沒有聯合路徑。主值取 4 週中最高的單週機率，等於假設各週誤差同向（同一模型連續週的誤差高度正相關，這是合理近似）；另列各週獨立時的上界 1 − Π(1 − p<sub>h</sub>)。指標已在閾值之上時，改報「4 週內降到閾值以下」的機率。 類流感以 RODS 急診類流感% 對 11% 計算。</li><li><b>「已驗證」</b>標記表示該目標週的實際值已公布，可直接比對；每週的預測都存檔（forecast_log），並與日後的實際值比對評估。</li><li><b>1–2 週最可靠，3–4 週僅供規劃參考。</b>回測中誤差隨預測週數大致線性上升。</li></ul>
+  </section>
+  <section>
+    <div class="section-head"><span class="section-num">06</span><h2>限制</h2><span class="en">Limitations</span></div>
+    <ul class="findings"><li>健保申報有回補，最近 1–2 週的觀測值日後可能上修；正式使用時應以首報／終報比值校正。</li><li>回測顯示高流行週的中位數偏低 2–8%；零樣本模型不知道當季疫苗策略或流行株變化，遇到創新高的季節會慢半拍，上升期請參考區間上緣。</li><li>回測只用 2016–2025 十年資料；閾值命中率所用的第 75 百分位帶有少量事後資訊。</li><li>假日表需每年延伸；未延伸的年份春節週以農曆新年日期外推。</li><li>TimesFM 3.0 權重為非商業、非生產用途授權；正式部署需改用 2.5（Apache-2.0）或另取授權。</li></ul>
+  </section>
+</main>
+<footer class="site-footer">資料：疾病管制署（健保申報、RODS、NIDDS、實驗室自動通報系統 LARS、社區合約實驗室 RESP_LAB）。模型：google/timesfm-3.0-pytorch（timesfm-non-commercial-license-v1.0（非商業、非生產用途））。產生時間 2026-10-19T10:20+08:00。</footer>
+</body></html>

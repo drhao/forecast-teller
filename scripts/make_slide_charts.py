@@ -88,8 +88,8 @@ def latest_fan(ind, title, path, n_hist=60, threshold=None, thr_label=None, labe
 
 
 # ============================================================ flu
-bt = json.loads((ROOT / "docs/data/backtest.json").read_text(encoding="utf-8"))
-latest = json.loads((ROOT / "docs/data/latest.json").read_text(encoding="utf-8"))
+bt = json.loads((ROOT / "docs/flu/data/backtest.json").read_text(encoding="utf-8"))
+latest = json.loads((ROOT / "docs/flu/data/latest.json").read_text(encoding="utf-8"))
 t = bt["targets"]["nhi_out_ili"]; seg = t["segments"]["post_covid"]
 wis_by_horizon(seg, [(t["best"], LINE["primary"], "o", 2.6, "-", "四變量聯合＋春節＋假日（最佳）"), ("tfm_cov_cny_hol", LINE["blue"], "s", 2.0, "-", "單變量＋春節＋假日"),
                      ("tfm_expanding", LINE["yellow"], "^", 2.0, "-", "TimesFM zero-shot"), ("ets", N[400], "D", 1.5, "--", "AutoETS"),

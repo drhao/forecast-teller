@@ -25,6 +25,30 @@ a { color:var(--p-600); }
 .masthead-right { display:flex; gap:22px; font-size:12.5px; letter-spacing:1px; }
 .masthead a { color:var(--n-200); text-decoration:none; border-bottom:2px solid transparent; padding-bottom:2px; }
 .masthead a:hover, .masthead a.active { border-color:var(--p-400); color:var(--n-0); }
+a.masthead-left, a.masthead-left:hover { border:none; padding:0; color:inherit; }
+/* 第二層：疾病內的頁面 */
+.subnav { background:var(--n-0); border-bottom:1px solid var(--n-200); }
+.subnav-inner { max-width:var(--maxw); margin:0 auto; padding:0 32px; display:flex; align-items:stretch; gap:2px; overflow-x:auto; }
+.subnav-title { font-family:var(--serif); font-weight:700; font-size:15px; color:var(--n-900); padding:11px 18px 11px 0; margin-right:8px; border-right:1px solid var(--n-200); white-space:nowrap; }
+.subnav a { padding:11px 14px; font-size:13.5px; color:var(--n-600); text-decoration:none; border-bottom:2px solid transparent; white-space:nowrap; }
+.subnav a:hover { color:var(--n-900); }
+.subnav a.active { color:var(--n-900); font-weight:600; border-bottom-color:var(--p-500); }
+/* 總覽頁 */
+.dz-card { display:flex; flex-direction:column; gap:10px; min-width:0; }
+.grid-2 > .dz-card .tbl-wrap, .dz-card .chart-box { max-width:100%; overflow-x:auto; }
+.dz-card h3 { display:flex; align-items:baseline; gap:10px; font-size:20px; }
+.dz-card h3 a { color:var(--n-900); text-decoration:none; }
+.dz-card .dz-meta { font-size:12px; color:var(--n-500); }
+.dz-card .dz-headline { font-size:14px; line-height:1.7; color:var(--n-800); }
+.dz-card .dz-nums { display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; border-top:1px solid var(--n-200); padding-top:10px; }
+.dz-card .dz-nums .label { font-size:11.5px; color:var(--n-500); }
+.dz-card .dz-nums .value { font-size:20px; font-weight:600; color:var(--n-900); font-variant-numeric:tabular-nums; }
+.dz-card .dz-nums .value small { font-size:12px; font-weight:400; color:var(--n-500); margin-left:2px; }
+.dz-card .dz-links { display:flex; flex-wrap:wrap; gap:14px; font-size:13px; margin-top:auto; padding-top:6px; }
+.status { display:inline-block; font-size:11.5px; padding:2px 8px; border-radius:2px; border:1px solid var(--n-300); color:var(--n-600); font-weight:500; }
+.status.on { border-color:var(--alert); color:var(--alert); }
+.status.watch { border-color:var(--caution); color:#9a6a12; }
+.status.off { border-color:var(--p-400); color:var(--p-700); }
 
 main { max-width:var(--maxw); margin:0 auto; padding:36px 32px 64px; }
 .hero-kicker { font-family:var(--mono); font-size:11px; letter-spacing:3px; color:var(--p-600); text-transform:uppercase; margin-bottom:10px; }
@@ -115,10 +139,17 @@ main.report p { margin-bottom:10px; }
   .kpi { border-right:none; margin-right:0; }
   main { padding:24px 18px 48px; }
   .masthead-inner { padding:12px 18px; flex-direction:column; align-items:flex-start; gap:10px; }
+  .masthead-right { gap:16px; overflow-x:auto; max-width:100%; }
+  .controls select { max-width:calc(100vw - 40px); }
+  code { word-break:break-all; }
+  main.report table.tbl, .card > table.tbl { display:block; overflow-x:auto; max-width:100%; }
+  .two-col > *, .grid-2 > * { min-width:0; }
+  .subnav-inner { padding:0 18px; }
+  .dz-card .dz-nums { grid-template-columns:repeat(2, 1fr); }
   h1.page-title, h1.report-title { font-size:26px; }
 }
 @media print {
-  .masthead, .controls, .masthead-right { display:none; }
+  .masthead, .subnav, .controls, .masthead-right { display:none; }
   body { background:#fff; font-size:12px; }
   main.report { max-width:100%; padding:0; }
   .card { break-inside:avoid; }
