@@ -68,9 +68,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const ch = (f1.median - last) / last * 100; const arrow = ch > 1 ? '↑' : (ch < -1 ? '↓' : '→');
     const verified = f1.observed != null;
     kpi.insertAdjacentHTML('beforeend', `<div class="kpi"><div class="label">${ind.short} · ${f1.yw}</div>
-      <div class="value">${fmt(f1.median, d)}<small>${ind.unit}</small>${f1.cny ? '<span class="badge cny">春節週</span>' : ''}${verified ? '<span class="badge verified">已驗證</span>' : ''}${ind.threshold != null && last >= ind.threshold ? `<span class="badge alert">高於${ind.threshold_label}</span>` : ''}</div>
+      <div class="value">${fmt(f1.median, d)}<small>${ind.unit}</small>${f1.cny ? '<span class="badge cny">春節週</span>' : ''}${verified ? '<span class="badge verified">已驗證</span>' : ''}${ind.threshold != null && f1.median >= ind.threshold ? `<span class="badge alert">高於${ind.threshold_label}</span>` : ''}</div>
       <div class="sub">80% 區間 ${fmt(f1.q10, d)} – ${fmt(f1.q90, d)}</div>
-      <div class="delta"><span class="arrow">${arrow}</span> 相對起點週 ${fmt(last, d)}：${ch >= 0 ? '+' : ''}${ch.toFixed(1)}%${verified ? `，實際 ${fmt(f1.observed, d)}` : ''}</div></div>`);
+      <div class="delta"><span class="arrow">${arrow}</span> 相對起點週 ${fmt(last, d)}${ind.threshold != null && last >= ind.threshold ? '（已高於閾值）' : ''}：${ch >= 0 ? '+' : ''}${ch.toFixed(1)}%${verified ? `，實際 ${fmt(f1.observed, d)}` : ''}</div></div>`);
   });
 
 
