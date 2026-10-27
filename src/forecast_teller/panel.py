@@ -17,7 +17,7 @@ import pandas as pd
 
 from . import PROCESSED_DIR
 from .io import AGE_ORDER, COUNTIES, load_all
-from .weeks import week_start, week_table, yw_of_date, yw_range
+from .weeks import week_table, yw_of_date, yw_range
 
 # Extra weeks trimmed from the tail beyond automatic partial-week detection
 # (reporting lag: NIDDS is by onset week and keeps being back-filled for weeks).
@@ -42,10 +42,13 @@ SOURCE_COLUMNS = {
     "lab": ["lab_flu_a", "lab_flu_b", "lab_flu_u", "lab_tests"],
     "resp": RESP_COLS,
 }
-# Minimum days between the end of a week (Saturday) and the data extraction before an NHI claims week counts as
-# complete. Evidence (2026-10): 4 days after the week ended the first-reported outpatient total was 98% of the
-# final value (202640 on 10-14); 3 days after it was 84% (202642 on 10-27) and still passed the 60% ratio test.
-MIN_DAYS_AFTER_WEEK_END = {"nhi": 4, "nhi_er": 4}
+# Sudden-drop check on the newest week (user decision 2026-10-27): a Tuesday extraction should normally be usable,
+# so a large drop is investigated, not waited out. If the newest week's total is below DROP_RATIO × the median of
+# the previous 4 weeks and that week has no holiday / national closure (tw_holiday.csv + data/closures.csv), the
+# week is paused (excluded from context) and reported for investigation (transmission problem, unlisted closure…).
+# With a known holiday or closure the drop is real and the week is kept; the holiday covariate carries the effect.
+DROP_CHECK = {"nhi": "nhi_out_total", "nhi_er": "nhi_er_total", "rods": "rods_total"}
+DROP_RATIO = 0.85
 ZERO_FILL_SOURCES = {"nidds"}  # case lists: a week with no rows is a true zero
 
 
@@ -95,6 +98,26 @@ def _national_parts(raw: dict[str, pd.DataFrame]) -> pd.DataFrame:
     return df.reindex(yw_range(min(df.index), max(df.index)))
 
 
+def drop_check(s: pd.Series, week: str, k: int = 4) -> dict | None:
+    """Sudden drop of `week` vs the median of the previous k weeks. None if no drop; otherwise a dict with
+    action 'kept' (week has holiday / closure days → real) or 'paused' (no known cause → investigate)."""
+    from .covariates import holiday_weekly   # local import: covariates → io, avoids a cycle at module load
+    s = s.dropna().sort_index()
+    if week not in s.index or s.index.get_loc(week) < k:
+        return None
+    i = s.index.get_loc(week)
+    ratio = float(s.iloc[i] / s.iloc[i - k:i].median())
+    if ratio >= DROP_RATIO:
+        return None
+    hw = holiday_weekly([week]).loc[week]
+    if hw["holiday_days"] > 0:
+        why = f"該週有 {int(hw['holiday_days'])} 個平日假日或停班停課日" + (f"（其中停班停課 {int(hw['closure_days'])} 天，data/closures.csv）" if hw["closure_days"] else "")
+        return {"week": week, "ratio": round(ratio, 3), "action": "kept", "reason": why + "，視為真實下降並保留；假日天數共變數已納入。"}
+    return {"week": week, "ratio": round(ratio, 3), "action": "paused",
+            "reason": f"總量為前 {k} 週中位數的 {ratio:.0%}，該週沒有假日或已知停班停課；暫停使用，請查原因（資料傳輸不完整、未列入的停診或颱風日等）。"
+                      "若確認為停班停課，加入 data/closures.csv 後重跑；若為傳輸問題，請重新擷取。"}
+
+
 def coverage_from_national(nat: pd.DataFrame, lag: dict[str, int] | None = None,
                            asof=None) -> dict[str, dict]:
     lag = {**DEFAULT_LAG, **(lag or {})}
@@ -113,10 +136,9 @@ def coverage_from_national(nat: pd.DataFrame, lag: dict[str, int] | None = None,
         if s.empty:
             continue
         first, last = detect_edges(s, ratio=0.5 if src == "nidds" else 0.6)
-        if src in MIN_DAYS_AFTER_WEEK_END:
-            asof_d = pd.Timestamp(asof) if asof is not None else pd.Timestamp.today().normalize()
-            while (asof_d - (week_start(last) + pd.Timedelta(days=6))).days < MIN_DAYS_AFTER_WEEK_END[src]:
-                last = yws[yws.index(last) - 1]
+        flag = drop_check(s, last) if src in DROP_CHECK else None
+        if flag and flag["action"] == "paused":
+            last = yws[yws.index(last) - 1]
         last_i = yws.index(last) - lag[src]
         cov[src] = {
             "raw_first": raw_first,
@@ -126,6 +148,8 @@ def coverage_from_national(nat: pd.DataFrame, lag: dict[str, int] | None = None,
             "dropped_head": yws[yws.index(raw_first) : yws.index(first)],
             "dropped_tail": yws[last_i + 1 : yws.index(raw_last) + 1],
         }
+        if flag:
+            cov[src]["drop_check"] = flag
     return cov
 
 
@@ -235,6 +259,9 @@ def build_all(out_dir: str | Path | None = None, lag: dict[str, int] | None = No
     for src, c in cov.items():
         lines.append(f"| {src} | {c['raw_first']}–{c['raw_last']} | {c['first_complete']}–{c['last_complete']} | "
                      f"{', '.join(c['dropped_head']) or '-'} | {', '.join(c['dropped_tail']) or '-'} |")
+    flags = [(src, c["drop_check"]) for src, c in cov.items() if c.get("drop_check")]
+    if flags:
+        lines += ["", "## 最新週驟降檢查", ""] + [f"- **{src} {f['week']}**（{'暫停使用' if f['action'] == 'paused' else '保留'}）：{f['reason']}" for src, f in flags]
     lines += ["", "## Yearly totals / mean rates (national)", "", ys.to_markdown(), "",
               f"county rows: {len(county):,}  age rows: {len(age):,}", ""]
     (out / "qa_report.md").write_text("\n".join(lines), encoding="utf-8")

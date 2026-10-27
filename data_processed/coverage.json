@@ -3,25 +3,29 @@
     "raw_first": "200501",
     "raw_last": "202643",
     "first_complete": "200502",
-    "last_complete": "202641",
+    "last_complete": "202642",
     "dropped_head": [
       "200501"
     ],
     "dropped_tail": [
-      "202642",
       "202643"
-    ]
+    ],
+    "drop_check": {
+      "week": "202642",
+      "ratio": 0.849,
+      "action": "kept",
+      "reason": "該週有 1 個平日假日或停班停課日（其中停班停課 1 天，data/closures.csv），視為真實下降並保留；假日天數共變數已納入。"
+    }
   },
   "nhi_er": {
     "raw_first": "201552",
     "raw_last": "202643",
     "first_complete": "201601",
-    "last_complete": "202641",
+    "last_complete": "202642",
     "dropped_head": [
       "201552"
     ],
     "dropped_tail": [
-      "202642",
       "202643"
     ]
   },

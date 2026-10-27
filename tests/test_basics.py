@@ -54,4 +54,14 @@ assert to["event"] == "exceed" and to["above_now"] is False and to["first_week"]
 assert abs(to["p"] - max(to["by_h"])) < 1e-9 and to["p_indep"] >= to["p"]
 to2 = threshold_outlook(fc, 11.0, 12.0, "RODS%", "11%")
 assert to2["event"] == "drop" and abs(to2["p"] - (1 - min(to2["by_h"]))) < 1e-9 and to2["first_week"] == "202641"
+# sudden-drop check on the newest week: kept when the week has a holiday / closure, paused otherwise
+from forecast_teller.panel import drop_check  # noqa: E402
+import pandas as pd  # noqa: E402
+base = [5.3e6, 5.6e6, 5.3e6, 5.8e6]
+s_hol = pd.Series(base + [4.6e6], index=["202638", "202639", "202640", "202641", "202642"])   # 202642 has the 10/23 typhoon day
+assert drop_check(s_hol, "202642")["action"] == "kept"
+s_no = pd.Series(base + [4.6e6], index=["202637", "202638", "202639", "202640", "202641"])    # 202641 has no holiday
+assert drop_check(s_no, "202641")["action"] == "paused"
+assert drop_check(pd.Series(base + [5.2e6], index=["202637", "202638", "202639", "202640", "202641"]), "202641") is None
+assert holiday_weekly(["202642"]).loc["202642", "closure_days"] == 1
 print("all basic checks passed")

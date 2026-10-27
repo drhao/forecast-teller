@@ -27,7 +27,7 @@
 <section><h2>2. 使用的資料</h2>
 <p>五個常規監測來源加上 2025 年起的社區合約實驗室檢測，全部以疾管署疫情週（週日起算）對齊成全國、縣市、年齡層三層週資料面板；回測只用 2016w01–2025w53，即時預測用到各來源最新的完整週。</p>
 <table class="tbl compact"><thead><tr><th>來源</th><th>內容</th><th>粒度</th><th>完整週範圍</th></tr></thead><tbody>
-<tr><td>健保申報 門診/住院</td><td>類流感（ICD 48X）與流感及其所致肺炎（487）就診人次、健保就診總人次</td><td>週 × 門診/住院 × 19 年齡層 × 22 縣市</td><td class='num'>200502–202641<br><span style='color:var(--n-500)'>2005-01-02 起至 2026-10-11 當週</span></td></tr><tr><td>健保申報 急診</td><td>同上，急診</td><td>週 × 年齡層 × 縣市</td><td class='num'>201601–202641<br><span style='color:var(--n-500)'>2016-01-03 起至 2026-10-11 當週</span></td></tr><tr><td>即時疫情監視及預警系統（RODS）</td><td>急診類流感就診人次、急診總人次</td><td>週 × 年齡層 × 234 家醫院</td><td class='num'>200901–202642<br><span style='color:var(--n-500)'>2008-12-28 起至 2026-10-18 當週</span></td></tr><tr><td>法定傳染病通報（NIDDS）</td><td>流感併發重症確定病例（發病週）</td><td>週 × 縣市 × 鄉鎮 × 性別 × 年齡層</td><td class='num'>200302–202638<br><span style='color:var(--n-500)'>2003-01-05 起至 2026-09-20 當週</span></td></tr><tr><td>實驗室自動通報系統（LARS）</td><td>流感 A / B / 未分型陽性數、檢驗件數（陽性率）</td><td>週 × 縣市 × 醫院</td><td class='num'>201502–202642<br><span style='color:var(--n-500)'>2015-01-11 起至 2026-10-18 當週</span></td></tr><tr><td>社區合約實驗室 呼吸道病原體 PCR（RESP_LAB）</td><td>流感、RSV、SARS-CoV-2、hMPV、副流感、鼻病毒、腺病毒、黴漿菌陽性數、總陽性率</td><td>週（全國）</td><td class='num'>202502–202638<br><span style='color:var(--n-500)'>2025-01-05 起至 2026-09-20 當週</span></td></tr>
+<tr><td>健保申報 門診/住院</td><td>類流感（ICD 48X）與流感及其所致肺炎（487）就診人次、健保就診總人次</td><td>週 × 門診/住院 × 19 年齡層 × 22 縣市</td><td class='num'>200502–202642<br><span style='color:var(--n-500)'>2005-01-02 起至 2026-10-18 當週</span></td></tr><tr><td>健保申報 急診</td><td>同上，急診</td><td>週 × 年齡層 × 縣市</td><td class='num'>201601–202642<br><span style='color:var(--n-500)'>2016-01-03 起至 2026-10-18 當週</span></td></tr><tr><td>即時疫情監視及預警系統（RODS）</td><td>急診類流感就診人次、急診總人次</td><td>週 × 年齡層 × 234 家醫院</td><td class='num'>200901–202642<br><span style='color:var(--n-500)'>2008-12-28 起至 2026-10-18 當週</span></td></tr><tr><td>法定傳染病通報（NIDDS）</td><td>流感併發重症確定病例（發病週）</td><td>週 × 縣市 × 鄉鎮 × 性別 × 年齡層</td><td class='num'>200302–202638<br><span style='color:var(--n-500)'>2003-01-05 起至 2026-09-20 當週</span></td></tr><tr><td>實驗室自動通報系統（LARS）</td><td>流感 A / B / 未分型陽性數、檢驗件數（陽性率）</td><td>週 × 縣市 × 醫院</td><td class='num'>201502–202642<br><span style='color:var(--n-500)'>2015-01-11 起至 2026-10-18 當週</span></td></tr><tr><td>社區合約實驗室 呼吸道病原體 PCR（RESP_LAB）</td><td>流感、RSV、SARS-CoV-2、hMPV、副流感、鼻病毒、腺病毒、黴漿菌陽性數、總陽性率</td><td>週（全國）</td><td class='num'>202502–202638<br><span style='color:var(--n-500)'>2025-01-05 起至 2026-09-20 當週</span></td></tr>
 </tbody></table>
 <ul class="findings" style="font-size:13.5px">
 <li><strong>不完整週自動排除</strong>：各來源最後幾週若低於前 8 週中位數的 60%（重症 50%）視為申報未齊，不進入 context；重症以發病週計，再保守多排除 3 週，RESP_LAB 以檢體收件週計，多排除 1 週。</li>
@@ -77,10 +77,10 @@
 <li>下一步：TimesFM 與 ETS 的簡單集成、健保申報回補校正、季節峰值時間/高度的專門評估，以及微調（2.5 LoRA）是否值得。</li>
 </ul></section>
 
-<section><h2>7. 最新預測摘要（起點 202641，2026-10-11 當週）</h2>
-<p>全國類流感門診就診人次未來 4 週中位數：103,577、96,100、93,788、90,082；第 1 週 80% 區間 95,582–112,759。完整內容見<a href="index.html">每週預測</a>。</p></section>
+<section><h2>7. 最新預測摘要（起點 202642，2026-10-18 當週）</h2>
+<p>全國類流感門診就診人次未來 4 週中位數：83,329、80,375、77,368、77,019；第 1 週 80% 區間 76,858–91,846。完整內容見<a href="index.html">每週預測</a>。</p></section>
 
-<footer class="report-footer">資料：疾病管制署資料開放平台（健保、RODS、NIDDS、實驗室自動通報系統（LARS））。模型：google/timesfm-3.0-pytorch（非商業授權）。產生時間 2026-10-27T11:05+08:00。圖表依《疫情資料視覺化指引》v1.1。</footer>
+<footer class="report-footer">資料：疾病管制署資料開放平台（健保、RODS、NIDDS、實驗室自動通報系統（LARS））。模型：google/timesfm-3.0-pytorch（非商業授權）。產生時間 2026-10-27T11:13+08:00。圖表依《疫情資料視覺化指引》v1.1。</footer>
 </main>
 <script>
 document.addEventListener('DOMContentLoaded', async () => {

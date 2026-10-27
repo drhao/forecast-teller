@@ -11,3 +11,8 @@ res = build_all()
 nat = res["national"]
 print(f"built in {time.time()-t0:.0f}s | national {nat.shape} {nat.index[0]}..{nat.index[-1]}")
 print(open(Path(__file__).resolve().parents[1] / "data_processed" / "qa_report.md", encoding="utf-8").read())
+for src, c in res["coverage"].items():   # stderr so it survives `| head` in weekly_update.sh
+    f = c.get("drop_check")
+    if f:
+        tag = "⚠ 暫停使用" if f["action"] == "paused" else "ℹ 保留"
+        print(f"{tag} {src} {f['week']}：{f['reason']}", file=sys.stderr)

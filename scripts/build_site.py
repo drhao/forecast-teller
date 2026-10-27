@@ -246,12 +246,20 @@ def build_narrative(nat: pd.DataFrame, latest: dict) -> dict:
     # --- current: outpatient
     wow = 100 * (s_out.iloc[-1] / s_out.iloc[-2] - 1); w3 = 100 * (s_out.iloc[-1] / s_out.iloc[-4] - 1)
     rising = consecutive(s_out.diff().dropna(), lambda d: d > 0); falling = consecutive(s_out.diff().dropna(), lambda d: d < 0)
+    # Origin week with weekday holidays / closures (e.g. a typhoon day): visit counts drop because clinics close, while the
+    # ILI share of all visits does not. Judge the trend (headline stage, week-over-week) on the visit rate in that case.
+    hol_days = int(holiday_weekly([origin]).loc[origin, "holiday_days"])
+    trend_s = rate if hol_days else s_out
+    t_wow = 100 * (trend_s.iloc[-1] / trend_s.iloc[-2] - 1)
+    t_rising = consecutive(trend_s.diff().dropna(), lambda d: d > 0); t_falling = consecutive(trend_s.diff().dropna(), lambda d: d < 0)
     yrs = pd.Series(nat.index.str[:4].astype(int), index=nat.index)
     same = nat[(nat.index.str[4:] == origin[4:]) & yrs.between(yr - 3, yr - 1)]["nhi_out_ili"].dropna()
     hist = s_out.loc["201601":]
     pct_rank = 100 * (hist < s_out.iloc[-1]).mean()
     txt = (f"全國類流感門診 {origin}（{o_date} 起）為 {fmt0(s_out.iloc[-1])} 人次、就診率 {rate.iloc[-1]:.2f}%，"
            f"較前一週{trend_word(wow)}（{wow:+.1f}%），較 3 週前 {w3:+.0f}%")
+    if hol_days:
+        txt += f"（該週有 {hol_days} 天假日或停班停課，人次變化主要反映看診日減少；就診率較前一週 {t_wow:+.1f}%）"
     if rising >= 2: txt += f"，已連續 {rising} 週上升"
     elif falling >= 2: txt += f"，已連續 {falling} 週下降"
     txt += f"；與前三年同一週相比（平均 {fmt0(same.mean())}）為 {s_out.iloc[-1] / same.mean():.1f} 倍，在 2016 年以來所有週中位於第 {pct_rank:.0f} 百分位。" if len(same) else "。"
@@ -328,12 +336,23 @@ def build_narrative(nat: pd.DataFrame, latest: dict) -> dict:
             names[f["yw"]] = "、".join(dict.fromkeys((sel["name"].fillna("") + sel["holidayCategory"].fillna("")).str.replace("nan", "").tolist()))
     if names:
         cav.append("預測範圍內含平日假日：" + "；".join(f"{k}（{v}）" for k, v in names.items()) + "，門診量會因休診下降、急診相對上升，模型已透過假日天數共變數納入。")
+    # recent weeks with national closures (typhoon days etc., data/closures.csv): the dip is not an epidemic change
+    from forecast_teller.io import read_closures
+    cl = read_closures(); recent = [w for w in nat.index[nat.index <= out["origin_yw"]][-3:]]
+    for w in recent:
+        ws = pd.Timestamp(week_start(w)); sel = cl[(cl.date >= ws) & (cl.date <= ws + pd.Timedelta(days=6))]
+        for _, c in sel.iterrows():
+            cav.insert(0, f"{w}（{ws.date()} 起）含 {c['date'].strftime('%m/%d')} {c['name']}（{c['scope'].split('；')[0]}），門診少一個看診日、急診照常，"
+                          "該週門診人次下降屬停診造成而非疫情變化；模型已把停班停課日計入假日天數共變數，預期之後回升。停班停課縣市數依新聞報導，待人事總處資料確認。")
     cav.append("回測（2016–2025）顯示模型在高流行週的中位數偏低 2–8%，上升期解讀請參考區間上緣；1–2 週的預測最可靠。")
     cav.append("健保申報有回補，最近一週的觀測值日後可能上修；本頁所有判讀由程式依規則自動產生。")
 
     # --- headline
     lvl = "高" if pct_rank >= 90 else ("偏高" if pct_rank >= 75 else ("中等" if pct_rank >= 40 else "低"))
-    stage = ("上升期" if rising >= 2 and wow >= 5 else ("下降期" if falling >= 2 and wow <= -5 else "高原期" if lvl in ("高", "偏高") else "低度活動"))
+    if hol_days:   # level from the rate rank too: counts are depressed by the closed clinic days
+        r_hist = rate.loc["201601":]; pct_rank = 100 * (r_hist < rate.iloc[-1]).mean()
+        lvl = "高" if pct_rank >= 90 else ("偏高" if pct_rank >= 75 else ("中等" if pct_rank >= 40 else "低"))
+    stage = ("上升期" if t_rising >= 2 and t_wow >= 5 else ("下降期" if t_falling >= 2 and t_wow <= -5 else "高原期" if lvl in ("高", "偏高") else "低度活動"))
     if 0 < imax < 3:
         outlook = f"模型預期第 {imax + 1} 週（{fc[imax]['date']} 起）前後觸頂，之後緩降"
     elif all(np.diff(meds) > 0):
@@ -342,7 +361,9 @@ def build_narrative(nat: pd.DataFrame, latest: dict) -> dict:
         outlook = "模型預期未來 4 週持續下降"
     else:
         outlook = "模型預期未來 4 週大致持平"
-    headline = (f"疫情處於{stage}、活動度{lvl}：門診人次較前一週 {wow:+.0f}%，RODS 急診類流感% {s_rods.iloc[-1]:.1f}%"
+    trend_txt = (f"門診類流感就診率較前一週 {t_wow:+.0f}%（{origin} 有 {hol_days} 天假日或停班停課，人次 {wow:+.0f}% 主要反映看診日減少）"
+                 if hol_days else f"門診人次較前一週 {wow:+.0f}%")
+    headline = (f"疫情處於{stage}、活動度{lvl}：{trend_txt}，RODS 急診類流感% {s_rods.iloc[-1]:.1f}%"
                 + ("（連續 %d 週高於流行閾值）" % above if above else "（低於流行閾值）") + f"；{outlook}，下週續升機率{pct_txt(p_up1)}。")
     return {"headline": headline, "current": cur, "outlook": fut, "caveats": cav, "origin_yw": origin, "origin_date": o_date}
 
@@ -470,8 +491,9 @@ def build_method(bt: dict, latest: dict, meta: dict) -> str:
     s2 = (table(["來源", "內容", "粒度", "完整週範圍"], [[n, c, g, rng(k)] for k, n, c, g in SOURCES]) + ul([
         "以疾管署疫情週（週日起算）對齊成全國、縣市、年齡層三層週資料面板；健保、RODS、NIDDS、LARS 為使用者手動提供的內部檔，RESP_LAB 每週自 NIDSS 網站抓取。",
         "<b>不完整週自動排除</b>：本週尚未結束的週一律不用；最後幾週若低於前 8 週中位數的 60%（重症 50%）視為申報未齊。重症以發病週計，再保守多排除 3 週；RESP_LAB 以檢體收件週計，多排除 1 週。",
+        "<b>最新週驟降檢查</b>：健保門診、急診與 RODS 的最新週總就診人次若低於前 4 週中位數的 85%，該週有假日或停班停課日（如颱風）時視為真實下降並保留，否則暫停使用並查原因（資料傳輸不完整等）。颱風停班停課日不在官方假日表，另記於 data/closures.csv 並計入假日天數共變數。",
         "<b>隱性零值</b>：NIDDS 為病例列表彙總，沒有病例的週補 0。",
-        "<b>已知未來共變數</b>：春節週旗標與每週平日假日天數，取自行政機關辦公日曆（tw_holiday.csv）。"]))
+        "<b>已知未來共變數</b>：春節週旗標與每週平日假日天數，取自行政機關辦公日曆（tw_holiday.csv），加上颱風等全國性停班停課日（data/closures.csv）。"]))
     s3 = table(["項目", "設定"], [
         ["模型", "Google TimesFM 3.0（330M 參數時間序列基礎模型），零樣本、未微調；Apple Silicon 以 MLX 後端執行"],
         ["context", "擴張視窗，自 2016w01 起至各指標最新完整週；聯合預測截到所有成員共同的最新完整週"],

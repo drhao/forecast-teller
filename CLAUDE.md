@@ -18,7 +18,7 @@
 ## 資料
 - `data/` 的流感原始檔是 cp950（Big5）的內部檔，由使用者手動更新，不進 git；`tw_holiday.csv`、`date_week_mapping.csv` 與 `RESP_LAB.csv` 為 UTF-8。`RESP_LAB.csv` 由 `scripts/fetch_resp_lab.py` 從 NIDSS 網站抓，每次抓到的值留存於 `data/resp_lab_history.csv`（進 git）。
 - 每週預測值累積在 `outputs/forecast_log/forecast_log.csv`（進 git），不要刪；`evaluate_forecasts.py` 用它評估實際預測表現。
-- 疫情週用 `forecast_teller.weeks`；頭尾不完整週由 `panel.detect_edges` 自動剔除，更新後先看 `data_processed/coverage.json`。
+- 疫情週用 `forecast_teller.weeks`；頭尾不完整週由 `panel.detect_edges` 自動剔除，更新後先看 `data_processed/coverage.json`。最新週驟降（< 前 4 週中位數 85%）由 `panel.drop_check` 處理：有假日或停班停課日則保留，否則暫停使用並**找原因**（資料沒傳好、未列入的停診）。颱風等停班停課日不在官方假日表，要加進 `data/closures.csv`（附來源、標待確認），會計入假日天數共變數。
 - 實驗室 A/B 型資料來源是「實驗室自動通報系統（LARS）」，不是合約實驗室。
 - RODS 急診類流感%的流行閾值 11%（`backtest.DEFAULT_THRESHOLDS`）。腸病毒閾值依年記錄在 `ev_forecast/data/thresholds.csv`。新冠的流行閾值數值未取得，以 `covid_forecast/src/covid_forecast/thresholds.py` 的暫行規則判定（待確認），網頁不畫閾值線。
 - 回測只用 2016w01–2025w53，暖機 104 週，h = 1–4，分 COVID 前 / 期 / 後三段（流感、腸病毒）。新冠資料只有 2021w27 起，回測起點 2024w01 起、依年分段。

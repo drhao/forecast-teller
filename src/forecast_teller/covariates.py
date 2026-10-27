@@ -4,7 +4,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from .io import read_holidays
+from .io import read_closures, read_holidays
 from .weeks import next_weeks, seasonal_phase, week_table, yw_of_date
 
 # Lunar New Year's Day for years beyond tw_holiday.csv. Verify against the official
@@ -14,7 +14,8 @@ WEEKEND_CATEGORY = "星期六、星期日"
 
 
 def holiday_weekly(yws: list[str]) -> pd.DataFrame:
-    """Per yearweek: holiday_days (weekday public holidays) and cny_week (0/1)."""
+    """Per yearweek: holiday_days (weekday public holidays + national closures such as typhoon days from
+    data/closures.csv), cny_week (0/1) and closure_days (the closure part of holiday_days)."""
     yws = list(dict.fromkeys(yws))  # de-duplicate, keep order (history and forecast weeks may overlap)
     wt = week_table().set_index("yw")
     h = read_holidays()
@@ -23,6 +24,12 @@ def holiday_weekly(yws: list[str]) -> pd.DataFrame:
     h["yw"] = starts.index[idx]
     weekday_hol = h[h["isHoliday"] & (h["holidayCategory"] != WEEKEND_CATEGORY)]
     days = weekday_hol.groupby("yw").size()
+    # typhoon (or other) national closures from data/closures.csv: weekdays that are not already holidays
+    cl = read_closures()
+    cl = cl[(cl["date"].dt.dayofweek < 5) & ~cl["date"].isin(weekday_hol["date"])]
+    cl_idx = np.searchsorted(starts.values, cl["date"].values, side="right") - 1
+    closure_days = pd.Series(1, index=starts.index[cl_idx]).groupby(level=0).sum() if len(cl) else pd.Series(dtype=float)
+    days = days.add(closure_days, fill_value=0)
     # the file sometimes puts the holiday name in `name`, sometimes only in `holidayCategory`
     text = h["name"].fillna("") + "|" + h["holidayCategory"].fillna("")
     is_cny = text.str.contains("春節|除夕|小年夜") & h["isHoliday"]
@@ -37,6 +44,7 @@ def holiday_weekly(yws: list[str]) -> pd.DataFrame:
     out = pd.DataFrame(index=pd.Index(yws, name="yw"))
     out["holiday_days"] = days.reindex(yws).fillna(0).astype(float)
     out["cny_week"] = [1.0 if w in cny_weeks else 0.0 for w in yws]
+    out["closure_days"] = closure_days.reindex(yws).fillna(0).astype(float)   # already included in holiday_days
     # Beyond the holiday file the weekday-holiday count is unknown. The CNY break is
     # always at least Mon–Fri of the week containing New Year's Day when the break spans
     # 9 days (2026: Feb 14–22), so assume 5 for CNY weeks and 0 elsewhere. Extend

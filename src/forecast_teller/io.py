@@ -175,6 +175,15 @@ def read_holidays(path: str | Path | None = None) -> pd.DataFrame:
     return df
 
 
+def read_closures(path: str | Path | None = None) -> pd.DataFrame:
+    """data/closures.csv (UTF-8): national-scale weekday closures not in tw_holiday.csv, e.g. typhoon 停班停課 days.
+    Only list days when most counties closed (the covariate is national); keep the news source and a 待確認 status."""
+    p = Path(path) if path else DATA_DIR / "closures.csv"
+    if not p.exists():
+        return pd.DataFrame(columns=["date", "name", "scope", "n_counties", "source", "status"])
+    return pd.read_csv(p, parse_dates=["date"])
+
+
 RAW_FILES = {
     "nhi_48x": "NHI_PROCESSED_48X.csv",
     "nhi_48x_er": "NHI_PROCESSED_48X_ER.csv",
