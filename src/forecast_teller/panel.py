@@ -17,7 +17,7 @@ import pandas as pd
 
 from . import PROCESSED_DIR
 from .io import AGE_ORDER, COUNTIES, load_all
-from .weeks import week_table, yw_of_date, yw_range
+from .weeks import week_start, week_table, yw_of_date, yw_range
 
 # Extra weeks trimmed from the tail beyond automatic partial-week detection
 # (reporting lag: NIDDS is by onset week and keeps being back-filled for weeks).
@@ -42,6 +42,10 @@ SOURCE_COLUMNS = {
     "lab": ["lab_flu_a", "lab_flu_b", "lab_flu_u", "lab_tests"],
     "resp": RESP_COLS,
 }
+# Minimum days between the end of a week (Saturday) and the data extraction before an NHI claims week counts as
+# complete. Evidence (2026-10): 4 days after the week ended the first-reported outpatient total was 98% of the
+# final value (202640 on 10-14); 3 days after it was 84% (202642 on 10-27) and still passed the 60% ratio test.
+MIN_DAYS_AFTER_WEEK_END = {"nhi": 4, "nhi_er": 4}
 ZERO_FILL_SOURCES = {"nidds"}  # case lists: a week with no rows is a true zero
 
 
@@ -109,6 +113,10 @@ def coverage_from_national(nat: pd.DataFrame, lag: dict[str, int] | None = None,
         if s.empty:
             continue
         first, last = detect_edges(s, ratio=0.5 if src == "nidds" else 0.6)
+        if src in MIN_DAYS_AFTER_WEEK_END:
+            asof_d = pd.Timestamp(asof) if asof is not None else pd.Timestamp.today().normalize()
+            while (asof_d - (week_start(last) + pd.Timedelta(days=6))).days < MIN_DAYS_AFTER_WEEK_END[src]:
+                last = yws[yws.index(last) - 1]
         last_i = yws.index(last) - lag[src]
         cov[src] = {
             "raw_first": raw_first,

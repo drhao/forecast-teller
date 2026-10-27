@@ -324,6 +324,7 @@ forecast-teller/
 - 新 clone 沒有 `outputs/backtest/*.parquet`，`build_site.py` 原本會中斷 → 改為沿用 `docs/flu/data/backtest.json` 並印提示（腸病毒同）。
 - 兩個 clone 各自有舊版內部檔；在資料較舊的那台重建流感面板會把 coverage 倒退 → 先比對 `data/` 檔案日期與 `coverage.json`。
 - 一次 push 因 DNS 失敗 → 重試即可。
+- 2026-10-27：健保 202642（週六結束後 3 天擷取）門診總就診人次只有前一週的 79%，但類流感占比不變、RODS 與急診持平，是申報未齊卻通過 60% 比值測試 → `panel.MIN_DAYS_AFTER_WEEK_END`：健保門診與急診的週需結束滿 4 天才算完整（10/14 擷取時 4 天後首報值已是終值的 98%）。若在週日至週二擷取，健保起點會比 RODS 少一週，屬正常。
 
 ---
 
