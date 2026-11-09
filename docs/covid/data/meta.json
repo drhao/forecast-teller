@@ -1,32 +1,32 @@
 {
- "generated_at": "2026-10-19T10:20+08:00",
+ "generated_at": "2026-11-09T17:18+08:00",
  "coverage": {
   "nhi": {
    "raw_first": "202127",
-   "raw_last": "202640",
+   "raw_last": "202644",
    "first_complete": "202127",
-   "last_complete": "202640",
+   "last_complete": "202644",
    "source": "開放資料 NHI_COVID-19.csv（門診、住院）"
   },
   "rods": {
    "raw_first": "202220",
-   "raw_last": "202640",
+   "raw_last": "202644",
    "first_complete": "202235",
-   "last_complete": "202640",
+   "last_complete": "202643",
    "gate": "rods_total",
    "source": "開放資料 RODS_COVID-19.csv"
   },
   "nidss": {
    "raw_first": "202127",
-   "raw_last": "202640",
+   "raw_last": "202644",
    "first_complete": "202128",
-   "last_complete": "202640",
+   "last_complete": "202644",
    "gate": "nhi",
    "source": "NIDSS 傳染病統計資料查詢系統 健保門急診（disease=11）"
   },
   "severe": {
    "raw_first": "202434",
-   "raw_last": "202641",
+   "raw_last": "202645",
    "first_complete": "202435",
    "last_complete": "202635",
    "lag_weeks": 3,
@@ -34,12 +34,12 @@
   },
   "rods_total": {
    "first": "202101",
-   "last": "202640",
+   "last": "202643",
    "source": "influenza panel data_processed/national_weekly.parquet (RODS_RS.csv)"
   },
   "resp": {
    "first": "202502",
-   "last": "202638",
+   "last": "202642",
    "source": "influenza panel (RESP_LAB.csv, SARS-CoV-2 positives)"
   },
   "primary": "covid_oe",
@@ -51,7 +51,7 @@
    "高屏區",
    "東區"
   ],
-  "n_weeks": 302,
+  "n_weeks": 306,
   "age_groups_nhi": [
    "0~2",
    "13~15",
@@ -97,10 +97,10 @@
    {
     "yw": "202629",
     "official": 10605,
-    "nidss_oe": 11340,
-    "out": 9662,
+    "nidss_oe": 11341,
+    "out": 9663,
     "rods": 1029,
-    "alt": 10691,
+    "alt": 10692,
     "diff_nidss_pct": 6.9,
     "diff_alt_pct": 0.8
    },
@@ -117,42 +117,42 @@
    {
     "yw": "202631",
     "official": 24645,
-    "nidss_oe": 26086,
-    "out": 22600,
+    "nidss_oe": 26087,
+    "out": 22601,
     "rods": 2105,
-    "alt": 24705,
-    "diff_nidss_pct": 5.8,
+    "alt": 24706,
+    "diff_nidss_pct": 5.9,
     "diff_alt_pct": 0.2
    },
    {
     "yw": "202633",
     "official": 24995,
-    "nidss_oe": 26225,
-    "out": 23129,
+    "nidss_oe": 26228,
+    "out": 23131,
     "rods": 1881,
-    "alt": 25010,
+    "alt": 25012,
     "diff_nidss_pct": 4.9,
     "diff_alt_pct": 0.1
    },
    {
     "yw": "202635",
     "official": 20199,
-    "nidss_oe": 21126,
-    "out": 18525,
+    "nidss_oe": 21249,
+    "out": 18645,
     "rods": 1495,
-    "alt": 20020,
-    "diff_nidss_pct": 4.6,
-    "diff_alt_pct": -0.9
+    "alt": 20140,
+    "diff_nidss_pct": 5.2,
+    "diff_alt_pct": -0.3
    }
   ],
-  "mean_diff_nidss_pct": 7.4,
-  "mean_diff_alt_pct": 2.2,
-  "min_diff_alt_pct": -0.9,
+  "mean_diff_nidss_pct": 7.5,
+  "mean_diff_alt_pct": 2.3,
+  "min_diff_alt_pct": -0.4,
   "max_diff_alt_pct": 12.7
  },
  "backtest_window": {
   "start": "202127",
-  "end": "202640",
+  "end": "202644",
   "origin_start": "202401",
   "origins": 141
  },
