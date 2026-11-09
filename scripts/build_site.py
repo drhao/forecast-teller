@@ -248,8 +248,20 @@ def build_narrative(nat: pd.DataFrame, latest: dict) -> dict:
     rising = consecutive(s_out.diff().dropna(), lambda d: d > 0); falling = consecutive(s_out.diff().dropna(), lambda d: d < 0)
     # Origin week with weekday holidays / closures (e.g. a typhoon day): visit counts drop because clinics close, while the
     # ILI share of all visits does not. Judge the trend (headline stage, week-over-week) on the visit rate in that case.
-    hol_days = int(holiday_weekly([origin]).loc[origin, "holiday_days"])
-    trend_s = rate if hol_days else s_out
+    prev = s_out.index[-2]
+    hw = holiday_weekly([prev, origin])["holiday_days"]
+    hol_days, hol_prev = int(hw.loc[origin]), int(hw.loc[prev])
+    trend_s = rate if (hol_days or hol_prev) else s_out
+    # how the count change relates to clinic days: only blame the holiday when the origin week lost more days than the prior week
+    if hol_days > hol_prev:
+        hol_why, hol_eff = f"{origin} 比前一週多 {hol_days - hol_prev} 天假日或停班停課", "含看診日減少的影響"
+    elif hol_days < hol_prev:
+        hol_why, hol_eff = f"前一週多 {hol_prev - hol_days} 天假日或停班停課", "含看診日回復的影響"
+    elif hol_days:
+        hol_why, hol_eff = f"{prev} 與 {origin} 各有 {hol_days} 天假日或停班停課", ""
+    else:
+        hol_why, hol_eff = "", ""
+    hol_note = f"{hol_why}，人次 {wow:+.0f}%" + (f" {hol_eff}" if hol_eff else "") if hol_why else ""
     t_wow = 100 * (trend_s.iloc[-1] / trend_s.iloc[-2] - 1)
     t_rising = consecutive(trend_s.diff().dropna(), lambda d: d > 0); t_falling = consecutive(trend_s.diff().dropna(), lambda d: d < 0)
     yrs = pd.Series(nat.index.str[:4].astype(int), index=nat.index)
@@ -258,8 +270,8 @@ def build_narrative(nat: pd.DataFrame, latest: dict) -> dict:
     pct_rank = 100 * (hist < s_out.iloc[-1]).mean()
     txt = (f"全國類流感門診 {origin}（{o_date} 起）為 {fmt0(s_out.iloc[-1])} 人次、就診率 {rate.iloc[-1]:.2f}%，"
            f"較前一週{trend_word(wow)}（{wow:+.1f}%），較 3 週前 {w3:+.0f}%")
-    if hol_days:
-        txt += f"（該週有 {hol_days} 天假日或停班停課，人次變化主要反映看診日減少；就診率較前一週 {t_wow:+.1f}%）"
+    if hol_why:
+        txt += f"（{hol_why}" + (f"，人次變化{hol_eff}" if hol_eff else "") + f"；就診率較前一週 {t_wow:+.1f}%）"
     if rising >= 2: txt += f"，已連續 {rising} 週上升"
     elif falling >= 2: txt += f"，已連續 {falling} 週下降"
     txt += f"；與前三年同一週相比（平均 {fmt0(same.mean())}）為 {s_out.iloc[-1] / same.mean():.1f} 倍，在 2016 年以來所有週中位於第 {pct_rank:.0f} 百分位。" if len(same) else "。"
@@ -342,8 +354,10 @@ def build_narrative(nat: pd.DataFrame, latest: dict) -> dict:
     for w in recent:
         ws = pd.Timestamp(week_start(w)); sel = cl[(cl.date >= ws) & (cl.date <= ws + pd.Timedelta(days=6))]
         for _, c in sel.iterrows():
-            cav.insert(0, f"{w}（{ws.date()} 起）含 {c['date'].strftime('%m/%d')} {c['name']}（{c['scope'].split('；')[0]}），門診少一個看診日、急診照常，"
-                          "該週門診人次下降屬停診造成而非疫情變化；模型已把停班停課日計入假日天數共變數，預期之後回升。停班停課縣市數依新聞報導，待人事總處資料確認。")
+            head = f"{w}（{ws.date()} 起）含 {c['date'].strftime('%m/%d')} {c['name']}（報導為 {int(c['n_counties'])} 縣市），門診少一個看診日、急診照常，"
+            tail = ("該週門診人次下降屬停診造成而非疫情變化；模型已把停班停課日計入假日天數共變數，預期之後回升。" if w == out["origin_yw"] else
+                    "該週門診人次偏低屬停診造成，與該週比較時以就診率為準；模型已把停班停課日計入假日天數共變數。")
+            cav.insert(0, head + tail + "停班停課縣市數依新聞報導，待人事總處資料確認。")
     cav.append("回測（2016–2025）顯示模型在高流行週的中位數偏低 2–8%，上升期解讀請參考區間上緣；1–2 週的預測最可靠。")
     cav.append("健保申報有回補，最近一週的觀測值日後可能上修；本頁所有判讀由程式依規則自動產生。")
 
@@ -361,8 +375,7 @@ def build_narrative(nat: pd.DataFrame, latest: dict) -> dict:
         outlook = "模型預期未來 4 週持續下降"
     else:
         outlook = "模型預期未來 4 週大致持平"
-    trend_txt = (f"門診類流感就診率較前一週 {t_wow:+.0f}%（{origin} 有 {hol_days} 天假日或停班停課，人次 {wow:+.0f}% 主要反映看診日減少）"
-                 if hol_days else f"門診人次較前一週 {wow:+.0f}%")
+    trend_txt = (f"門診類流感就診率較前一週 {t_wow:+.0f}%（{hol_note}）" if hol_note else f"門診人次較前一週 {wow:+.0f}%")
     headline = (f"疫情處於{stage}、活動度{lvl}：{trend_txt}，RODS 急診類流感% {s_rods.iloc[-1]:.1f}%"
                 + ("（連續 %d 週高於流行閾值）" % above if above else "（低於流行閾值）") + f"；{outlook}，下週續升機率{pct_txt(p_up1)}。")
     return {"headline": headline, "current": cur, "outlook": fut, "caveats": cav, "origin_yw": origin, "origin_date": o_date}

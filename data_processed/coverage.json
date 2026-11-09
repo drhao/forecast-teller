@@ -1,82 +1,74 @@
 {
   "nhi": {
     "raw_first": "200501",
-    "raw_last": "202643",
+    "raw_last": "202644",
     "first_complete": "200502",
-    "last_complete": "202642",
+    "last_complete": "202643",
     "dropped_head": [
       "200501"
     ],
     "dropped_tail": [
-      "202643"
-    ],
-    "drop_check": {
-      "week": "202642",
-      "ratio": 0.849,
-      "action": "kept",
-      "reason": "該週有 1 個平日假日或停班停課日（其中停班停課 1 天，data/closures.csv），視為真實下降並保留；假日天數共變數已納入。"
-    }
+      "202644"
+    ]
   },
   "nhi_er": {
     "raw_first": "201552",
-    "raw_last": "202643",
+    "raw_last": "202644",
     "first_complete": "201601",
-    "last_complete": "202642",
+    "last_complete": "202643",
     "dropped_head": [
       "201552"
     ],
     "dropped_tail": [
-      "202643"
+      "202644"
     ]
   },
   "rods": {
     "raw_first": "200901",
-    "raw_last": "202643",
+    "raw_last": "202644",
     "first_complete": "200901",
-    "last_complete": "202642",
+    "last_complete": "202643",
     "dropped_head": [],
     "dropped_tail": [
-      "202643"
+      "202644"
     ]
   },
   "nidds": {
     "raw_first": "200302",
-    "raw_last": "202642",
+    "raw_last": "202644",
     "first_complete": "200302",
-    "last_complete": "202638",
+    "last_complete": "202640",
     "dropped_head": [],
     "dropped_tail": [
-      "202639",
-      "202640",
       "202641",
-      "202642"
+      "202642",
+      "202643",
+      "202644"
     ]
   },
   "lab": {
     "raw_first": "201453",
-    "raw_last": "202643",
+    "raw_last": "202644",
     "first_complete": "201502",
-    "last_complete": "202642",
+    "last_complete": "202643",
     "dropped_head": [
       "201453",
       "201501"
     ],
     "dropped_tail": [
-      "202643"
+      "202644"
     ]
   },
   "resp": {
     "raw_first": "202501",
-    "raw_last": "202641",
+    "raw_last": "202643",
     "first_complete": "202502",
-    "last_complete": "202638",
+    "last_complete": "202642",
     "dropped_head": [
       "202501"
     ],
     "dropped_tail": [
-      "202639",
-      "202640",
-      "202641"
+      "202643"
     ]
   }
 }
