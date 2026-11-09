@@ -1,7 +1,7 @@
 {
- "origin": "2026-10-11",
- "generated_at": "2026-10-14T15:40+0800",
- "fetched_at": "2026-10-11T17:17+08:00",
+ "origin": "2026-11-09",
+ "generated_at": "2026-11-09T17:32+0800",
+ "fetched_at": "2026-11-09T17:32+08:00",
  "n_series": 108,
  "params": {
   "context_days": 730,
@@ -24,37 +24,37 @@
   ]
  },
  "totals": {
-  "confirmed14": 1,
-  "pending14": 127,
-  "known7": 1,
+  "confirmed14": 3,
+  "pending14": 85,
+  "known7": 0,
   "n_watch": 0,
   "n_alert": 0,
   "n_rule_now": 0,
-  "max_p_any14": 0.02,
-  "max_p_any14_tfm": 0.02,
+  "max_p_any14": 0.138,
+  "max_p_any14_tfm": 0.255,
   "max_p_any14_kde": 0.02
  },
  "by_county": [
   {
    "county": "台南市",
    "confirmed14": 0,
-   "pending14": 42,
+   "pending14": 26,
    "known7": 0,
    "n_watch": 0,
    "n_alert": 0
   },
   {
    "county": "屏東縣",
-   "confirmed14": 1,
-   "pending14": 9,
-   "known7": 1,
+   "confirmed14": 0,
+   "pending14": 1,
+   "known7": 0,
    "n_watch": 0,
    "n_alert": 0
   },
   {
    "county": "高雄市",
-   "confirmed14": 0,
-   "pending14": 76,
+   "confirmed14": 3,
+   "pending14": 58,
    "known7": 0,
    "n_watch": 0,
    "n_alert": 0
@@ -63,32 +63,32 @@
  "flagged": [],
  "table": [
   {
-   "origin": "2026-10-11",
-   "county": "屏東縣",
-   "town": "屏東市",
-   "known7": 1,
-   "adj7": 1.04,
+   "origin": "2026-11-09",
+   "county": "高雄市",
+   "town": "小港區",
+   "known7": 0,
+   "adj7": 0.0,
    "thr": 3.0,
-   "confirmed14": 1,
-   "pending14": 2,
-   "last_onset": "2026-10-05",
+   "confirmed14": 3,
+   "pending14": 19,
+   "last_onset": "2026-11-01",
    "rule_now": false,
-   "p_h7": 0.02,
-   "p_h14": 0.02,
-   "p_any14": 0.02,
-   "p_any14_tfm": 0.02,
+   "p_h7": 0.121,
+   "p_h14": 0.138,
+   "p_any14": 0.138,
+   "p_any14_tfm": 0.255,
    "p_any14_kde": 0.02,
-   "median_h7": 1.03,
-   "q90_h7": 1.32,
-   "median_h14": 1.04,
-   "q90_h14": 1.57,
-   "kde_median_h7": 1.0,
-   "kde_median_h14": 1.0,
+   "median_h7": 0.04,
+   "q90_h7": 6.74,
+   "median_h14": 0.04,
+   "q90_h14": 10.29,
+   "kde_median_h7": 0.0,
+   "kde_median_h14": 0.0,
    "method": "ensp_tfm_kde_mix_fix_town",
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "台南市",
    "town": "新營區",
    "known7": 0,
@@ -113,7 +113,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "台南市",
    "town": "鹽水區",
    "known7": 0,
@@ -138,14 +138,14 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "台南市",
    "town": "白河區",
    "known7": 0,
    "adj7": 0.0,
    "thr": 3.0,
    "confirmed14": 0,
-   "pending14": 0,
+   "pending14": 1,
    "last_onset": null,
    "rule_now": false,
    "p_h7": 0.02,
@@ -163,7 +163,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "台南市",
    "town": "麻豆區",
    "known7": 0,
@@ -188,14 +188,14 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "台南市",
    "town": "佳里區",
    "known7": 0,
    "adj7": 0.0,
    "thr": 3.0,
    "confirmed14": 0,
-   "pending14": 1,
+   "pending14": 2,
    "last_onset": "2023-12-26",
    "rule_now": false,
    "p_h7": 0.02,
@@ -213,7 +213,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "台南市",
    "town": "新化區",
    "known7": 0,
@@ -238,7 +238,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "台南市",
    "town": "善化區",
    "known7": 0,
@@ -263,7 +263,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "台南市",
    "town": "學甲區",
    "known7": 0,
@@ -288,7 +288,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "台南市",
    "town": "柳營區",
    "known7": 0,
@@ -313,7 +313,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "台南市",
    "town": "後壁區",
    "known7": 0,
@@ -338,7 +338,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "台南市",
    "town": "東山區",
    "known7": 0,
@@ -363,7 +363,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "台南市",
    "town": "下營區",
    "known7": 0,
@@ -388,7 +388,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "台南市",
    "town": "六甲區",
    "known7": 0,
@@ -413,7 +413,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "台南市",
    "town": "官田區",
    "known7": 0,
@@ -438,7 +438,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "台南市",
    "town": "大內區",
    "known7": 0,
@@ -463,14 +463,14 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "台南市",
    "town": "西港區",
    "known7": 0,
    "adj7": 0.0,
    "thr": 3.0,
    "confirmed14": 0,
-   "pending14": 1,
+   "pending14": 0,
    "last_onset": "2023-12-10",
    "rule_now": false,
    "p_h7": 0.02,
@@ -488,14 +488,14 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "台南市",
    "town": "七股區",
    "known7": 0,
    "adj7": 0.0,
    "thr": 3.0,
    "confirmed14": 0,
-   "pending14": 2,
+   "pending14": 0,
    "last_onset": "2023-12-07",
    "rule_now": false,
    "p_h7": 0.02,
@@ -513,7 +513,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "台南市",
    "town": "將軍區",
    "known7": 0,
@@ -538,7 +538,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "台南市",
    "town": "北門區",
    "known7": 0,
@@ -563,14 +563,14 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "台南市",
    "town": "新市區",
    "known7": 0,
    "adj7": 0.0,
    "thr": 3.0,
    "confirmed14": 0,
-   "pending14": 1,
+   "pending14": 0,
    "last_onset": "2023-12-06",
    "rule_now": false,
    "p_h7": 0.02,
@@ -588,14 +588,14 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "台南市",
    "town": "安定區",
    "known7": 0,
    "adj7": 0.0,
    "thr": 3.0,
    "confirmed14": 0,
-   "pending14": 2,
+   "pending14": 0,
    "last_onset": "2023-12-20",
    "rule_now": false,
    "p_h7": 0.02,
@@ -613,7 +613,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "台南市",
    "town": "山上區",
    "known7": 0,
@@ -638,7 +638,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "台南市",
    "town": "玉井區",
    "known7": 0,
@@ -663,7 +663,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "台南市",
    "town": "楠西區",
    "known7": 0,
@@ -688,7 +688,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "台南市",
    "town": "南化區",
    "known7": 0,
@@ -713,7 +713,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "台南市",
    "town": "左鎮區",
    "known7": 0,
@@ -738,14 +738,14 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "台南市",
    "town": "仁德區",
    "known7": 0,
    "adj7": 0.0,
    "thr": 3.0,
    "confirmed14": 0,
-   "pending14": 2,
+   "pending14": 0,
    "last_onset": "2024-01-05",
    "rule_now": false,
    "p_h7": 0.02,
@@ -763,7 +763,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "台南市",
    "town": "歸仁區",
    "known7": 0,
@@ -788,14 +788,14 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "台南市",
    "town": "關廟區",
    "known7": 0,
    "adj7": 0.0,
    "thr": 3.0,
    "confirmed14": 0,
-   "pending14": 0,
+   "pending14": 1,
    "last_onset": "2023-12-28",
    "rule_now": false,
    "p_h7": 0.02,
@@ -813,7 +813,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "台南市",
    "town": "龍崎區",
    "known7": 0,
@@ -838,14 +838,14 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "台南市",
    "town": "永康區",
    "known7": 0,
    "adj7": 0.0,
    "thr": 3.0,
    "confirmed14": 0,
-   "pending14": 6,
+   "pending14": 3,
    "last_onset": "2024-01-26",
    "rule_now": false,
    "p_h7": 0.02,
@@ -863,14 +863,14 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "台南市",
    "town": "東區",
    "known7": 0,
    "adj7": 0.0,
    "thr": 3.0,
    "confirmed14": 0,
-   "pending14": 6,
+   "pending14": 2,
    "last_onset": "2024-01-04",
    "rule_now": false,
    "p_h7": 0.02,
@@ -888,14 +888,14 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "台南市",
    "town": "南區",
    "known7": 0,
    "adj7": 0.0,
    "thr": 3.0,
    "confirmed14": 0,
-   "pending14": 5,
+   "pending14": 8,
    "last_onset": "2025-10-15",
    "rule_now": false,
    "p_h7": 0.02,
@@ -913,14 +913,14 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "台南市",
    "town": "中西區",
    "known7": 0,
    "adj7": 0.0,
    "thr": 3.0,
    "confirmed14": 0,
-   "pending14": 1,
+   "pending14": 4,
    "last_onset": "2024-01-28",
    "rule_now": false,
    "p_h7": 0.02,
@@ -938,14 +938,14 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "台南市",
    "town": "北區",
    "known7": 0,
    "adj7": 0.0,
    "thr": 3.0,
    "confirmed14": 0,
-   "pending14": 5,
+   "pending14": 3,
    "last_onset": "2025-10-18",
    "rule_now": false,
    "p_h7": 0.02,
@@ -963,14 +963,14 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "台南市",
    "town": "安南區",
    "known7": 0,
    "adj7": 0.0,
    "thr": 3.0,
    "confirmed14": 0,
-   "pending14": 8,
+   "pending14": 1,
    "last_onset": "2024-01-19",
    "rule_now": false,
    "p_h7": 0.02,
@@ -988,14 +988,14 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "台南市",
    "town": "安平區",
    "known7": 0,
    "adj7": 0.0,
    "thr": 3.0,
    "confirmed14": 0,
-   "pending14": 2,
+   "pending14": 1,
    "last_onset": "2025-10-24",
    "rule_now": false,
    "p_h7": 0.02,
@@ -1013,14 +1013,14 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "高雄市",
    "town": "鳳山區",
    "known7": 0,
    "adj7": 0.0,
    "thr": 3.0,
    "confirmed14": 0,
-   "pending14": 3,
+   "pending14": 2,
    "last_onset": "2026-06-11",
    "rule_now": false,
    "p_h7": 0.02,
@@ -1038,14 +1038,14 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "高雄市",
    "town": "岡山區",
    "known7": 0,
    "adj7": 0.0,
    "thr": 3.0,
    "confirmed14": 0,
-   "pending14": 22,
+   "pending14": 7,
    "last_onset": "2026-08-26",
    "rule_now": false,
    "p_h7": 0.02,
@@ -1063,7 +1063,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "高雄市",
    "town": "旗山區",
    "known7": 0,
@@ -1088,7 +1088,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "高雄市",
    "town": "美濃區",
    "known7": 0,
@@ -1113,14 +1113,14 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "高雄市",
    "town": "林園區",
    "known7": 0,
    "adj7": 0.0,
    "thr": 3.0,
    "confirmed14": 0,
-   "pending14": 1,
+   "pending14": 0,
    "last_onset": "2023-11-30",
    "rule_now": false,
    "p_h7": 0.02,
@@ -1138,14 +1138,14 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "高雄市",
    "town": "大寮區",
    "known7": 0,
    "adj7": 0.0,
    "thr": 3.0,
    "confirmed14": 0,
-   "pending14": 1,
+   "pending14": 2,
    "last_onset": "2024-02-20",
    "rule_now": false,
    "p_h7": 0.02,
@@ -1163,14 +1163,14 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "高雄市",
    "town": "大樹區",
    "known7": 0,
    "adj7": 0.0,
    "thr": 3.0,
    "confirmed14": 0,
-   "pending14": 0,
+   "pending14": 2,
    "last_onset": "2024-01-08",
    "rule_now": false,
    "p_h7": 0.02,
@@ -1188,14 +1188,14 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "高雄市",
    "town": "仁武區",
    "known7": 0,
    "adj7": 0.0,
    "thr": 3.0,
    "confirmed14": 0,
-   "pending14": 4,
+   "pending14": 0,
    "last_onset": "2024-03-02",
    "rule_now": false,
    "p_h7": 0.02,
@@ -1213,14 +1213,14 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "高雄市",
    "town": "大社區",
    "known7": 0,
    "adj7": 0.0,
    "thr": 3.0,
    "confirmed14": 0,
-   "pending14": 0,
+   "pending14": 1,
    "last_onset": "2024-01-26",
    "rule_now": false,
    "p_h7": 0.02,
@@ -1238,14 +1238,14 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "高雄市",
    "town": "鳥松區",
    "known7": 0,
    "adj7": 0.0,
    "thr": 3.0,
    "confirmed14": 0,
-   "pending14": 1,
+   "pending14": 0,
    "last_onset": "2026-06-09",
    "rule_now": false,
    "p_h7": 0.02,
@@ -1263,14 +1263,14 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "高雄市",
    "town": "橋頭區",
    "known7": 0,
    "adj7": 0.0,
    "thr": 3.0,
    "confirmed14": 0,
-   "pending14": 6,
+   "pending14": 1,
    "last_onset": "2023-11-09",
    "rule_now": false,
    "p_h7": 0.02,
@@ -1288,14 +1288,14 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "高雄市",
    "town": "燕巢區",
    "known7": 0,
    "adj7": 0.0,
    "thr": 3.0,
    "confirmed14": 0,
-   "pending14": 4,
+   "pending14": 0,
    "last_onset": "2023-11-28",
    "rule_now": false,
    "p_h7": 0.02,
@@ -1313,7 +1313,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "高雄市",
    "town": "田寮區",
    "known7": 0,
@@ -1338,14 +1338,14 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "高雄市",
    "town": "阿蓮區",
    "known7": 0,
    "adj7": 0.0,
    "thr": 3.0,
    "confirmed14": 0,
-   "pending14": 0,
+   "pending14": 3,
    "last_onset": "2024-01-09",
    "rule_now": false,
    "p_h7": 0.02,
@@ -1363,14 +1363,14 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "高雄市",
    "town": "路竹區",
    "known7": 0,
    "adj7": 0.0,
    "thr": 3.0,
    "confirmed14": 0,
-   "pending14": 2,
+   "pending14": 0,
    "last_onset": "2024-01-25",
    "rule_now": false,
    "p_h7": 0.02,
@@ -1388,7 +1388,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "高雄市",
    "town": "湖內區",
    "known7": 0,
@@ -1413,7 +1413,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "高雄市",
    "town": "茄萣區",
    "known7": 0,
@@ -1438,14 +1438,14 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "高雄市",
    "town": "永安區",
    "known7": 0,
    "adj7": 0.0,
    "thr": 3.0,
    "confirmed14": 0,
-   "pending14": 0,
+   "pending14": 1,
    "last_onset": "2026-06-10",
    "rule_now": false,
    "p_h7": 0.02,
@@ -1463,7 +1463,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "高雄市",
    "town": "彌陀區",
    "known7": 0,
@@ -1488,14 +1488,14 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "高雄市",
    "town": "梓官區",
    "known7": 0,
    "adj7": 0.0,
    "thr": 3.0,
    "confirmed14": 0,
-   "pending14": 1,
+   "pending14": 0,
    "last_onset": "2023-12-13",
    "rule_now": false,
    "p_h7": 0.02,
@@ -1513,7 +1513,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "高雄市",
    "town": "六龜區",
    "known7": 0,
@@ -1538,7 +1538,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "高雄市",
    "town": "甲仙區",
    "known7": 0,
@@ -1563,7 +1563,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "高雄市",
    "town": "杉林區",
    "known7": 0,
@@ -1588,7 +1588,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "高雄市",
    "town": "內門區",
    "known7": 0,
@@ -1613,7 +1613,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "高雄市",
    "town": "茂林區",
    "known7": 0,
@@ -1638,7 +1638,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "高雄市",
    "town": "桃源區",
    "known7": 0,
@@ -1663,7 +1663,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "高雄市",
    "town": "那瑪夏區",
    "known7": 0,
@@ -1688,7 +1688,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "高雄市",
    "town": "鹽埕區",
    "known7": 0,
@@ -1713,34 +1713,9 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "高雄市",
    "town": "鼓山區",
-   "known7": 0,
-   "adj7": 0.0,
-   "thr": 3.0,
-   "confirmed14": 0,
-   "pending14": 6,
-   "last_onset": "2026-06-09",
-   "rule_now": false,
-   "p_h7": 0.02,
-   "p_h14": 0.02,
-   "p_any14": 0.02,
-   "p_any14_tfm": 0.02,
-   "p_any14_kde": 0.02,
-   "median_h7": 0.0,
-   "q90_h7": 0.0,
-   "median_h14": 0.0,
-   "q90_h14": 0.0,
-   "kde_median_h7": 0.0,
-   "kde_median_h14": 0.0,
-   "method": "ensp_tfm_kde_mix_fix_town",
-   "tier": ""
-  },
-  {
-   "origin": "2026-10-11",
-   "county": "高雄市",
-   "town": "左營區",
    "known7": 0,
    "adj7": 0.0,
    "thr": 3.0,
@@ -1763,14 +1738,39 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
+   "county": "高雄市",
+   "town": "左營區",
+   "known7": 0,
+   "adj7": 0.0,
+   "thr": 3.0,
+   "confirmed14": 0,
+   "pending14": 3,
+   "last_onset": "2026-06-09",
+   "rule_now": false,
+   "p_h7": 0.02,
+   "p_h14": 0.02,
+   "p_any14": 0.02,
+   "p_any14_tfm": 0.02,
+   "p_any14_kde": 0.02,
+   "median_h7": 0.0,
+   "q90_h7": 0.0,
+   "median_h14": 0.0,
+   "q90_h14": 0.0,
+   "kde_median_h7": 0.0,
+   "kde_median_h14": 0.0,
+   "method": "ensp_tfm_kde_mix_fix_town",
+   "tier": ""
+  },
+  {
+   "origin": "2026-11-09",
    "county": "高雄市",
    "town": "楠梓區",
    "known7": 0,
    "adj7": 0.0,
    "thr": 3.0,
    "confirmed14": 0,
-   "pending14": 8,
+   "pending14": 5,
    "last_onset": "2025-10-07",
    "rule_now": false,
    "p_h7": 0.02,
@@ -1781,21 +1781,21 @@
    "median_h7": 0.0,
    "q90_h7": 0.0,
    "median_h14": 0.0,
-   "q90_h14": 0.01,
+   "q90_h14": 0.0,
    "kde_median_h7": 0.0,
    "kde_median_h14": 0.0,
    "method": "ensp_tfm_kde_mix_fix_town",
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "高雄市",
    "town": "三民區",
    "known7": 0,
    "adj7": 0.0,
    "thr": 3.0,
    "confirmed14": 0,
-   "pending14": 3,
+   "pending14": 4,
    "last_onset": "2026-06-11",
    "rule_now": false,
    "p_h7": 0.02,
@@ -1813,14 +1813,14 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "高雄市",
    "town": "新興區",
    "known7": 0,
    "adj7": 0.0,
    "thr": 3.0,
    "confirmed14": 0,
-   "pending14": 1,
+   "pending14": 2,
    "last_onset": "2024-03-09",
    "rule_now": false,
    "p_h7": 0.02,
@@ -1838,7 +1838,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "高雄市",
    "town": "前金區",
    "known7": 0,
@@ -1863,14 +1863,14 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "高雄市",
    "town": "苓雅區",
    "known7": 0,
    "adj7": 0.0,
    "thr": 3.0,
    "confirmed14": 0,
-   "pending14": 6,
+   "pending14": 1,
    "last_onset": "2024-12-13",
    "rule_now": false,
    "p_h7": 0.02,
@@ -1888,14 +1888,14 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "高雄市",
    "town": "前鎮區",
    "known7": 0,
    "adj7": 0.0,
    "thr": 3.0,
    "confirmed14": 0,
-   "pending14": 4,
+   "pending14": 1,
    "last_onset": "2026-05-23",
    "rule_now": false,
    "p_h7": 0.02,
@@ -1913,14 +1913,14 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "高雄市",
    "town": "旗津區",
    "known7": 0,
    "adj7": 0.0,
    "thr": 3.0,
    "confirmed14": 0,
-   "pending14": 0,
+   "pending14": 1,
    "last_onset": "2023-11-21",
    "rule_now": false,
    "p_h7": 0.02,
@@ -1938,15 +1938,15 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
-   "county": "高雄市",
-   "town": "小港區",
+   "origin": "2026-11-09",
+   "county": "屏東縣",
+   "town": "屏東市",
    "known7": 0,
    "adj7": 0.0,
    "thr": 3.0,
    "confirmed14": 0,
-   "pending14": 0,
-   "last_onset": "2024-02-26",
+   "pending14": 1,
+   "last_onset": "2026-10-09",
    "rule_now": false,
    "p_h7": 0.02,
    "p_h14": 0.02,
@@ -1963,14 +1963,14 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "屏東縣",
    "town": "潮州鎮",
    "known7": 0,
    "adj7": 0.0,
    "thr": 3.0,
    "confirmed14": 0,
-   "pending14": 2,
+   "pending14": 0,
    "last_onset": "2023-10-17",
    "rule_now": false,
    "p_h7": 0.02,
@@ -1988,7 +1988,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "屏東縣",
    "town": "東港鎮",
    "known7": 0,
@@ -2013,7 +2013,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "屏東縣",
    "town": "恆春鎮",
    "known7": 0,
@@ -2038,14 +2038,14 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "屏東縣",
    "town": "萬丹鄉",
    "known7": 0,
    "adj7": 0.0,
    "thr": 3.0,
    "confirmed14": 0,
-   "pending14": 1,
+   "pending14": 0,
    "last_onset": "2025-11-07",
    "rule_now": false,
    "p_h7": 0.02,
@@ -2063,7 +2063,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "屏東縣",
    "town": "長治鄉",
    "known7": 0,
@@ -2088,7 +2088,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "屏東縣",
    "town": "麟洛鄉",
    "known7": 0,
@@ -2113,7 +2113,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "屏東縣",
    "town": "九如鄉",
    "known7": 0,
@@ -2138,7 +2138,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "屏東縣",
    "town": "里港鄉",
    "known7": 0,
@@ -2163,7 +2163,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "屏東縣",
    "town": "鹽埔鄉",
    "known7": 0,
@@ -2188,7 +2188,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "屏東縣",
    "town": "高樹鄉",
    "known7": 0,
@@ -2213,7 +2213,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "屏東縣",
    "town": "萬巒鄉",
    "known7": 0,
@@ -2238,7 +2238,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "屏東縣",
    "town": "內埔鄉",
    "known7": 0,
@@ -2263,7 +2263,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "屏東縣",
    "town": "竹田鄉",
    "known7": 0,
@@ -2288,7 +2288,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "屏東縣",
    "town": "新埤鄉",
    "known7": 0,
@@ -2313,7 +2313,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "屏東縣",
    "town": "枋寮鄉",
    "known7": 0,
@@ -2338,14 +2338,14 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "屏東縣",
    "town": "新園鄉",
    "known7": 0,
    "adj7": 0.0,
    "thr": 3.0,
    "confirmed14": 0,
-   "pending14": 2,
+   "pending14": 0,
    "last_onset": "2023-11-29",
    "rule_now": false,
    "p_h7": 0.02,
@@ -2363,7 +2363,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "屏東縣",
    "town": "崁頂鄉",
    "known7": 0,
@@ -2388,7 +2388,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "屏東縣",
    "town": "林邊鄉",
    "known7": 0,
@@ -2413,7 +2413,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "屏東縣",
    "town": "南州鄉",
    "known7": 0,
@@ -2438,7 +2438,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "屏東縣",
    "town": "佳冬鄉",
    "known7": 0,
@@ -2463,7 +2463,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "屏東縣",
    "town": "琉球鄉",
    "known7": 0,
@@ -2488,7 +2488,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "屏東縣",
    "town": "車城鄉",
    "known7": 0,
@@ -2513,14 +2513,14 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "屏東縣",
    "town": "滿州鄉",
    "known7": 0,
    "adj7": 0.0,
    "thr": 3.0,
    "confirmed14": 0,
-   "pending14": 1,
+   "pending14": 0,
    "last_onset": null,
    "rule_now": false,
    "p_h7": 0.02,
@@ -2538,7 +2538,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "屏東縣",
    "town": "枋山鄉",
    "known7": 0,
@@ -2563,7 +2563,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "屏東縣",
    "town": "三地門鄉",
    "known7": 0,
@@ -2588,7 +2588,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "屏東縣",
    "town": "霧台鄉",
    "known7": 0,
@@ -2613,7 +2613,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "屏東縣",
    "town": "瑪家鄉",
    "known7": 0,
@@ -2638,7 +2638,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "屏東縣",
    "town": "泰武鄉",
    "known7": 0,
@@ -2663,7 +2663,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "屏東縣",
    "town": "來義鄉",
    "known7": 0,
@@ -2688,7 +2688,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "屏東縣",
    "town": "春日鄉",
    "known7": 0,
@@ -2713,14 +2713,14 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "屏東縣",
    "town": "獅子鄉",
    "known7": 0,
    "adj7": 0.0,
    "thr": 3.0,
    "confirmed14": 0,
-   "pending14": 1,
+   "pending14": 0,
    "last_onset": null,
    "rule_now": false,
    "p_h7": 0.02,
@@ -2738,7 +2738,7 @@
    "tier": ""
   },
   {
-   "origin": "2026-10-11",
+   "origin": "2026-11-09",
    "county": "屏東縣",
    "town": "牡丹鄉",
    "known7": 0,

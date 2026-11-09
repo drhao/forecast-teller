@@ -12,7 +12,7 @@
 <header class="masthead" data-disease="dengue" data-page="report"></header>
 <script src="../assets/nav.js?v=nav2"></script>
 <main>
-  <div class="hero-kicker">Validation report · 2026-10-19</div>
+  <div class="hero-kicker">Validation report · 2026-11-09</div>
   <h1 class="page-title">登革熱鄉鎮層級預測式預警：<em>TimesFM 3.0 在承平期資料上的驗證</em></h1>
   <p class="lead">對應 CHG 情境一（複合災難下收容所自報的離線早期警示）第一至二年的驗證工作：以疾管署登革熱每日確定病例，模擬「小區域、每日、低計數」的症候群序列，檢驗時序基礎模型能否在 WHO EWARN 靜態閾值被突破之前數天、帶著不確定區間發出預警。本頁為驗證結果與應用情境（第 04–08 節）；問題定義、資料與方法、模型輸出的讀法（第 01–03 節）見<a href="method.html">方法</a>，每日最新預警見<a href="index.html">預警</a>。</p>
   <div class="meta-strip"><span>資料：疾管署登革熱每日確定病例（本土，居住鄉鎮），<b>全台 22 縣市 274 個鄉鎮（含台南 + 高雄 74 區）</b></span><span>回測年份：<b>2010、2011、2012、2013、2014、2015、2016、2018、2019、2020、2023、2024</b> 年 6–12 月，每 2 天一個起點（每年 107 個）</span><span>模型：TimesFM 3.0（零樣本，未微調）</span></div>
@@ -95,10 +95,10 @@
     </div>
   </section>
 </main>
-<footer class="site-footer">資料：疾病管制署登革熱每日確定病例（Internet Archive 保存之官方檔案）。模型：google/timesfm-3.0-pytorch（非商業授權）。子專案 dengue_ewarn；圖表依《疫情資料視覺化指引》v1.1。產生時間 2026-10-19T10:20+08:00。</footer>
+<footer class="site-footer">資料：疾病管制署登革熱每日確定病例（Internet Archive 保存之官方檔案）。模型：google/timesfm-3.0-pytorch（非商業授權）。子專案 dengue_ewarn；圖表依《疫情資料視覺化指引》v1.1。產生時間 2026-11-09T17:33+08:00。</footer>
 <script>
 document.addEventListener('DOMContentLoaded', async () => {
-  const D = await (await fetch('data.json?v=2026-10-19T1020')).json();   // cache-buster: regenerated with every build
+  const D = await (await fetch('data.json?v=2026-11-09T1733')).json();   // cache-buster: regenerated with every build
   const H = D.hs.map(String);
   EPI.linesChart(document.getElementById('c-wis'), [
     {label: 'TimesFM（' + D.main_mode + '）', data: D.wis_by_h[D.main_mode].tfm, kind: 'model'},
