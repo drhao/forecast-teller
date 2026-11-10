@@ -16,6 +16,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from forecast_teller import OUTPUT_DIR, PROCESSED_DIR, ROOT  # noqa: E402
 from forecast_teller.backtest import DEFAULT_THRESHOLDS, SEGMENTS, segment_of, threshold_note  # noqa: E402
+from forecast_teller.outlook import path_shape, shape_text, headline_outlook
 from forecast_teller.threshold_probs import threshold_outlook  # noqa: E402
 from forecast_teller.site_common import THRESHOLD_PROB_LINE, method_page, page_head, reading_items, table, ul  # noqa: E402
 
@@ -307,19 +308,9 @@ def build_narrative(nat: pd.DataFrame, latest: dict) -> dict:
 
     # --- outlook: outpatient path
     fc = out["forecast"]; meds = [f["median"] for f in fc]; last = out["last_observed"]
-    ch = [100 * (m / last - 1) for m in meds]; imax = int(np.argmax(meds))
     p_up1 = prob_ge(fc[0], last)
-    if all(np.diff(meds) > 0):
-        shape = f"未來 4 週持續上升，第 4 週中位數 {fmt0(meds[3])} 人次（較目前 {ch[3]:+.0f}%）"
-    elif all(np.diff(meds) < 0):
-        shape = f"未來 4 週持續下降，第 4 週中位數 {fmt0(meds[3])} 人次（較目前 {ch[3]:+.0f}%）"
-    elif 0 < imax < 3:
-        shape = (f"先升後緩：中位數在第 {imax + 1} 週（{fc[imax]['yw']}，{fc[imax]['date']} 起）達到高點 {fmt0(meds[imax])} 人次"
-                 f"（較目前 {ch[imax]:+.0f}%），第 4 週回到 {fmt0(meds[3])} 人次")
-    elif imax == 0 and max(abs(c) for c in ch) < 5:
-        shape = f"未來 4 週大致持平（中位數在目前水準 ±5% 內）"
-    else:
-        shape = f"第 1 週 {fmt0(meds[0])} 人次後轉為下降，第 4 週 {fmt0(meds[3])} 人次（較目前 {ch[3]:+.0f}%）"
+    sh = path_shape(last, meds)
+    shape = shape_text(sh, fc, meds, fmt0, "人次")
     fut.append(f"門診人次：{shape}。下週高於本週的機率{pct_txt(p_up1)}，第 1 週 80% 區間 {fmt0(fc[0]['q10'])}–{fmt0(fc[0]['q90'])} 人次。")
     # --- outlook: RODS threshold probability
     rf = rods["forecast"]; probs = [prob_ge(f, thr) for f in rf]
@@ -329,9 +320,10 @@ def build_narrative(nat: pd.DataFrame, latest: dict) -> dict:
     if latest.get("threshold_outlook"):
         fut.append(latest["threshold_outlook"]["text"])
     # --- outlook: ER
-    ef = er["forecast"]; em = [f["median"] for f in ef]; e_imax = int(np.argmax(em))
-    fut.append(f"急診人次：中位數 {' → '.join(fmt0(m) for m in em)}"
-               + (f"，高點落在第 {e_imax + 1} 週。" if 0 < e_imax < 3 else "。"))
+    ef = er["forecast"]; em = [f["median"] for f in ef]; esh = path_shape(er["last_observed"], em)
+    e_note = (f"高點落在第 {esh['imax'] + 1} 週" if esh["kind"] == "peak" else f"低點落在第 {esh['imin'] + 1} 週" if esh["kind"] == "trough"
+              else f"{esh['word']}，平均每週 {esh['slope_pct']:+.1f}%")
+    fut.append(f"急診人次：中位數 {' → '.join(fmt0(m) for m in em)}（{e_note}）。")
     # --- outlook: severe
     sf = sev["forecast"]
     fut.append(f"重症：起點 {sev['origin_yw']}，未來 4 週中位數 {' → '.join(fmt0(f['median']) for f in sf)} 例（第 4 週 80% 區間 {fmt0(sf[3]['q10'])}–{fmt0(sf[3]['q90'])}）；此序列落後門急診約 2–3 週。")
@@ -367,14 +359,7 @@ def build_narrative(nat: pd.DataFrame, latest: dict) -> dict:
         r_hist = rate.loc["201601":]; pct_rank = 100 * (r_hist < rate.iloc[-1]).mean()
         lvl = "高" if pct_rank >= 90 else ("偏高" if pct_rank >= 75 else ("中等" if pct_rank >= 40 else "低"))
     stage = ("上升期" if t_rising >= 2 and t_wow >= 5 else ("下降期" if t_falling >= 2 and t_wow <= -5 else "高原期" if lvl in ("高", "偏高") else "低度活動"))
-    if 0 < imax < 3:
-        outlook = f"模型預期第 {imax + 1} 週（{fc[imax]['date']} 起）前後觸頂，之後緩降"
-    elif all(np.diff(meds) > 0):
-        outlook = "模型預期未來 4 週持續上升"
-    elif all(np.diff(meds) < 0):
-        outlook = "模型預期未來 4 週持續下降"
-    else:
-        outlook = "模型預期未來 4 週大致持平"
+    outlook = headline_outlook(sh, fc)
     trend_txt = (f"門診類流感就診率較前一週 {t_wow:+.0f}%（{hol_note}）" if hol_note else f"門診人次較前一週 {wow:+.0f}%")
     headline = (f"疫情處於{stage}、活動度{lvl}：{trend_txt}，RODS 急診類流感% {s_rods.iloc[-1]:.1f}%"
                 + ("（連續 %d 週高於流行閾值）" % above if above else "（低於流行閾值）") + f"；{outlook}，下週續升機率{pct_txt(p_up1)}。")

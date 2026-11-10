@@ -9,6 +9,7 @@ import pandas as pd
 
 from forecast_teller.backtest import SEGMENTS, segment_of
 from forecast_teller.covariates import holiday_weekly
+from forecast_teller.outlook import path_shape, shape_text, headline_outlook
 from forecast_teller.threshold_probs import threshold_outlook
 from forecast_teller.site_common import THRESHOLD_PROB_LINE, method_page, page_head, reading_items, table, ul
 from forecast_teller.weeks import week_start
@@ -191,20 +192,10 @@ def build_narrative(nat: pd.DataFrame, latest: dict, calib: dict) -> dict:
         cur.append("本週在寒假期間，歷史上寒假與春節後就診人次每週下降 10–15%。")
     # --- outlook
     fc = oe["forecast"]; meds = [f["median"] for f in fc]; last = oe["last_observed"]
-    ch = [100 * (m / last - 1) for m in meds]; imax = int(np.argmax(meds))
     probs = [prob_ge(f, f["threshold"] or thr) for f in fc]
     p_up1 = prob_ge(fc[0], last)
-    if all(np.diff(meds) > 0):
-        shape = f"未來 4 週持續上升，第 4 週中位數 {fmt0(meds[3])} 人次（較目前 {ch[3]:+.0f}%）"
-    elif all(np.diff(meds) < 0):
-        shape = f"未來 4 週持續下降，第 4 週中位數 {fmt0(meds[3])} 人次（較目前 {ch[3]:+.0f}%）"
-    elif 0 < imax < 3:
-        shape = (f"先升後緩：中位數在第 {imax + 1} 週（{fc[imax]['yw']}，{fc[imax]['date']} 起）達高點 {fmt0(meds[imax])} 人次（較目前 {ch[imax]:+.0f}%），"
-                 f"第 4 週回到 {fmt0(meds[3])} 人次")
-    elif imax == 0 and max(abs(c) for c in ch) < 5:
-        shape = "未來 4 週大致持平（中位數在目前水準 ±5% 內）"
-    else:
-        shape = f"第 1 週 {fmt0(meds[0])} 人次後轉為下降，第 4 週 {fmt0(meds[3])} 人次（較目前 {ch[3]:+.0f}%）"
+    sh = path_shape(last, meds)
+    shape = shape_text(sh, fc, meds, fmt0, "人次")
     fut.append(f"門急診合計：{shape}。下週高於本週的機率{pct_txt(p_up1)}，第 1 週 80% 區間 {fmt0(fc[0]['q10'])}–{fmt0(fc[0]['q90'])} 人次。")
     ptxt = "、".join(f"第 {i + 1} 週{pct_txt(p)}" for i, p in enumerate(probs))
     first = next((i for i, p in enumerate(probs) if p >= 0.5), None)
@@ -232,14 +223,7 @@ def build_narrative(nat: pd.DataFrame, latest: dict, calib: dict) -> dict:
     # --- headline
     lvl = "高" if pct_rank >= 90 else ("偏高" if pct_rank >= 75 else ("中等" if pct_rank >= 40 else "低"))
     stage = ("上升期" if rising >= 2 and wow >= 5 else ("下降期" if falling >= 2 and wow <= -5 else "高原期" if lvl in ("高", "偏高") else "低度活動"))
-    if 0 < imax < 3:
-        outlook = f"模型預期第 {imax + 1} 週（{fc[imax]['date']} 起）前後觸頂，之後緩降"
-    elif all(np.diff(meds) > 0):
-        outlook = "模型預期未來 4 週持續上升"
-    elif all(np.diff(meds) < 0):
-        outlook = "模型預期未來 4 週持續下降"
-    else:
-        outlook = "模型預期未來 4 週大致持平"
+    outlook = headline_outlook(sh, fc)
     thr_part = (f"目前處於流行期第 {above} 週（閾值 {fmt0(thr)}）" if st["in_period"] else f"未達 {yr} 年流行閾值 {fmt0(thr)} 人次")
     headline = (f"腸病毒疫情處於{stage}、活動度{lvl}：門急診合計 {fmt0(s_oe.iloc[-1])} 人次，較前一週 {wow:+.0f}%，{thr_part}；"
                 f"{outlook}，" + (f"最快第 {first + 1} 週達閾值（機率{pct_txt(probs[first])}）。" if (first is not None and not st["in_period"]) else f"第 4 週高於閾值的機率{pct_txt(probs[3])}。"))

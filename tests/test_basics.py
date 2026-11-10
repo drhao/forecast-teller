@@ -65,3 +65,16 @@ assert drop_check(s_no, "202641")["action"] == "paused"
 assert drop_check(pd.Series(base + [5.2e6], index=["202637", "202638", "202639", "202640", "202641"]), "202641") is None
 assert holiday_weekly(["202642"]).loc["202642", "closure_days"] == 1
 print("all basic checks passed")
+
+
+# --- outlook.path_shape: slope-based 4-week trend
+from forecast_teller.outlook import path_shape, weekly_slope_pct
+sh = path_shape(84860, [80625, 77614, 75882, 77507])          # flu origin 202643: wiggle up at week 4 is still a decline
+assert sh["kind"] == "slow_down" and -3 < sh["slope_pct"] < -2, sh
+assert path_shape(100, [101, 99, 100, 101])["kind"] == "flat"
+assert path_shape(100, [110, 121, 133, 146])["kind"] == "up"
+assert path_shape(100, [115, 120, 110, 100])["kind"] == "peak"
+assert path_shape(100, [80, 70, 85, 100])["kind"] == "trough"
+assert path_shape(100, [96, 99, 94, 90])["kind"] != "peak"    # interior high below the origin is not a peak
+assert abs(weekly_slope_pct(100, [110, 121, 133.1, 146.41]) - 10) < 0.01
+assert path_shape(1677, [1616, 0, 1634, 1832])["kind"] in ("trough", "flat", "slow_up", "slow_down", "up", "down")

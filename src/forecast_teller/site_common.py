@@ -32,12 +32,16 @@ def page_head(title: str, disease: str, page: str, up: str = "../", charts: bool
 """
 
 
+from .outlook import METHOD_NOTE as TREND_LINE  # noqa: E402
+
+
 def reading_items(threshold_line: str) -> list[str]:
     """How to read a weekly quantile forecast; shared by the three weekly-forecast diseases."""
     return [
         "<b>先看區間，不看單點。</b>模型對每個未來週輸出 9 個分位數（q10–q90）。中位數是「一半機會比它高、一半比它低」；q10–q90 為 80% 預測區間，q20–q80 為 60%。區間寬代表不確定，是資訊不是缺陷。",
         "<b>預測起點是最新的完整申報週。</b>本週尚未結束、或申報明顯未齊的週不進入模型；各指標的起點可能不同（例如重症依發病週，通報較慢）。",
         "<b>「下週續升機率」</b>是第 1 週分布高於起點週觀測值的比例，由 9 個分位數線性內插而得，上下限 5%–95%。",
+        TREND_LINE,
         threshold_line,
         "<b>「已驗證」</b>標記表示該目標週的實際值已公布，可直接比對；每週的預測都存檔（forecast_log），並與日後的實際值比對評估。",
         "<b>1–2 週最可靠，3–4 週僅供規劃參考。</b>回測中誤差隨預測週數大致線性上升。",
